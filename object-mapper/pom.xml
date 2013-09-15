@@ -1,0 +1,49 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.mestor</groupId>
+		<artifactId>mestor</artifactId>
+		<version>0.1-SNAPSHOT</version>
+	</parent>
+	<artifactId>mestor-object-mapper</artifactId>
+	<name>mestor-object-mapper</name>
+
+
+	<properties>
+		<reflections.version>0.9.8</reflections.version>
+		<validation.version>1.1.0.Final</validation.version>
+		<persistence.version>1.0.2</persistence.version>
+	</properties>
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.mestor</groupId>
+			<artifactId>mestor-core</artifactId>
+			<version>0.1-SNAPSHOT</version>
+		</dependency>
+     
+		<dependency>
+			<groupId>org.reflections</groupId>
+			<artifactId>reflections</artifactId>
+			<version>${reflections.version}</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>javax.persistence</groupId>
+			<artifactId>persistence-api</artifactId>
+			<version>1.0.2</version>
+			<scope>provided</scope>
+		</dependency>
+            
+		<dependency>
+			<groupId>javax.validation</groupId>
+			<artifactId>validation-api</artifactId>
+			<version>${validation.version}</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+
+</project>
