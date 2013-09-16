@@ -30,6 +30,7 @@ public class CreateIndex extends Statement {
 	private String name;
 	private String keyspace;
 	private String table;
+	private String column;
 
 	CreateIndex() {
 		// empty package protected constructor
@@ -57,10 +58,14 @@ public class CreateIndex extends Statement {
 		return this;
 	}
 	
+	public CreateIndex column(String column) {
+		this.column = column;
+		return this;
+	}
 	
 	@Override
 	public String getQueryString() {
-		return Joiner.on(" ").join("CREATE", "INDEX", name, "ON", fullname(keyspace, table));
+		return Joiner.on(" ").join("CREATE", "INDEX", name, "ON", fullname(keyspace, table), "(", column, ")");
 	}
 
 	@Override

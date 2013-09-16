@@ -15,71 +15,19 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.persistence.cql.management;
 
-import java.util.Arrays;
+import com.google.common.base.Joiner;
 
-public class IndexMetadata<T> {
-	private final Class<T> type;
-	private final String name;
-	private final FieldMetadata<T, ? extends Object>[] fields;
-
-
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object> field) {
-		this(type, name, new FieldMetadata[] {field});
-	}
-	
-	
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object>[] fields) {
-		this.type = type;
-		this.name = name;
-		this.fields = Arrays.copyOf(fields, fields.length);
-	}
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] fieldNames) {
-		this.type = entityMetadata.getEntityType();
-		this.name = name;
-		
-		
-		fields = new FieldMetadata[fieldNames.length];
-		
-		for (int i = 0; i < fieldNames.length; i++) {
-			FieldMetadata<T, ? extends Object> fmd = entityMetadata.getField(fieldNames[i]);
-			if (fmd == null) {
-				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + fieldNames[i]);
-			}
-			fields[i] = fmd;
-		}
+public class AlterTableAddColumn extends AlterTable {
+	protected AlterTable add(String column, Class<?> type) {
+		return super.alter(column, type);
 	}
 
 
-	public Class<T> getType() {
-		return type;
+	@Override
+	public String getQueryString() {
+		return Joiner.on(" ").join("ALTER", "TABLE", CommandHelper.fullname(keyspace, name), "ADD", columnName, columnType);
 	}
 
-
-	public String getName() {
-		return name;
-	}
-
-
-	public FieldMetadata<T, ? extends Object>[] getFields() {
-		return fields;
-	}
-
-	public String[] getFieldNames() {
-		if (fields == null) {
-			return null;
-		}
-		String[] names = new String[fields.length];
-		for (int i = 0; i < fields.length; i++) {
-			names[i] = fields[i].getName();
-		}
-		return names;
-	}
-	
-	
 }

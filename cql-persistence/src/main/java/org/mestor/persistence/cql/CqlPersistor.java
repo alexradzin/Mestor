@@ -26,12 +26,15 @@ import static org.mestor.persistence.cql.management.CommandBuilder.dropKeyspace;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
@@ -43,7 +46,7 @@ import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CommandHelper;
 import org.mestor.persistence.cql.management.CreateTable;
-import org.mestor.persistence.cql.management.EditTable.FieldAttribute;
+import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
 
@@ -61,6 +64,8 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Select.Where;
 import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -164,6 +169,7 @@ public class CqlPersistor implements Persistor {
 		E wrappedEntity = (E)getObjectWrapperFactory().wrap(entity);
 		return wrappedEntity;
 	}
+	
 
 	@Override
 	public <E> void remove(E entity) {
@@ -281,14 +287,21 @@ public class CqlPersistor implements Persistor {
 	
 	
 	private <E> void createTable(Function<Query, Void> queryHandler, EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
-		CreateTable table = CommandBuilder.createTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
+		final CreateTable table = CommandBuilder.createTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 		
-		Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
+		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
 		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields().values()) {
 			table.add(fmd.getColumn(), fmd.getType(), getFieldAttributes(fmd, indexedColumns));
 		}
 		
 		queryHandler.apply(table);
+		
+		final String keyspaceName = entityMetadata.getSchemaName();
+		final String tableName = entityMetadata.getTableName();
+		
+		for (String column :  getRequiredIndexedFields(entityMetadata)) {
+			queryHandler.apply(CommandBuilder.createIndex().in(keyspaceName).named(createIndexName(keyspaceName, tableName, column)).on(tableName).column(column));
+		}
 	}
 	
 	
@@ -309,67 +322,6 @@ public class CqlPersistor implements Persistor {
 	}
 	
 	
-	public <E> void updateTable1(EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
-		String entityTable = entityMetadata.getTableName();
-		boolean tableExists = false;
-		for(String tableName : getTableNames(entityMetadata.getSchemaName())) {
-			if (entityTable.equals(tableName)) {
-				tableExists = true;
-			}
-		}
-		
-		if (!tableExists) {
-			createTable(entityMetadata, properties);
-			return;
-		}
-		
-		// table already exists
-		AlterTable table = CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
-		
-		
-		TableMetadata existingTable = cluster.getMetadata().getKeyspace(entityMetadata.getSchemaName()).getTable(entityMetadata.getTableName());
-		
-		Map<String, ColumnMetadata> existingColumns = new LinkedHashMap<>();
-		for (ColumnMetadata cmd : existingTable.getColumns()) {
-			existingColumns.put(cmd.getName(), cmd);
-		}
-
-		Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
-		
-		// find fields that have to be added or altered
-		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields().values()) {
-			String column = fmd.getColumn();
-			ColumnMetadata existingColumn = existingColumns.get(column); 
-			if (existingColumn == null) {
-				table.add(column, fmd.getType(), getFieldAttributes(fmd, indexedColumns));
-				continue;
-			}
-			
-			Class<?> existingType = existingColumn.getType().asJavaClass();
-			Class<?> fieldType = fmd.getType();
-			
-			boolean existingColumnIsIndexed = existingColumn.getIndex() != null;
-			boolean fieldIsIndexed = indexedColumns.contains(fmd.getColumn());
-			
-			
-			if (!existingType.isAssignableFrom(fieldType) || existingColumnIsIndexed != fieldIsIndexed) {
-				table.alter(column, fmd.getType(), getFieldAttributes(fmd, indexedColumns));
-			}
-		}
-		
-		// find fields that should be dropped
-		// TODO: not sure that this should be always done. The "extra" fields may contain data.
-		for (ColumnMetadata cmd : existingTable.getColumns()) {
-			if(entityMetadata.getField(cmd.getName()) == null) {
-				table.drop(cmd.getName());
-			}
-		}
-		
-		if (table.shouldRun()) {
-			session.execute(table);
-		}
-	}
-
 	@Override
 	public <E> void dropTable(String keyspace, String tableName) {
 		session.execute(CommandBuilder.dropTable().named(tableName).in(keyspace));
@@ -427,23 +379,23 @@ public class CqlPersistor implements Persistor {
 	
 	private <E> void processTable(Function<Query, Void> queryHandler, EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
 		String entityTable = entityMetadata.getTableName();
-		boolean tableExists = false;
+		String existingTableName = null;
 		for(String tableName : getTableNames(entityMetadata.getSchemaName())) {
-			if (entityTable.equals(tableName)) {
-				tableExists = true;
+			if (entityTable.equalsIgnoreCase(tableName)) {
+				existingTableName = tableName;
 			}
 		}
 		
-		if (!tableExists) {
+		if (existingTableName == null) {
 			createTable(queryHandler, entityMetadata, properties);
 			return;
 		}
 		
 		// table already exists
-		AlterTable table = CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 		
 		
-		TableMetadata existingTable = cluster.getMetadata().getKeyspace(entityMetadata.getSchemaName()).getTable(entityMetadata.getTableName());
+		TableMetadata existingTable = cluster.getMetadata().getKeyspace(entityMetadata.getSchemaName()).getTable(existingTableName);
+		
 		
 		Map<String, ColumnMetadata> existingColumns = new LinkedHashMap<>();
 		for (ColumnMetadata cmd : existingTable.getColumns()) {
@@ -454,10 +406,11 @@ public class CqlPersistor implements Persistor {
 		
 		// find fields that have to be added or altered
 		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields().values()) {
+			//AlterTable table = CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 			String column = fmd.getColumn();
 			ColumnMetadata existingColumn = existingColumns.get(column); 
 			if (existingColumn == null) {
-				table.add(column, fmd.getType(), getFieldAttributes(fmd, indexedColumns));
+				handle(queryHandler, CommandBuilder.alterTable().addColumn(column, fmd.getType()), entityMetadata, properties);
 				continue;
 			}
 			
@@ -469,7 +422,8 @@ public class CqlPersistor implements Persistor {
 			
 			
 			if (!existingType.isAssignableFrom(fieldType) || existingColumnIsIndexed != fieldIsIndexed) {
-				table.alter(column, fmd.getType(), getFieldAttributes(fmd, indexedColumns));
+				handle(queryHandler, CommandBuilder.alterTable().alterColumn(column, fmd.getType()), entityMetadata, properties);
+				continue;
 			}
 		}
 		
@@ -477,19 +431,94 @@ public class CqlPersistor implements Persistor {
 		// TODO: not sure that this should be always done. The "extra" fields may contain data.
 		for (ColumnMetadata cmd : existingTable.getColumns()) {
 			if(entityMetadata.getField(cmd.getName()) == null) {
-				table.drop(cmd.getName());
+				queryHandler.apply(CommandBuilder.alterTable().dropColumn(cmd.getName()).named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties));
 			}
 		}
+
+		// process indexes
+		String keyspaceName = entityMetadata.getSchemaName();
+		String tableName = entityMetadata.getTableName();
 		
-		if (table.shouldRun()) {
-			queryHandler.apply(table);
+		Set<String> requiredIndexes = getRequiredIndexedFields(entityMetadata);
+		
+		Set<String> existingIndexes = new HashSet<>(Collections2.transform(
+				Collections2.filter(existingTable.getColumns(), new Predicate<ColumnMetadata>() {
+					  @Override
+					public boolean apply(ColumnMetadata cmd) {
+						  return cmd.getIndex() != null;
+					  }
+				}), 
+				new Function<ColumnMetadata, String>() {
+					@Override
+					public String apply(ColumnMetadata cmd) {
+						return cmd.getName();
+					}
+				}));
+		
+		
+		// find missing indexes
+		Set<String> missingIndexes  = new HashSet<>(requiredIndexes);
+		missingIndexes.removeAll(existingIndexes);
+		
+		for (String column : missingIndexes) {
+			queryHandler.apply(CommandBuilder.createIndex().in(keyspaceName).named(createIndexName(keyspaceName, tableName, column)).on(tableName).column(column));
 		}
+		
+		
+		// find redundant indexes
+		Set<String> redundantIndexes  = new HashSet<>(existingIndexes);
+		redundantIndexes.removeAll(requiredIndexes);
+		
+		
+		for (String column : redundantIndexes) {
+			queryHandler.apply(CommandBuilder.dropIndex().named(createIndexName(keyspaceName, tableName, column)));
+		}
+		
+	}
+	
+	
+	
+	private <E> void handle(Function<Query, Void> queryHandler, AlterTable command, EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
+		queryHandler.apply(command.named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties));
+	}
+	
+	/**
+	 * Creates unique index name using format {@code KEYSPACE_TABLE_COLUMN_index}.
+	 * 
+	 * The index name is global in whole Cassandra server, so we have to use keyspace, 
+	 * table name and column name when creating index name to avoid conflicts.
+	 *    
+	 * @param keyspace
+	 * @param table
+	 * @param column
+	 * @return unique index name
+	 */
+	private String createIndexName(String keyspace, String table, String column) {
+		return Joiner.on('_').join(keyspace, table, column, "index");
 	}
 
 	@SuppressWarnings("unchecked")
 	private <E> Class<E> getEntityClass(E entity) {
 		return (Class<E>)getObjectWrapperFactory().unwrap(entity).getClass();
 	}
+	
+	
+	private <E> Set<String> getRequiredIndexedFields(EntityMetadata<E> entityMetadata) {
+		Set<String> requiredIndexes = new HashSet<>();
+		
+		for(IndexMetadata<E> imd : entityMetadata.getIndexes()) {
+			requiredIndexes.addAll(Collections2.transform(Arrays.asList(imd.getFields()), new Function<FieldMetadata<E, ? extends Object>, String>() {
+				@Override
+				public String apply(FieldMetadata<E, ? extends Object> fmd) {
+					return fmd.getColumn();
+				}
+			}));
+		}
+		
+		return requiredIndexes;
+	}
+	
+	
 	
 	// package protected for testing
 	Cluster getCluster() {

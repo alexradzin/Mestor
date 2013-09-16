@@ -120,7 +120,7 @@ public class EntityMetadata<E> {
 	public void setFields(Map<String, FieldMetadata<E, Object>> fields) {
 		this.fields = fields;
 		for (Entry<String, FieldMetadata<E, Object>> e : fields.entrySet()) {
-			FieldMetadata<E, Object> fmeta = e.getValue();
+			FieldMetadata<E, ? extends Object> fmeta = e.getValue();
 			PropertyAccessor<E, ?> accessor = fmeta.getAccessor();
 			String name = fmeta.getName();
 			putAccessorToFieldName(getter2fieldName, accessor.getGetter(), name);
@@ -141,7 +141,7 @@ public class EntityMetadata<E> {
 
 	public Collection<String> getFieldNamesByType(Class<?> type) {
 		Collection<String> fieldNames = new ArrayList<>();
-		for(FieldMetadata<E, Object> fmd : fields.values()) {
+		for(FieldMetadata<E, ? extends Object> fmd : fields.values()) {
 			if(type.isAssignableFrom(fmd.getClassType())) {
 				fieldNames.add(fmd.getName());
 			}
@@ -171,8 +171,11 @@ public class EntityMetadata<E> {
 
 
 	public void copy(E from, E to) {
-		for (FieldMetadata<E, Object> fmd : getFields().values()) {
-			fmd.getAccessor().setValue(to, fmd.getAccessor().getValue(from));
+		for (FieldMetadata<E, ? extends Object> fmd : getFields().values()) {
+			@SuppressWarnings("unchecked")
+			PropertyAccessor<E, Object> pa = (PropertyAccessor<E, Object>)fmd.getAccessor();
+			Object value = fmd.getAccessor().getValue(from);
+			pa.setValue(to, value);
 		}
 	}
 	

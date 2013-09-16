@@ -43,8 +43,8 @@ public abstract class CommandBuilder {
 		return new EditKeyspace(EditCommand.CREATE);
 	}
 
-	public static AlterTable alterTable() {
-		return new AlterTable();
+	public static AlterTableBuilder alterTable() {
+		return new AlterTableBuilder();
 	}
 
 	public static EditKeyspace alterKeyspace() {
@@ -63,6 +63,28 @@ public abstract class CommandBuilder {
 		return new DropTarget(Target.INDEX);
 	}
 	
+	
+	public static class AlterTableBuilder extends EditTable<AlterTable> {
+		public AlterTable dropColumn(String column) {
+			return setCommonData(new AlterTableDropColumn().drop(column));
+		}
+
+		public <T> AlterTable addColumn(String column, Class<T> type) {
+			return setCommonData(new AlterTableAddColumn().add(column, type));
+		}
+		public <T> AlterTable alterColumn(String column, Class<T> type) {
+			return setCommonData(new AlterTableAlterColumn().alter(column, type));
+		}
+		
+		private AlterTable setCommonData(AlterTable t) {
+			return t.named(name).in(keyspace).with(properties);
+		}
+
+		@Override
+		public String getQueryString() {
+			throw new UnsupportedOperationException();
+		}
+	}
 	
 	
 //	CREATE KEYSPACE

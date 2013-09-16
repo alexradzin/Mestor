@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.CQL3Type.Native;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -40,7 +41,6 @@ public class CommandHelper {
 	private static void initTypeMapping() {
 		for (Native nativeType : Native.values()) {
 			AbstractType<?> cassandraType = nativeType.getType();
-			System.out.println(cassandraType);
 			
 			Class<?> type = null;
 			for (type = cassandraType.getClass(); type != null && !AbstractType.class.equals(type.getSuperclass()); type = type.getSuperclass()) {
@@ -56,7 +56,7 @@ public class CommandHelper {
 	}
 	
 	
-	static String fullname(String keyspace, String name) {
+	public static String fullname(String keyspace, String name) {
 		return keyspace == null ? name : keyspace + "." + name;
 	}
 	
@@ -79,6 +79,12 @@ public class CommandHelper {
 		return buf.toString();
 	}
 
+	
+	static String createIndex(String indexName, String tableName, String columnName) {
+		return Joiner.on(" ").join("CREATE INDEX", indexName, "ON", tableName, "(", columnName, ")");
+	}
+	
+	
 	private static String formatValue(Object value) {
 		if (value == null) {
 			return null;
@@ -116,4 +122,10 @@ public class CommandHelper {
 		}
 		return cassandraType;
 	}
+	
+	public static CQL3Type toCqlType(Class<?> clazz) {
+		AbstractType<?> cassandraType = toCassandraType(clazz);
+		return cassandraType == null ? null : cassandraType.asCQL3Type();
+	}
+	
 }

@@ -59,6 +59,7 @@ public class CollectionUtils {
 	}
 	
 
+	@SafeVarargs
 	public static <T> List<T> nullsafeAsList(T ... elements) {
 		return elements == null ? null : Arrays.asList(elements);
 	}

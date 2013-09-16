@@ -20,6 +20,7 @@ package org.mestor.persistence.cql;
 public class Person {
 	private int id;
 	private String name;
+	private String lastName;
 	private int age;
 	
 	
@@ -37,6 +38,12 @@ public class Person {
 	}
 	public int getAge() {
 		return age;
+	}
+	public String getLastName() {
+		return lastName;
+	}
+	public void setLastName(String lastName) {
+		this.lastName = lastName;
 	}
 	public void setAge(int age) {
 		this.age = age;

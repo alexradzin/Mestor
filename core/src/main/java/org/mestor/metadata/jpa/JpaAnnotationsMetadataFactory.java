@@ -110,6 +110,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			String fieldName = getFieldName(m);
 			FieldMetadata<T, Object> fmeta = fields.get(fieldName);
 			
+			
 			if (isTransient(m)) {
 				if (fmeta != null) {
 					fields.remove(fieldName);
@@ -132,6 +133,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			}
 			String fieldName = getFieldName(m);
 			FieldMetadata<T, Object> fmeta = fields.get(fieldName);
+			
 			if (fmeta == null) {
 				continue;
 			}
@@ -140,10 +142,10 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 		
 		Collection<String> primaryKeyFields = new ArrayList<>();
-		Collection<PropertyAccessor<T, Object>> primaryKeyAccessors = new ArrayList<>();
+		Collection<PropertyAccessor<T, ? extends Object>> primaryKeyAccessors = new ArrayList<>();
 		
 		for (Entry<String, FieldMetadata<T, Object>> entry : fields.entrySet()) {
-			FieldMetadata<T, Object> fmeta = entry.getValue();
+			FieldMetadata<T, ? extends Object> fmeta = entry.getValue();
 					
 			if (fmeta.isKey()) {
 				primaryKeyFields.add(entry.getKey());
@@ -188,6 +190,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		return emeta;
 	}
 
+	
 
 	
 	private String extractName(Object nameHolder, String defaultValue) {
