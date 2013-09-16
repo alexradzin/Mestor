@@ -66,14 +66,11 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 public class CqlPersistor implements Persistor {
-	final static String CASSANDRA_PROP_ROOT = "org.mestor.cassandra";
-	final static String CASSANDRA_HOSTS = CASSANDRA_PROP_ROOT + "." + "hosts";
-	final static String CASSANDRA_PORT = CASSANDRA_PROP_ROOT + "." + "port";
-	
-	
 	private EntityContext context;
-    protected Cluster cluster;
-    protected Session session;
+    private Cluster cluster;
+    private Session session;
+    
+    private Map<String, Object> defaultKeyspaceProperties;
     
     private final Function<Query, Void> sessionHandler = new Function<Query, Void>() {
 		@Override
@@ -85,58 +82,39 @@ public class CqlPersistor implements Persistor {
 
     
     
-    public CqlPersistor(EntityContext context) throws IOException {
+
+	@SuppressWarnings({ "cast", "unchecked" })
+	public CqlPersistor(EntityContext context) throws IOException {
     	if (context == null) {
     		throw new IllegalArgumentException(EntityContext.class.getSimpleName() + " cannot be null");
     	}
     	this.context = context;
     	
-    	// set defaults
-    	Integer port = null;
-    	String[] hosts = new String[] {"localhost"};
-
     	Map<String, Object> properties = context.getProperties();
-    	if (properties != null) {
-        	Object hostsProp = properties.get(CASSANDRA_HOSTS);
-        	if (hostsProp != null) {
-        		if (hostsProp instanceof String) {
-        			hosts = ((String)hostsProp).split("\\s*,;\\s*");
-        		} else if (hostsProp instanceof String[]) {
-        			hosts = (String[])hostsProp;
-        		} else {
-        			throw new ClassCastException(CASSANDRA_HOSTS + "property must be either String or String[]");
-        		}
-        	}
-//        	hosts = hostsStr == null ? new String[] {"localhost"} : hostsStr.split("\\s*,;\\s*");
-        
-        	Object portProp = properties.get(CASSANDRA_PORT);
-        	if (portProp != null) {
-        		if (portProp instanceof String) {
-        			port = Integer.parseInt((String)portProp);
-        		} else if (portProp instanceof Integer) {
-        			port = (Integer)portProp;
-        		} else {
-        			throw new ClassCastException(CASSANDRA_HOSTS + "property must be either String or String[]");
-        		}
-        	}
-    	}
-    	
+    	// set defaults
+    	Integer port = CqlPersistorProperties.CASSANDRA_PORT.getValue(properties);
+    	String[] hosts = CqlPersistorProperties.CASSANDRA_HOSTS.getValue(properties);
 
-        try {
-            connect(port, hosts);
-        } catch (NoHostAvailableException e) {
-            throw new IOException("Cannot connect to Cassandra", e);
-        }
-    }
-    
-    private void connect(final Integer port, final String ... hosts) throws NoHostAvailableException {
-    	final Cluster.Builder clusterBuilder = Cluster.builder();
+    	Cluster.Builder clusterBuilder = Cluster.builder();
     	if (port != null) {
     		clusterBuilder.withPort(port);
     	}
-        cluster = clusterBuilder.addContactPoints(hosts).build();
-        session = cluster.connect();
+		connect(clusterBuilder, hosts, (Map<String, Object>)CqlPersistorProperties.CASSANDRA_KEYSPACE_PROPERTIES.getValue(properties));
     }
+    
+    
+    
+	
+	private void connect(Cluster.Builder clusterBuilder, String[] hosts, Map<String, Object> keyspaceProperties) throws IOException {
+		try {
+	        cluster = clusterBuilder.addContactPoints(hosts).build();
+	        session = cluster.connect();
+			defaultKeyspaceProperties = keyspaceProperties;
+		} catch (NoHostAvailableException e) {
+			throw new IOException(e);
+		}
+	}
+	
 
 	@Override
 	public <E> void store(E entity) {
@@ -270,7 +248,7 @@ public class CqlPersistor implements Persistor {
 
 	@Override
 	public void createSchema(String name, Map<String, Object> properties) {
-		session.execute(createKeyspace().named(name).with(properties));
+		session.execute(createKeyspace().named(name).with(properties == null ? defaultKeyspaceProperties : properties));
 	}
 
 	@Override
@@ -511,5 +489,10 @@ public class CqlPersistor implements Persistor {
 	@SuppressWarnings("unchecked")
 	private <E> Class<E> getEntityClass(E entity) {
 		return (Class<E>)getObjectWrapperFactory().unwrap(entity).getClass();
+	}
+	
+	// package protected for testing
+	Cluster getCluster() {
+		return cluster;
 	}
 }

@@ -26,6 +26,7 @@ import javassist.util.proxy.ProxyObject;
 
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
 import org.mestor.reflection.ClassAccessor;
 import org.mestor.wrap.ObjectWrapperFactory;
 
@@ -52,7 +53,10 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 	public <K> T makeLazy(Class<T> clazz, K pk) {
 		T obj = ClassAccessor.newInstance(clazz);
 		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		metadata.getPrimaryKey().getAccessor().setValue(obj, pk);
+		
+		@SuppressWarnings("unchecked")
+		FieldMetadata<T, K> pkMeta = (FieldMetadata<T, K>)metadata.getPrimaryKey();
+		pkMeta.getAccessor().setValue(obj, pk);
 		return wrap(obj);
 	}
 

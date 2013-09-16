@@ -89,7 +89,9 @@ public class PropertyAccessor<T, P> {
 	@SuppressWarnings("unchecked")
 	public class FieldAccess extends Access<Field> {
 		FieldAccess() {
-			field.setAccessible(true);
+			if (field != null) {
+				field.setAccessible(true);
+			}
 		}
 		
 		@Override
@@ -114,8 +116,12 @@ public class PropertyAccessor<T, P> {
 	@SuppressWarnings("unchecked")
 	public class MethodAccess extends Access<Method> {
 		MethodAccess() {
-			setter.setAccessible(true);
-			getter.setAccessible(true);
+			if (setter != null) {
+				setter.setAccessible(true);
+			}
+			if (getter != null) {
+				getter.setAccessible(true);
+			}
 		}
 		
 		@Override

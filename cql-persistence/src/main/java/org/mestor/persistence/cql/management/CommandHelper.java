@@ -66,8 +66,14 @@ public class CommandHelper {
 		Joiner.on(" ").skipNulls().appendTo(buf, tokens);
 		if (with != null && !with.isEmpty()) {
 			buf.append(" ").append("WITH").append(" ");
+			int n = with.size();
+			int i = 0;
 			for (Entry<String, Object> prop : with.entrySet()) {
-				buf.append(" ").append(prop.getKey()).append(formatValue(prop.getValue()));
+				buf.append(" ").append(prop.getKey()).append("=").append(formatValue(prop.getValue()));
+				if (i < n - 1) {
+					buf.append(" AND ");
+				}
+				i++;
 			}
 		}
 		return buf.toString();
@@ -94,7 +100,8 @@ public class CommandHelper {
 	
 	private static String formatValue(Map<?,?> mapvalue) {
 		try {
-			return new ObjectMapper().writeValueAsString(mapvalue);
+			// use JSON format but replace " by ' as it is required by CQL syntax.
+			return new ObjectMapper().writeValueAsString(mapvalue).replace('\"', '\'');
 		} catch (IOException e) {
 			throw new IllegalArgumentException(String.valueOf(mapvalue), e);
 		}
@@ -105,7 +112,7 @@ public class CommandHelper {
 		@SuppressWarnings("unchecked")
 		AbstractType<T> cassandraType = (AbstractType<T>)cassandraTypes.get(clazz);
 		if (cassandraType == null) {
-			throw new IllegalArgumentException(clazz.getName());
+			throw new IllegalArgumentException(clazz == null ? null : clazz.getName());
 		}
 		return cassandraType;
 	}

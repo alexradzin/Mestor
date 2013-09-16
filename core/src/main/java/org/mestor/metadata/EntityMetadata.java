@@ -32,7 +32,7 @@ public class EntityMetadata<E> {
 	private Class<E> entityType;
 	private String entityName;
 //	private Class<E> primaryKeyType;
-	private FieldMetadata<E, Object> primaryKey;
+	private FieldMetadata<E, ? extends Object> primaryKey;
 
 	private String tableName;
 	private String schemaName;
@@ -81,11 +81,11 @@ public class EntityMetadata<E> {
 	}
 
 
-	public void setPrimaryKey(FieldMetadata<E, Object> primaryKey) {
+	public void setPrimaryKey(FieldMetadata<E, ? extends Object> primaryKey) {
 		this.primaryKey = primaryKey;
 	}
 
-	public FieldMetadata<E, Object> getPrimaryKey() {
+	public FieldMetadata<E, ? extends Object> getPrimaryKey() {
 		return this.primaryKey;
 	}
 
@@ -104,7 +104,7 @@ public class EntityMetadata<E> {
 	}
 
 
-	public void setSchenaName(String schemaName) {
+	public void setSchemaName(String schemaName) {
 		this.schemaName = schemaName;
 	}
 	

@@ -82,7 +82,7 @@ public abstract class EditTable<T extends EditTable<T>> extends Statement {
 				command.name(),  
 				"TABLE", 
 				CommandHelper.fullname(keyspace, name),
-				"(", getFieldsQuery(fields), ")"
+				"(", getFieldsQuery(fields), ",",  getPrimaryKeyQuery(primaryKey), ")"
 			},
 			properties);
 	}
@@ -126,11 +126,17 @@ public abstract class EditTable<T extends EditTable<T>> extends Statement {
 		return Joiner.on(", ").join(Iterators.transform(fields.entrySet().iterator(), new Function<Entry<String, AbstractType<?>>, String>() {
 			  @Override
 			public String apply(Entry<String, AbstractType<?>> field) {
-				  return field.getKey() + field.getValue().asCQL3Type().toString();
+				  return field.getKey() + " " + field.getValue().asCQL3Type().toString();
 			  }
 		}));
 	}
 
+	private String getPrimaryKeyQuery(Collection<String> primaryKey) {
+		return "PRIMARY KEY (" + Joiner.on(", ").join(primaryKey) + ")";
+	}
+	
+	
+	
 	@SuppressWarnings("unchecked")
 	protected final T getThis() {
 		return (T)this;

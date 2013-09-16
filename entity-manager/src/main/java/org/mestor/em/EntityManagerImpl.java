@@ -86,6 +86,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public void close() {
 		open = false;
+		//TODO close persistor (?)
 	}
 
 
@@ -384,7 +385,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 		
 		if (!Persistor.class.isAssignableFrom(clazz)) {
-			throw new ClassCastException(clazz + " must implement "  + Persistor.class + " to be persistor");
+			throw new IllegalArgumentException(clazz + " must implement "  + Persistor.class + "interface to be a persistor");
 		}
 		
 		Constructor<Persistor> c = null;

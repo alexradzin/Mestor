@@ -127,7 +127,7 @@ public enum StandardNamingStrategy implements NamingStrategy {
 		if (ao instanceof Method) {
 			return getPropertyName((Method)ao);
 		}
-		throw new ClassCastException("" + ao.getClass() + " is neither " + Field.class + " nor " + Method.class);
+		throw new IllegalArgumentException("" + ao.getClass() + " is neither " + Field.class + " nor " + Method.class);
 	}
 	
 	

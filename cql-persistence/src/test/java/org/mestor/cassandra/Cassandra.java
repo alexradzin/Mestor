@@ -50,10 +50,10 @@ public @interface Cassandra {
 			@Override
 			public void before() {
 				CassandraController c = new CassandraController();
-				if (!c.isRunning()) {
+				if (c.isRunning()) {
 					c.shutdown();
-					c.start();
 				}
+				c.start();
 			}
 			
 			@Override

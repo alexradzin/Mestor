@@ -55,40 +55,20 @@ public class CqlPersistorTest {
 
 	@Test
 	public void testCreateAndConnectLocalhost() {
-		safelyCreateAndConnect(Collections.<String, Object>singletonMap(CqlPersistor.CASSANDRA_HOSTS, "localhost"));
+		safelyCreateAndConnect(Collections.<String, Object>singletonMap(CqlPersistorProperties.CASSANDRA_HOSTS.property(), "localhost"));
 	}
 
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateAndConnectWrongHost() {
-		safelyCreateAndConnect(Collections.<String, Object>singletonMap(CqlPersistor.CASSANDRA_HOSTS, "doesnotexist"));
+		safelyCreateAndConnect(Collections.<String, Object>singletonMap(CqlPersistorProperties.CASSANDRA_HOSTS.property(), "doesnotexist"));
 	}
 	
 	@Test(expected = IOException.class) 
 	public void testCreateAndConnectToLocalhostWrongPort() throws IOException {
-		createAndConnect(Collections.<String, Object>singletonMap(CqlPersistor.CASSANDRA_PORT, 12345));
+		createAndConnect(Collections.<String, Object>singletonMap(CqlPersistorProperties.CASSANDRA_PORT.property(), 12345));
 	}
 
-//	@Test
-//	public void testStartCassandra() throws IOException {
-//		DatabaseDescriptor.createAllDirectories();
-//		final CassandraDaemon cassandraDaemon = new CassandraDaemon();
-//        cassandraDaemon.init(null);
-//		cassandraDaemon.start();
-//		
-//		System.out.println();
-//		
-////        Thread cassThread = new Thread(new Runnable() {
-////			@Override
-////			public void run() {
-////				cassandraDaemon.start();				
-////			}});
-////        cassThread.setDaemon(true);
-////        cassThread.start();
-//		
-//	}
-	
-	
 	private void safelyCreateAndConnect(Map<String, Object> props) {
 		try {
 			createAndConnect(props);

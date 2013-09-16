@@ -81,7 +81,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 				schema = this.getSchema();
 			}
 			
-			emeta.setSchenaName(schema); 
+			emeta.setSchemaName(schema); 
 		}
 
 		Map<String, FieldMetadata<T, Object>> fields = new LinkedHashMap<>();

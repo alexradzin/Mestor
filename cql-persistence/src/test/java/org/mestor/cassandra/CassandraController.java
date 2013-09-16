@@ -22,6 +22,9 @@ import java.io.IOException;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.CassandraDaemon;
 
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+
 public class CassandraController {
 	private final static String CASSANDRA_DAEMON_KEY = "CASSANDRA_DAEMON";
 	
@@ -50,7 +53,17 @@ public class CassandraController {
 
 	public boolean isRunning() {
 		CassandraDaemon cassandraDaemon = getCassandraDaemon();
-		return cassandraDaemon != null && cassandraDaemon.thriftServer != null && cassandraDaemon.thriftServer.isRunning();
+		if(cassandraDaemon != null && cassandraDaemon.thriftServer != null && cassandraDaemon.thriftServer.isRunning()) {
+			return true; // cassandra is running in-process
+		}
+		// check out-of-process cassandra running on localhost
+		try {
+			//TODO make host and port configurable via system properties
+			Cluster.builder().addContactPoint("localhost").build().connect();
+	        return true;
+		} catch (NoHostAvailableException e) {
+			return false;
+		}
 	}
 	
 	

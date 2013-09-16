@@ -28,8 +28,6 @@ import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 import org.reflections.util.FilterBuilder.Include;
 
-import com.google.common.collect.Collections2;
-
 public class JpaAnnotatedClassScanner implements ClassScanner {
 	private final Reflections reflections;
 

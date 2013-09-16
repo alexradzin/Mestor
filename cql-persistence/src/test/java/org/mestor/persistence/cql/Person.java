@@ -15,62 +15,30 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.em;
+package org.mestor.persistence.cql;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
-import javax.persistence.EntityManager;
-import javax.persistence.Persistence;
-
-import org.junit.Test;
-
-public class JPAInitTest {
-	private String MESTOR_PERSISTOR_CLASS = "org.mestor.persistor.class";
-	@Test
-	public void testEmptyInit() {
-		EntityManager em = testEmptyInit(DummyPersistor.class.getName());
-		assertNotNull(em);
-		assertEquals(EntityManagerImpl.class, em.getClass());
+public class Person {
+	private int id;
+	private String name;
+	private int age;
+	
+	
+	public int getId() {
+		return id;
 	}
-
-	@Test
-	public void testEmptyInitUndefinedPersistor() {
-		final String className = "ThisClassDoesNotExist";
-		try {
-			testEmptyInit(className);
-			fail();
-		} catch (IllegalStateException e) {
-			final Throwable cause = e.getCause();
-			assertEquals(ClassNotFoundException.class, cause.getClass());
-			assertEquals(className, cause.getMessage());
-		}
+	public void setId(int id) {
+		this.id = id;
 	}
-	
-	@Test(expected = IllegalArgumentException.class)
-	public void testEmptyInitWrongPersistor() {
-		// this test case class is not a persistor
-		testEmptyInit(getClass().getName());
+	public String getName() {
+		return name;
 	}
-	
-	
-	
-	@Test(expected = IllegalArgumentException.class)
-	public void testInitNoPersistor() {
-		Persistence.createEntityManagerFactory("mestortest").createEntityManager();
-		fail();
+	public void setName(String name) {
+		this.name = name;
 	}
-	
-
-	private EntityManager testEmptyInit(String persistorClassName) {
-		System.setProperty(MESTOR_PERSISTOR_CLASS, persistorClassName);
-		try {
-			return Persistence.createEntityManagerFactory("mestortest").createEntityManager();
-		} finally {
-			System.getProperties().remove(MESTOR_PERSISTOR_CLASS);
-		}
+	public int getAge() {
+		return age;
 	}
-	
-	
+	public void setAge(int age) {
+		this.age = age;
+	}
 }

@@ -6,12 +6,12 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.wrap.ObjectWrapperFactory;
 
 public interface Persistor {
-	public abstract <T> void store(T entity);
-	public abstract <T, P> T fetch(Class<T> entityClass, P primaryKey);
-	public abstract <T> void remove(T entity);
-	public abstract <T> boolean exists(Class<T> entityClass, Object primaryKey);
+	public <T> void store(T entity);
+	public <T, P> T fetch(Class<T> entityClass, P primaryKey);
+	public <T> void remove(T entity);
+	public <T> boolean exists(Class<T> entityClass, Object primaryKey);
 	
-	public abstract <T> Object[] fetchProperty(T entity, String ... propertyNames);
+	public <T> Object[] fetchProperty(T entity, String ... propertyNames);
 	
 	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory();
 	
