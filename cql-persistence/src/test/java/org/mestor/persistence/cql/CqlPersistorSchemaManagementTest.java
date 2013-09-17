@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.cassandra.locator.NetworkTopologyStrategy;
 import org.junit.Test;
@@ -43,6 +44,7 @@ import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
+import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
 import org.mockito.Mockito;
 
 import com.datastax.driver.core.ColumnMetadata;
@@ -125,6 +127,7 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableOneIntFieldPK() {
 		final String schemaName = "test1";
 		try {
+			testCreateSchema(schemaName, null, false);
 			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
@@ -144,6 +147,7 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableOneIntFieldNoPK() {
 		final String schemaName = "test1";
 		try {
+			testCreateSchema(schemaName, null, false);
 			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			testEditTable(createPersonMetadata(schemaName, "People", null, pk), null, true);
@@ -157,6 +161,7 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableNoFields() {
 		final String schemaName = "test1";
 		try {
+			testCreateSchema(schemaName, null, false);
 			testEditTable(createPersonMetadata(schemaName, "People", null), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
@@ -168,6 +173,8 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateDuplicateTable() {
 		final String schemaName = "test1";
 		try {
+			testCreateSchema(schemaName, null, false);
+			
 			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
@@ -185,11 +192,189 @@ public class CqlPersistorSchemaManagementTest {
 			persistor.dropSchema(schemaName);
 		}
 	}
+
 	
-	//TODO: add test that drops table
+	@Test
+	public void testCreateAndDropTable() {
+		final String schemaName = "test1";
+		final String tableName = "People";
+		try {
+			testCreateSchema(schemaName, null, false);
+			
+			// first create metadata
+			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			pk.setColumn("identifier");
+			pk.setKey(true);
+
+			// now create table
+			EntityMetadata<Person> emd = createPersonMetadata(schemaName, tableName, pk, pk);
+			testEditTable(emd, null, true);
+			
+			// drop table 
+			persistor.dropTable(schemaName, tableName);
+			TableMetadata tmd = findTableMetadata(schemaName, tableName);
+			assertNull(tmd);
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+	
+	
+	
 	//TODO: add test that drops column
-	//TODO: add test that drops index
+	// This is irrelevant for now because dropping column does not work via CQL at least with currently used versions. 
+	// See comment into CqlPersistor.processTable()
+
+	
+	
+	@Test
+	public void testCreateAndDropIndex() {
+		final String schemaName = "test1";
+		final String tableName = "People";
+		try {
+			testCreateSchema(schemaName, null, false);
+
+			
+			// first create metadata
+			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			pk.setColumn("identifier");
+			pk.setKey(true);
+
+			
+			FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, "name");
+			nameField.setColumn("first_name");
+			
+			EntityMetadata<Person> emd = createPersonMetadata(schemaName, tableName, pk, pk, nameField);
+			emd.setIndexes(Collections.singletonList(new IndexMetadata<Person>(Person.class, "name_index", nameField)));
+			
+			// now create table
+			testEditTable(emd, null, true);
+
+
+			// create entity metadata again without index 
+			EntityMetadata<Person> emd2 = createPersonMetadata(schemaName, tableName, pk, pk, nameField);
+			// update (alter) table
+			testEditTable(emd2, null, false);
+			
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+	
+	
+	
+	//TODO: add test that creates columns of all types
 	//TODO: add tests that validate schema
+	
+	/**
+	 * This test creates entity metadata, then uses it to create table, 
+	 * then validates just created table using the same entity.  
+	 */
+	@Test
+	public void testCreateAndValidateTable() {
+		final String schemaName = "test1";
+		try {
+			testCreateSchema(schemaName, null, false);
+			
+			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			pk.setColumn("identifier");
+			pk.setKey(true);
+			
+			EntityMetadata<Person> emd = createPersonMetadata(schemaName, "People", pk, pk);
+			testEditTable(emd, null, true);
+			persistor.validateTable(emd, null);
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+	
+	@Test(expected=IllegalStateException.class)
+	public void testValidateNotExistingTable() {
+		final String schemaName = "test1";
+		try {
+			testCreateSchema(schemaName, null, false);
+			
+			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			pk.setColumn("identifier");
+			pk.setKey(true);
+			
+			EntityMetadata<Person> emd = createPersonMetadata(schemaName, "People", pk, pk);
+			persistor.validateTable(emd, null);
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+
+	@Test
+	public void testValidateMissingFields() {
+		final Pattern oneException = Pattern.compile("^ALTER TABLE test1.People ADD first_name text$");
+		final Pattern allExceptions = Pattern.compile("^ALTER TABLE test1.People ADD first_name text.ALTER TABLE test1.People ADD age int$", Pattern.DOTALL | Pattern.MULTILINE);
+		
+		testValidate(null, allExceptions);
+		testValidate(ThrowOnViolation.THROW_ALL_TOGETHER, allExceptions);
+		testValidate(ThrowOnViolation.THROW_FIRST, oneException);
+	}
+	
+	/**
+	 * This testing scenario creates entity metadata and uses it to create table. 
+	 * Then it creates other metadata from the same class but adds 2 more files and uses this metadata
+	 * for validation of existing table. The validation should fail. 
+	 * 
+	 * The purpose of the test is to check that the error message is as expected dependently on
+	 * configuration defined by argument {@code throwOnViolation} of type {@link ThrowOnViolation}. 
+	 * This parameter defines whether the validation should stop when first problem is found ({@link ThrowOnViolation#THROW_FIRST}
+	 * or continue validation and throw exception that contains message about all problems  
+	 * ({@link ThrowOnViolation#THROW_ALL_TOGETHER} or {@code null} for default). 
+	 * 
+	 * @param throwOnViolation
+	 * @param errorMessagePattern
+	 */
+	private void testValidate(ThrowOnViolation throwOnViolation, Pattern errorMessagePattern) {
+		final String schemaName = "test1";
+		final String tableName = "People";
+		try {
+			testCreateSchema(schemaName, null, false);
+
+			
+			// first create metadata
+			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			pk.setColumn("identifier");
+			pk.setKey(true);
+
+			EntityMetadata<Person> emd = createPersonMetadata(schemaName, tableName, pk, pk);
+			// now create table
+			testEditTable(emd, null, true);
+
+			
+			// create similar metadata but with 2 additional fields
+			FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, "name");
+			nameField.setColumn("first_name");
+			
+			FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age");
+			ageField.setColumn("age");
+			
+			EntityMetadata<Person> emd2 = createPersonMetadata(schemaName, tableName, pk, pk, nameField, ageField);
+
+			Map<String, Object> props = null;
+			if (throwOnViolation != null) {
+				props = Collections.<String, Object>singletonMap(CqlPersistorProperties.SCHEMA_VALIDATION.property(), throwOnViolation);
+			}
+			try {
+				persistor.validateTable(emd2, props);
+				fail("Schema violation exception is expected but was not thrown");
+			} catch (IllegalStateException e) {
+				final String msg = e.getMessage();
+				assertTrue("Unexpected error message. Should match pattern " + errorMessagePattern + " but was " + msg,  errorMessagePattern.matcher(msg).find());
+			}
+			
+			
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+	
+	
+	
 	
 	/**
 	 * Creates table with 2 indexes, then adds yet another field with index (alters table), 
@@ -353,7 +538,6 @@ public class CqlPersistorSchemaManagementTest {
 	
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private EntityMetadata<Person> createPersonMetadata(String schemaName, String tableName, FieldMetadata pk, FieldMetadata ... fieldsMetadata) {
-		testCreateSchema(schemaName, null, false);
 		EntityMetadata<Person> emd = new EntityMetadata<>(Person.class);
 		emd.setEntityName(Person.class.getSimpleName());
 		emd.setTableName(tableName);

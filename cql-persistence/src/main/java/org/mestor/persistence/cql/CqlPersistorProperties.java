@@ -21,9 +21,18 @@ class CqlPersistorProperties<P> {
 	final static String CASSANDRA_PROP_ROOT = "org.mestor.cassandra";
 	
 	private final static Pattern split = Pattern.compile("\\s*,;\\s*");
+	
+	
+	public static enum ThrowOnViolation {
+		THROW_FIRST, THROW_ALL_TOGETHER
+	}
+	
 
 	final static CqlPersistorProperties<String[]> CASSANDRA_HOSTS = new CqlPersistorProperties<String[]>(String[].class, CASSANDRA_PROP_ROOT + "." + "hosts", new String[] {"localhost"});
 	final static CqlPersistorProperties<Integer> CASSANDRA_PORT = new CqlPersistorProperties<Integer>(Integer.class, CASSANDRA_PROP_ROOT + "." + "port", null);
+
+	final static CqlPersistorProperties<ThrowOnViolation> SCHEMA_VALIDATION = new CqlPersistorProperties<ThrowOnViolation>(ThrowOnViolation.class, CASSANDRA_PROP_ROOT + "." + "schema.validation", ThrowOnViolation.THROW_ALL_TOGETHER);
+	
 	
 	@SuppressWarnings("rawtypes")
 	final static CqlPersistorProperties<Map> CASSANDRA_KEYSPACE_PROPERTIES = new CqlPersistorProperties<Map>(Map.class, CASSANDRA_PROP_ROOT + "." + "keyspace.properties", 
@@ -65,7 +74,7 @@ class CqlPersistorProperties<P> {
 	 * @param rawValue
 	 * @return typed value
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected <T> T convertToType(Class<T> type, Object rawValue) {
 		final Class<?> rawType = rawValue.getClass();
 		
@@ -99,6 +108,9 @@ class CqlPersistorProperties<P> {
 				throw new IllegalArgumentException("Cannot transform string '" + strValue + "' to char");
 			}
 			return (T)new Character(strValue.charAt(0));
+		}
+		if(type.isEnum()) {
+			return (T)Enum.valueOf((Class<? extends Enum>)type, strValue);
 		}
 
 		

@@ -39,10 +39,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	
 	
 	private final PersistenceUnitInfo info;
-	private final Map<?, ?> map;
+	private final Map<String, String> map;
 	
 	
-	public EntityManagerFactoryImpl(PersistenceUnitInfo info, Map<?, ?> map) {
+	public EntityManagerFactoryImpl(PersistenceUnitInfo info, Map<String, String> map) {
 		this.info = info;
 		this.map = map;
 	}

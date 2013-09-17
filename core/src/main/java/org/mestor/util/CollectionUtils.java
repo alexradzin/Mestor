@@ -31,12 +31,16 @@ import com.google.common.collect.Collections2;
 
 public class CollectionUtils {
 
-	public static Map<?,?> merge(Map<?, ?> ... maps) {
-		Map<Object, Object> result = null;
-		for (Map<?,?> map : maps) {
+	@SafeVarargs
+	public static <K, V> Map<K, V> merge(Map<K, V> ... maps) {
+		if (maps == null) {
+			return null;
+		}
+		Map<K, V> result = null;
+		for (Map<K, V> map : maps) {
 			if (map != null) {
 				if (result == null) {
-					result = new LinkedHashMap<Object, Object>();
+					result = new LinkedHashMap<K, V>();
 				}
 				result.putAll(map);
 			}
