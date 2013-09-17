@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -42,11 +43,13 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.metadata.jpa.BeanMetadataFactory;
+import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
 import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CommandHelper;
 import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
+import org.mestor.util.CollectionUtils;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
 
@@ -299,6 +302,7 @@ public class CqlPersistor implements Persistor {
 		final String keyspaceName = entityMetadata.getSchemaName();
 		final String tableName = entityMetadata.getTableName();
 		
+		useSchema(keyspaceName);
 		for (String column :  getRequiredIndexedFields(entityMetadata)) {
 			queryHandler.apply(CommandBuilder.createIndex().in(keyspaceName).named(createIndexName(keyspaceName, tableName, column)).on(tableName).column(column));
 		}
@@ -312,13 +316,41 @@ public class CqlPersistor implements Persistor {
 
 	@Override
 	public <E> void validateTable(EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
-		Function<Query, Void> validationHandler = new Function<Query, Void>() {
-			@Override
-			public Void apply(Query query) {
-				throw new RuntimeException(query.toString());
-			}
-		};
+		final Map<String, Object> allProps = CollectionUtils.merge(context.getProperties(), properties);
+		
+		final ThrowOnViolation onViolation = CqlPersistorProperties.SCHEMA_VALIDATION.getValue(allProps);
+		
+		final Function<Query, Void> validationHandler;
+		final List<String> errorMessages = new ArrayList<>();
+		
+		
+		switch(onViolation) {
+			case THROW_ALL_TOGETHER:
+				validationHandler = new Function<Query, Void>() {
+					@Override
+					public Void apply(Query query) {
+						errorMessages.add(query.toString());
+						return null;
+					}
+				};
+				break;
+			case THROW_FIRST:
+				validationHandler = new Function<Query, Void>() {
+					@Override
+					public Void apply(Query query) {
+						throw new IllegalStateException(query.toString());
+					}
+				};
+				break;
+			default:
+				throw new IllegalArgumentException(onViolation.name());
+		}
+		
 		processTable(validationHandler, entityMetadata, properties);
+		
+		if (!errorMessages.isEmpty()) {
+			throw new IllegalStateException(Joiner.on(System.getProperty("line.separator")).join(errorMessages));
+		}
 	}
 	
 	
@@ -429,11 +461,19 @@ public class CqlPersistor implements Persistor {
 		
 		// find fields that should be dropped
 		// TODO: not sure that this should be always done. The "extra" fields may contain data.
+		// This code is currently commented out for 2 reasons. 
+		// 1. attempt to drop column from table rises error message (even manually). Questions are asked at SO and datastax forum
+		// 		http://stackoverflow.com/questions/18842933/failed-to-drop-column-in-cassandra-using-cql
+		// 		http://www.datastax.com/support-forums/topic/failed-to-drop-column?replies=1#post-16148
+		// 2. Even if it works it is a BIG question whether we should drop columns that could contain data. Probably we should do it
+		//	  only if this column is empty for all records.  
+		/*
 		for (ColumnMetadata cmd : existingTable.getColumns()) {
 			if(entityMetadata.getField(cmd.getName()) == null) {
 				queryHandler.apply(CommandBuilder.alterTable().dropColumn(cmd.getName()).named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties));
 			}
 		}
+		*/
 
 		// process indexes
 		String keyspaceName = entityMetadata.getSchemaName();
