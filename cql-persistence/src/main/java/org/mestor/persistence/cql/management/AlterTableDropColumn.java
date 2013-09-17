@@ -19,6 +19,8 @@ package org.mestor.persistence.cql.management;
 
 import com.google.common.base.Joiner;
 
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
+
 public class AlterTableDropColumn extends AlterTable {
 	protected AlterTable drop(String column) {
 		this.columnName = column;
@@ -28,7 +30,7 @@ public class AlterTableDropColumn extends AlterTable {
 
 	@Override
 	public String getQueryString() {
-		return Joiner.on(" ").join("ALTER", "TABLE", CommandHelper.fullname(keyspace, name), "DROP", columnName);
+		return Joiner.on(" ").join("ALTER", "TABLE", CommandHelper.fullname(keyspace, name), "DROP", quote(columnName));
 	}
 
 }

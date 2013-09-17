@@ -18,6 +18,7 @@
 package org.mestor.persistence.cql.management;
 
 import static org.mestor.persistence.cql.management.CommandHelper.fullname;
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
 
 import java.nio.ByteBuffer;
 
@@ -65,7 +66,7 @@ public class CreateIndex extends Statement {
 	
 	@Override
 	public String getQueryString() {
-		return Joiner.on(" ").join("CREATE", "INDEX", name, "ON", fullname(keyspace, table), "(", column, ")");
+		return Joiner.on(" ").join("CREATE", "INDEX", name, "ON", fullname(keyspace, table), "(", quote(column), ")");
 	}
 
 	@Override

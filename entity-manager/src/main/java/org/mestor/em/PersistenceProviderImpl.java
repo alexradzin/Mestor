@@ -7,11 +7,18 @@ import javax.persistence.spi.PersistenceProvider;
 import javax.persistence.spi.PersistenceUnitInfo;
 
 public class PersistenceProviderImpl implements PersistenceProvider {
+	// Multiple @SuppressWarnings are here because interface PersistenceProvider 
+	// is defined without generics, however the rest of the application uses them
+	// whenever it is required. 
+	
 	@Override
 	public EntityManagerFactory createEntityManagerFactory(
 			String emName,
 			@SuppressWarnings("rawtypes") Map map) {
-		return new EntityManagerFactoryImpl(new PersistenceUnitInfoImpl(emName, map), map);
+
+		@SuppressWarnings({ "cast", "unchecked" })
+		Map<String, String> props = (Map<String, String>)map;
+		return new EntityManagerFactoryImpl(new PersistenceUnitInfoImpl(emName, map), props);
 	}
 
 	@Override
@@ -19,7 +26,9 @@ public class PersistenceProviderImpl implements PersistenceProvider {
 			PersistenceUnitInfo info, 
 			@SuppressWarnings("rawtypes") Map map) {
 		
-		return new EntityManagerFactoryImpl(info, map);
+		@SuppressWarnings({ "cast", "unchecked" })
+		Map<String, String> props = (Map<String, String>)map;
+		return new EntityManagerFactoryImpl(info, props);
 	}
 
 

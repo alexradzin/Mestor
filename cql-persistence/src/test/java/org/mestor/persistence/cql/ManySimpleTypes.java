@@ -55,6 +55,152 @@ public class ManySimpleTypes {
 
 	// UUID, TIMEUUID - ?
 	private UUID uuid;
+
+	public int getIntPrimitive() {
+		return intPrimitive;
+	}
+
+	public void setIntPrimitive(int intPrimitive) {
+		this.intPrimitive = intPrimitive;
+	}
+
+	public long getLongPrimitive() {
+		return longPrimitive;
+	}
+
+	public void setLongPrimitive(long longPrimitive) {
+		this.longPrimitive = longPrimitive;
+	}
+
+	public float getFloatPrimitive() {
+		return floatPrimitive;
+	}
+
+	public void setFloatPrimitive(float floatPrimitive) {
+		this.floatPrimitive = floatPrimitive;
+	}
+
+	public double getDoublePrimitive() {
+		return doublePrimitive;
+	}
+
+	public void setDoublePrimitive(double doublePrimitive) {
+		this.doublePrimitive = doublePrimitive;
+	}
+
+	public int getIntWrapper() {
+		return intWrapper;
+	}
+
+	public void setIntWrapper(int intWrapper) {
+		this.intWrapper = intWrapper;
+	}
+
+	public long getLongWrapper() {
+		return longWrapper;
+	}
+
+	public void setLongWrapper(long longWrapper) {
+		this.longWrapper = longWrapper;
+	}
+
+	public float getFloatWrapper() {
+		return floatWrapper;
+	}
+
+	public void setFloatWrapper(float floatWrapper) {
+		this.floatWrapper = floatWrapper;
+	}
+
+	public double getDoubleWrapper() {
+		return doubleWrapper;
+	}
+
+	public void setDoubleWrapper(double doubleWrapper) {
+		this.doubleWrapper = doubleWrapper;
+	}
+
+	public BigDecimal getBigDecimal() {
+		return bigDecimal;
+	}
+
+	public void setBigDecimal(BigDecimal bigDecimal) {
+		this.bigDecimal = bigDecimal;
+	}
+
+	public BigInteger getBigInteger() {
+		return bigInteger;
+	}
+
+	public void setBigInteger(BigInteger bigInteger) {
+		this.bigInteger = bigInteger;
+	}
+
+	public boolean isBooleanPrimitive() {
+		return booleanPrimitive;
+	}
+
+	public void setBooleanPrimitive(boolean booleanPrimitive) {
+		this.booleanPrimitive = booleanPrimitive;
+	}
+
+	public Boolean getBooleanWrapper() {
+		return booleanWrapper;
+	}
+
+	public void setBooleanWrapper(Boolean booleanWrapper) {
+		this.booleanWrapper = booleanWrapper;
+	}
+
+	public String getString() {
+		return string;
+	}
+
+	public void setString(String string) {
+		this.string = string;
+	}
+
+	public ByteBuffer getBytebuffer() {
+		return bytebuffer;
+	}
+
+	public void setBytebuffer(ByteBuffer bytebuffer) {
+		this.bytebuffer = bytebuffer;
+	}
+
+	public byte[] getBytearray() {
+		return bytearray;
+	}
+
+	public void setBytearray(byte[] bytearray) {
+		this.bytearray = bytearray;
+	}
+
+	public InetAddress getInet() {
+		return inet;
+	}
+
+	public void setInet(InetAddress inet) {
+		this.inet = inet;
+	}
+
+	public Date getDate() {
+		return date;
+	}
+
+	public void setDate(Date date) {
+		this.date = date;
+	}
+
+	public UUID getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(UUID uuid) {
+		this.uuid = uuid;
+	}
 	
 
+	
+	
 }

@@ -25,6 +25,8 @@ import org.mestor.persistence.cql.management.CommandBuilder.EditCommand;
 
 import com.datastax.driver.core.Statement;
 
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
+
 public class EditKeyspace extends Statement {
 	private final EditCommand command;
 	private String name;
@@ -55,7 +57,7 @@ public class EditKeyspace extends Statement {
 	
 	@Override
 	public String getQueryString() {
-		return CommandHelper.createQueryString(new String[] {command.name(),  "KEYSPACE", name}, properties);
+		return CommandHelper.createQueryString(new String[] {command.name(),  "KEYSPACE", quote(name)}, properties);
 	}
 
 	@Override

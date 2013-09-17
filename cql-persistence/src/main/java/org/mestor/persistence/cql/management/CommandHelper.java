@@ -20,6 +20,9 @@ package org.mestor.persistence.cql.management;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.CQL3Type.Native;
@@ -36,10 +40,13 @@ import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Collections2;
 import com.google.common.primitives.Primitives;
 
 public class CommandHelper {
+	private final static Pattern capitalLetter = Pattern.compile("[A-Z]");
 	private final static Map<Class<?>, AbstractType<?>> cassandraTypes = new HashMap<>();
 	static {
 		initTypeMapping();
@@ -66,6 +73,10 @@ public class CommandHelper {
 		cassandraTypes.put(UUID.class, Native.UUID.getType());
 		cassandraTypes.put(String.class, Native.TEXT.getType());
 		cassandraTypes.put(Long.class, Native.BIGINT.getType());
+		cassandraTypes.put(BigInteger.class, Native.BIGINT.getType());
+		cassandraTypes.put(BigDecimal.class, Native.DOUBLE.getType());
+		
+		
 		cassandraTypes.put(byte[].class, Native.BLOB.getType());
 		cassandraTypes.put(Byte[].class, Native.BLOB.getType());
 
@@ -86,9 +97,9 @@ public class CommandHelper {
 		cassandraTypes.put(Object[].class, Native.BLOB.getType());
 	}
 	
-	
+	// quote
 	public static String fullname(String keyspace, String name) {
-		return keyspace == null ? name : keyspace + "." + name;
+		return keyspace == null ? name : quote(keyspace) + "." + quote(name);
 	}
 	
 	
@@ -111,9 +122,9 @@ public class CommandHelper {
 	}
 
 	
-	static String createIndex(String indexName, String tableName, String columnName) {
-		return Joiner.on(" ").join("CREATE INDEX", indexName, "ON", tableName, "(", columnName, ")");
-	}
+//	static String createIndex(String indexName, String tableName, String columnName) {
+//		return Joiner.on(" ").join("CREATE INDEX", indexName, "ON", tableName, "(", columnName, ")");
+//	}
 	
 	
 	private static String formatValue(Object value) {
@@ -170,5 +181,25 @@ public class CommandHelper {
 	public static CQL3Type toCqlType(Class<?> clazz) {
 		AbstractType<?> cassandraType = toCassandraType(clazz);
 		return cassandraType == null ? null : cassandraType.asCQL3Type();
+	}
+
+	/**
+	 * Quotes given string if it contains at least one capital latter.
+	 * This is needed to preserve given case of identifiers when using Cassandra.
+	 * For lower case identifiers quoting is redundant.   
+	 * @param name
+	 * @return quoted name if needed
+	 */
+	static String quote(String name) {
+		return capitalLetter.matcher(name).find() ? "\"" + name + "\"" : name;
+	}
+	
+	static Collection<String> quote(Collection<String> strings) {
+		return Collections2.transform(strings, new Function<String, String>() {
+			@Override
+			public String apply(String s) {
+				return quote(s);
+			}
+		});
 	}
 }

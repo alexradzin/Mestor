@@ -26,13 +26,19 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.apache.cassandra.locator.NetworkTopologyStrategy;
@@ -52,10 +58,20 @@ import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.google.common.collect.Iterables;
+import com.google.common.primitives.Primitives;
 
 @RunWith(CassandraAwareTestRunner.class)
 public class CqlPersistorSchemaManagementTest {
 	private final Persistor persistor;
+	
+	
+	private static Map<Class<?>, Class<?>> prop2cql = new HashMap<Class<?>, Class<?>>() {{
+		put(BigInteger.class, Long.class);
+		put(BigDecimal.class, Double.class);
+		put(byte[].class, ByteBuffer.class);
+		put(Byte[].class, ByteBuffer.class);
+	}};
+	
 	
 	public CqlPersistorSchemaManagementTest() throws IOException {
 		persistor = createAndConnect(Collections.<String, Object>emptyMap());
@@ -131,7 +147,7 @@ public class CqlPersistorSchemaManagementTest {
 			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
-			testEditTable(createPersonMetadata(schemaName, "People", pk, pk), null, true);
+			testEditTable(createMetadata(Person.class, schemaName, "People", pk, pk), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -150,7 +166,7 @@ public class CqlPersistorSchemaManagementTest {
 			testCreateSchema(schemaName, null, false);
 			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
-			testEditTable(createPersonMetadata(schemaName, "People", null, pk), null, true);
+			testEditTable(createMetadata(Person.class, schemaName, "People", null, pk), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -162,7 +178,7 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		try {
 			testCreateSchema(schemaName, null, false);
-			testEditTable(createPersonMetadata(schemaName, "People", null), null, true);
+			testEditTable(createMetadata(Person.class, schemaName, "People", null), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -179,7 +195,7 @@ public class CqlPersistorSchemaManagementTest {
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
-			EntityMetadata<Person> emd = createPersonMetadata(schemaName, "People", pk, pk);
+			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, "People", pk, pk);
 			testEditTable(emd, null, true);
 			// try again
 			try {
@@ -207,7 +223,7 @@ public class CqlPersistorSchemaManagementTest {
 			pk.setKey(true);
 
 			// now create table
-			EntityMetadata<Person> emd = createPersonMetadata(schemaName, tableName, pk, pk);
+			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, tableName, pk, pk);
 			testEditTable(emd, null, true);
 			
 			// drop table 
@@ -244,7 +260,7 @@ public class CqlPersistorSchemaManagementTest {
 			FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
-			EntityMetadata<Person> emd = createPersonMetadata(schemaName, tableName, pk, pk, nameField);
+			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
 			emd.setIndexes(Collections.singletonList(new IndexMetadata<Person>(Person.class, "name_index", nameField)));
 			
 			// now create table
@@ -252,7 +268,7 @@ public class CqlPersistorSchemaManagementTest {
 
 
 			// create entity metadata again without index 
-			EntityMetadata<Person> emd2 = createPersonMetadata(schemaName, tableName, pk, pk, nameField);
+			EntityMetadata<Person> emd2 = createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
 			// update (alter) table
 			testEditTable(emd2, null, false);
 			
@@ -263,8 +279,59 @@ public class CqlPersistorSchemaManagementTest {
 	
 	
 	
-	//TODO: add test that creates columns of all types
-	//TODO: add tests that validate schema
+	@Test
+	public void testCreateTableWithColumnsOfAllTypes() {
+		final String schemaName = "test1";
+		try {
+			testCreateSchema(schemaName, null, false);
+			
+			FieldMetadata<ManySimpleTypes, Integer> pk = createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
+			
+			@SuppressWarnings("unchecked")
+			FieldMetadata<ManySimpleTypes, Object>[] fields = new FieldMetadata[] {
+					pk,
+					createFieldMetadata(ManySimpleTypes.class, long.class, "longPrimitive"),
+					createFieldMetadata(ManySimpleTypes.class, float.class, "floatPrimitive"),
+					createFieldMetadata(ManySimpleTypes.class, double.class, "doublePrimitive"), 
+					createFieldMetadata(ManySimpleTypes.class, Integer.class, "intWrapper"),
+					createFieldMetadata(ManySimpleTypes.class, Long.class, "longWrapper"),
+					createFieldMetadata(ManySimpleTypes.class, Float.class, "floatWrapper"),
+					createFieldMetadata(ManySimpleTypes.class, Double.class, "doubleWrapper"),
+					createFieldMetadata(ManySimpleTypes.class, BigDecimal.class, "bigDecimal"),
+					createFieldMetadata(ManySimpleTypes.class, BigInteger.class, "bigInteger"),
+					createFieldMetadata(ManySimpleTypes.class, boolean.class, "booleanPrimitive"),
+					createFieldMetadata(ManySimpleTypes.class, Boolean.class, "booleanWrapper"),
+					createFieldMetadata(ManySimpleTypes.class, String.class, "string"),
+					createFieldMetadata(ManySimpleTypes.class, ByteBuffer.class, "bytebuffer"),
+					createFieldMetadata(ManySimpleTypes.class, byte[].class, "bytearray"),
+					createFieldMetadata(ManySimpleTypes.class, InetAddress.class, "inet"),
+					createFieldMetadata(ManySimpleTypes.class, Date.class, "date"),
+					createFieldMetadata(ManySimpleTypes.class, UUID.class, "uuid"),
+			};
+			
+			
+			EntityMetadata<ManySimpleTypes> emd = createMetadata(ManySimpleTypes.class, schemaName, "TypesTest", pk, fields);
+			testEditTable(emd, null, true);
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+	
+
+	private <T, F> FieldMetadata<T, F> createFieldMetadata(Class<T> classType, Class<F> type, String name) {
+		return createFieldMetadata(classType, type, name, name, false);
+	}
+	
+	
+	private <T, F> FieldMetadata<T, F> createFieldMetadata(Class<T> classType, Class<F> type, String name, String column, boolean key) {
+		FieldMetadata<T, F> field = new FieldMetadata<>(classType, type, name);
+		field.setColumn(column);
+		field.setKey(key);
+		return field;
+	}
+	
+	
+	
 	
 	/**
 	 * This test creates entity metadata, then uses it to create table, 
@@ -280,7 +347,7 @@ public class CqlPersistorSchemaManagementTest {
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
-			EntityMetadata<Person> emd = createPersonMetadata(schemaName, "People", pk, pk);
+			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, "People", pk, pk);
 			testEditTable(emd, null, true);
 			persistor.validateTable(emd, null);
 		} finally {
@@ -298,7 +365,7 @@ public class CqlPersistorSchemaManagementTest {
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
-			EntityMetadata<Person> emd = createPersonMetadata(schemaName, "People", pk, pk);
+			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, "People", pk, pk);
 			persistor.validateTable(emd, null);
 		} finally {
 			persistor.dropSchema(schemaName);
@@ -307,8 +374,8 @@ public class CqlPersistorSchemaManagementTest {
 
 	@Test
 	public void testValidateMissingFields() {
-		final Pattern oneException = Pattern.compile("^ALTER TABLE test1.People ADD first_name text$");
-		final Pattern allExceptions = Pattern.compile("^ALTER TABLE test1.People ADD first_name text.ALTER TABLE test1.People ADD age int$", Pattern.DOTALL | Pattern.MULTILINE);
+		final Pattern oneException = Pattern.compile("^ALTER TABLE test1.\"People\" ADD first_name text$");
+		final Pattern allExceptions = Pattern.compile("^ALTER TABLE test1.\"People\" ADD first_name text.ALTER TABLE test1.\"People\" ADD age int$", Pattern.DOTALL | Pattern.MULTILINE);
 		
 		testValidate(null, allExceptions);
 		testValidate(ThrowOnViolation.THROW_ALL_TOGETHER, allExceptions);
@@ -341,7 +408,7 @@ public class CqlPersistorSchemaManagementTest {
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
-			EntityMetadata<Person> emd = createPersonMetadata(schemaName, tableName, pk, pk);
+			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, tableName, pk, pk);
 			// now create table
 			testEditTable(emd, null, true);
 
@@ -353,7 +420,7 @@ public class CqlPersistorSchemaManagementTest {
 			FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age");
 			ageField.setColumn("age");
 			
-			EntityMetadata<Person> emd2 = createPersonMetadata(schemaName, tableName, pk, pk, nameField, ageField);
+			EntityMetadata<Person> emd2 = createMetadata(Person.class, schemaName, tableName, pk, pk, nameField, ageField);
 
 			Map<String, Object> props = null;
 			if (throwOnViolation != null) {
@@ -513,10 +580,11 @@ public class CqlPersistorSchemaManagementTest {
 		Collection<String> actualIndexedColumns = new HashSet<>();
 		
 		for (FieldMetadata<E, ?> fmd : emd.getFields().values()) {
-			ColumnMetadata cmd = tmd.getColumn(fmd.getColumn());
-			assertNotNull(cmd);
-			assertEquals(fmd.getColumn(), cmd.getName());
-			assertEquals(fmd.getType(), cmd.getType().asJavaClass());
+			String column = fmd.getColumn();
+			ColumnMetadata cmd = tmd.getColumn(column);
+			assertNotNull("Column " + column + " is not found", cmd);
+			assertEquals(column, cmd.getName());
+			assertEquals(toCqlJavaType(fmd.getType()), cmd.getType().asJavaClass());
 			
 			if(cmd.getIndex() != null) {
 				actualIndexedColumns.add(cmd.getIndex().getIndexedColumn().getName());
@@ -535,11 +603,20 @@ public class CqlPersistorSchemaManagementTest {
 		assertEquals("Unexpected list of indexed columns", new HashSet<String>(expectedIndexes.values()), new HashSet<String>(actualIndexedColumns));
 	}
 	
+	private Class<?> toCqlJavaType(Class<?> type) {
+		Class<?> cqlType = prop2cql.get(type);
+		if (cqlType != null) {
+			return cqlType;
+		}
+		
+		return Primitives.wrap(type);
+	}
+	
 	
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private EntityMetadata<Person> createPersonMetadata(String schemaName, String tableName, FieldMetadata pk, FieldMetadata ... fieldsMetadata) {
-		EntityMetadata<Person> emd = new EntityMetadata<>(Person.class);
-		emd.setEntityName(Person.class.getSimpleName());
+	private <T> EntityMetadata<T> createMetadata(Class<T> clazz, String schemaName, String tableName, FieldMetadata pk, FieldMetadata ... fieldsMetadata) {
+		EntityMetadata<T> emd = new EntityMetadata<>(clazz);
+		emd.setEntityName(clazz.getSimpleName());
 		emd.setTableName(tableName);
 		emd.setSchemaName(schemaName);
 		
@@ -548,11 +625,11 @@ public class CqlPersistorSchemaManagementTest {
 		}
 		emd.setPrimaryKey(pk);
 		
-		Map<String, FieldMetadata<Person, Object>> fields = new LinkedHashMap<>();
+		Map<String, FieldMetadata<T, Object>> fields = new LinkedHashMap<>();
 		if (pk != null) {
 			fields.put(pk.getColumn(), pk);
 		}
-		for (FieldMetadata<Person, Object> field : fieldsMetadata) {
+		for (FieldMetadata<T, Object> field : fieldsMetadata) {
 			fields.put(field.getColumn(), field);
 		}
 		emd.setFields(fields);

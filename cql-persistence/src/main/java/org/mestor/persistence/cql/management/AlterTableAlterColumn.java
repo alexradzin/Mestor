@@ -19,6 +19,9 @@ package org.mestor.persistence.cql.management;
 
 import com.google.common.base.Joiner;
 
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
+
+
 public class AlterTableAlterColumn extends AlterTable {
 	@Override
 	protected AlterTable alter(String column, Class<?> type) {
@@ -28,7 +31,7 @@ public class AlterTableAlterColumn extends AlterTable {
 
 	@Override
 	public String getQueryString() {
-		return Joiner.on(" ").join("ALTER", "TABLE", CommandHelper.fullname(keyspace, name), "ALTER", columnName, "TYPE", columnType);
+		return Joiner.on(" ").join("ALTER", "TABLE", CommandHelper.fullname(keyspace, name), "ALTER", quote(columnName), "TYPE", columnType);
 	}
 
 }

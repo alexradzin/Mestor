@@ -22,6 +22,9 @@ import java.nio.ByteBuffer;
 import com.datastax.driver.core.Statement;
 import com.google.common.base.Joiner;
 
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
+
+
 public class DropKeyspace extends Statement {
 	private String name;
 	
@@ -34,7 +37,7 @@ public class DropKeyspace extends Statement {
 
 	@Override
 	public String getQueryString() {
-		return Joiner.on(" ").join("DROP",  "KEYSPACE", name);
+		return Joiner.on(" ").join("DROP",  "KEYSPACE", quote(name));
 	}
 
 	@Override

@@ -30,6 +30,9 @@ import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterators;
 
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
+
+
 public class CreateTable extends EditTable<CreateTable> {
 	public static enum FieldAttribute {
 		NONE, PRIMARY_KEY, INDEX;
@@ -91,13 +94,13 @@ public class CreateTable extends EditTable<CreateTable> {
 		return Joiner.on(", ").join(Iterators.transform(fields.entrySet().iterator(), new Function<Entry<String, CQL3Type>, String>() {
 			@Override
 			public String apply(Entry<String, CQL3Type> field) {
-				  return field.getKey() + " " + field.getValue().toString();
+				  return quote(field.getKey()) + " " + field.getValue().toString();
 			}
 		}));
 	}
 
 	private String getPrimaryKeyQuery(Collection<String> primaryKey) {
-		return "PRIMARY KEY (" + Joiner.on(", ").join(primaryKey) + ")";
+		return "PRIMARY KEY (" + Joiner.on(", ").join(quote(primaryKey)) + ")";
 	}
 	
 	
