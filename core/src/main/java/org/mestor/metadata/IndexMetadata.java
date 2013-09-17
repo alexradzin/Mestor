@@ -66,7 +66,7 @@ public class IndexMetadata<T> {
 	}
 
 
-	public FieldMetadata<T, ? extends Object>[] getFields() {
+	public FieldMetadata<T, ? extends Object>[] getField() {
 		return fields;
 	}
 

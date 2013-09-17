@@ -1,5 +1,7 @@
 package org.mestor.metadata;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import junit.framework.Assert;
@@ -15,14 +17,16 @@ public class MetaDataTests {
 	private final String AGE_COLUMN = "age";
 	private final String NAME_COLUMN = "full_name";
 	private final String SCHEME_NAME = "test-scheme";
+	private final String DEF_INDEX_NAME_1 = "idx1";
+	private final String DEF_INDEX_NAME_2 = "idx2";
+	
 
 	@Before
 	public void init() throws NoSuchMethodException, SecurityException{
-
-		
-		
+				
 		emd = new EntityMetadata<>(Person.class);
 		emd.setEntityName(Person.class.getSimpleName());
+		
 		if(!testDefTableName){
 			emd.setTableName(TABLE_NAME);
 		}
@@ -39,7 +43,18 @@ public class MetaDataTests {
 		ageField.setColumn(AGE_COLUMN);
 		ageField.setNullable(true);
 		
+		//for primary key tests
+		emd.setPrimaryKey(nameField);
 		
+		
+		//test index meta data
+		List<IndexMetadata<Person>> indexes = new ArrayList<IndexMetadata<Person>>();
+		IndexMetadata<Person> index = new IndexMetadata<>(Person.class, DEF_INDEX_NAME_1, nameField);
+		IndexMetadata<Person> index2 = new IndexMetadata<>(Person.class, DEF_INDEX_NAME_2, nameField);
+		indexes.add(index);
+		indexes.add(index2);
+		emd.setIndexes(indexes);
+
 		
 		Map<String, FieldMetadata<Person, Object>> fields = new LinkedHashMap<>();
 		for (FieldMetadata<Person, Object> field : new FieldMetadata[] {nameField, ageField}) {
@@ -52,11 +67,23 @@ public class MetaDataTests {
 
 	
 	@Test
+	//will tests table level related metadata
 	public void testTableMd(){
 		Assert.assertEquals(Person.class.getSimpleName(), emd.getEntityName());
 		Assert.assertEquals(TABLE_NAME, emd.getTableName());
 		Assert.assertEquals(SCHEME_NAME, emd.getSchemaName());
 		
+		//test primary key
+		FieldMetadata<Person,? extends Object> pkField = emd.getPrimaryKey();
+		Assert.assertEquals(NAME_COLUMN, pkField.getColumn());
+		
+		//test index 
+		emd.getIndexes();
+		Assert.assertEquals(2, emd.getIndexes().size());
+		IndexMetadata<Person> temp =  (IndexMetadata<Person>)emd.getIndexes().toArray()[0];
+		FieldMetadata<Person,? extends Object>[] fmd = temp.getField();
+		
+		//Assert.assertEquals(NAME_COLUMN, temp.getFields()		
 	}
 
 	@Test
@@ -72,6 +99,8 @@ public class MetaDataTests {
 		Assert.assertEquals(emd.getField("name").isKey(),true);
 		Assert.assertEquals(emd.getField("name").isLazy(),false);
 		Assert.assertEquals(emd.getField("name").isNullable(),false);
+		
+		
 		
 	}
 	
