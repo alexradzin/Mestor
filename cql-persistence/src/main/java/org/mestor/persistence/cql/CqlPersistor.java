@@ -302,6 +302,8 @@ public class CqlPersistor implements Persistor {
 		final String keyspaceName = entityMetadata.getSchemaName();
 		final String tableName = entityMetadata.getTableName();
 		
+		// Index creation statement does not support specification of keyspace as a part of index identifier using dot-notation. 
+		// So we have to specify current keyspace using "use keyspace"
 		useSchema(keyspaceName);
 		for (String column :  getRequiredIndexedFields(entityMetadata)) {
 			queryHandler.apply(CommandBuilder.createIndex().in(keyspaceName).named(createIndexName(keyspaceName, tableName, column)).on(tableName).column(column));

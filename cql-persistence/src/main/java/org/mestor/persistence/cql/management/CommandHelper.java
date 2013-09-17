@@ -21,15 +21,23 @@ import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
 
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.CQL3Type.Native;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.ListType;
+import org.apache.cassandra.db.marshal.MapType;
+import org.apache.cassandra.db.marshal.SetType;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.google.common.base.Joiner;
+import com.google.common.primitives.Primitives;
 
 public class CommandHelper {
 	private final static Map<Class<?>, AbstractType<?>> cassandraTypes = new HashMap<>();
@@ -53,6 +61,29 @@ public class CommandHelper {
 			Class<?> clazz = (Class<?>)((ParameterizedType)abstractType).getActualTypeArguments()[0];
 			cassandraTypes.put(clazz, cassandraType);
 		}
+
+		// define some mappings explicitly to avoid ambiguity.   
+		cassandraTypes.put(UUID.class, Native.UUID.getType());
+		cassandraTypes.put(String.class, Native.TEXT.getType());
+		cassandraTypes.put(Long.class, Native.BIGINT.getType());
+		cassandraTypes.put(byte[].class, Native.BLOB.getType());
+		cassandraTypes.put(Byte[].class, Native.BLOB.getType());
+
+		// define collection types
+		cassandraTypes.put(List.class, ListType.getInstance((AbstractType<?>)null));
+		cassandraTypes.put(Set.class, SetType.getInstance((AbstractType<?>)null));
+		cassandraTypes.put(Map.class, MapType.getInstance(null, null));
+
+		// find all primitive wrappers and create additional mapping for corresponding primitives
+		// wrap entry set with HashSet to avoid ConcurrentModificationException when adding entries while iterating over the map.
+		for (Entry<Class<?>, AbstractType<?>> entry : new HashSet<Entry<Class<?>, AbstractType<?>>>(cassandraTypes.entrySet())) {
+			Class<?> mappedClass = entry.getKey();
+			if (Primitives.isWrapperType(mappedClass)) {
+				cassandraTypes.put(Primitives.unwrap(mappedClass), entry.getValue());
+			}
+		}
+
+		cassandraTypes.put(Object[].class, Native.BLOB.getType());
 	}
 	
 	
@@ -114,18 +145,30 @@ public class CommandHelper {
 	}
 	
 	
+	@SuppressWarnings("unchecked")
 	public static <T> AbstractType<T> toCassandraType(Class<?> clazz) {
-		@SuppressWarnings("unchecked")
+		// first try to find the direct mapping 
 		AbstractType<T> cassandraType = (AbstractType<T>)cassandraTypes.get(clazz);
-		if (cassandraType == null) {
-			throw new IllegalArgumentException(clazz == null ? null : clazz.getName());
+
+		if (cassandraType != null) {
+			return cassandraType;
 		}
-		return cassandraType;
+		
+		
+		// direct mapping is not found. Try to find mapping of base class or interface
+		for (Entry<Class<?>, AbstractType<?>> entry : cassandraTypes.entrySet()) {
+			Class<?> mappedClass = entry.getKey();
+			if (mappedClass.isAssignableFrom(clazz)) {
+				return (AbstractType<T>)entry.getValue(); 
+			}
+		}
+	
+		// if we are here no mapping between java class and cassandra type is found.
+		throw new IllegalArgumentException(clazz == null ? null : clazz.getName());
 	}
 	
 	public static CQL3Type toCqlType(Class<?> clazz) {
 		AbstractType<?> cassandraType = toCassandraType(clazz);
 		return cassandraType == null ? null : cassandraType.asCQL3Type();
 	}
-	
 }
