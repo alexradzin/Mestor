@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.jpa.BeanMetadataFactory;
 
 public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
@@ -65,6 +66,7 @@ public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
 		for (PropertyAccessor<T, Object> accessor : accessors) {
 			String name = accessor.getName();
 			Object value = accessor.getValue(instance);
+			
 			pm.getField(name).getAccessor().setValue(p, value);
 		}
 		
@@ -73,8 +75,8 @@ public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
 	
 	@Override
 	public void setValue(T instance, P value) {
-		for(String name : pm.getFields().keySet()) {
-			name2accessors.get(name).setValue(instance, value);
+		for(FieldMetadata<?, ?> fmd : pm.getFields()) {
+			name2accessors.get(fmd.getName()).setValue(instance, value);
 		}
 	}
 }

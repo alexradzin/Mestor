@@ -24,8 +24,8 @@ import static org.mestor.persistence.cql.management.CommandHelper.quote;
 
 public class AlterTableAlterColumn extends AlterTable {
 	@Override
-	protected AlterTable alter(String column, Class<?> type) {
-		return super.alter(column, type);
+	protected AlterTable alter(String column, Class<?> type, Class<?> ... generics) {
+		return super.alter(column, type, generics);
 	}
 
 

@@ -22,8 +22,8 @@ import com.google.common.base.Joiner;
 import static org.mestor.persistence.cql.management.CommandHelper.quote;
 
 public class AlterTableAddColumn extends AlterTable {
-	protected AlterTable add(String column, Class<?> type) {
-		return super.alter(column, type);
+	protected AlterTable add(String column, Class<?> type, Class<?> ... generics) {
+		return super.alter(column, type, generics);
 	}
 
 

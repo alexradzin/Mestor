@@ -145,7 +145,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 		
 		// process field and method level index annotations
 		
-		for (FieldMetadata<T, Object> fmeta : entityMetadata.getFields().values()) {
+		for (FieldMetadata<T, Object> fmeta : entityMetadata.getFields()) {
 			findIndexes(entityMetadata, fmeta.getAccessor().getField(), fmeta.getName(), indexes);
 			findIndexes(entityMetadata, fmeta.getAccessor().getGetter(), fmeta.getName(), indexes);
 		}

@@ -19,6 +19,8 @@ package org.mestor.metadata;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
 
 import org.mestor.reflection.PropertyAccessor;
 
@@ -30,6 +32,7 @@ public class FieldMetadata<T, F> {
 	private boolean nullable;
 	private boolean key;
 	private boolean lazy = false;
+	private Collection<Class<?>> genericTypes = new ArrayList<Class<?>>();
 
 	private PropertyAccessor<T, F> accessor;
 
@@ -132,6 +135,16 @@ public class FieldMetadata<T, F> {
 
 	public void setLazy(boolean lazy) {
 		this.lazy = lazy;
+	}
+
+
+	public Collection<Class<?>> getGenericTypes() {
+		return genericTypes;
+	}
+
+
+	public void setGenericTypes(Collection<Class<?>> genericTypes) {
+		this.genericTypes = genericTypes;
 	}
 	
 	

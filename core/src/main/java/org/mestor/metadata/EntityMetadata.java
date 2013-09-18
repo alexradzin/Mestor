@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.mestor.reflection.PropertyAccessor;
 
@@ -37,7 +36,8 @@ public class EntityMetadata<E> {
 	private String tableName;
 	private String schemaName;
 	
-	private Map<String, FieldMetadata<E, Object>> fields = new LinkedHashMap<>();
+	private Collection<FieldMetadata<E, Object>> fields = new ArrayList<>();
+	private Map<String, FieldMetadata<E, ?>> fieldColumns = new LinkedHashMap<>();
 	private Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<>();
 	private Collection<IndexMetadata<E>> indexes = new ArrayList<>();
 	
@@ -54,12 +54,6 @@ public class EntityMetadata<E> {
 	}
 
 	
-//	public E create() {
-//		return entityType.newInstance();
-//	}
-	
-	
-
 	public Class<E> getEntityType() {
 		return entityType;
 	}
@@ -109,14 +103,32 @@ public class EntityMetadata<E> {
 	}
 	
 	
-	public Map<String, FieldMetadata<E, Object>> getFields() {
-		return Collections.unmodifiableMap(fields);
+	public Collection<FieldMetadata<E, Object>> getFields() {
+		return Collections.unmodifiableCollection(fields);
 	}
 
 	public Map<String, Class<?>[]> getFieldTypes() {
 		return Collections.unmodifiableMap(fieldTypes);
 	}
 
+	public <F> void addField(FieldMetadata<E, F> fmeta) {
+		PropertyAccessor<E, F> accessor = fmeta.getAccessor();
+		String name = fmeta.getName();
+		putAccessorToFieldName(getter2fieldName, accessor.getGetter(), name);
+		putAccessorToFieldName(setter2fieldName, accessor.getSetter(), name);
+		
+		String column = fmeta.getColumn();
+		
+		//TODO: add support of collection element type defined in OneToMany and ManyToMany annotations
+		fieldTypes.put(column, new Class<?>[] {fmeta.getType()});
+		fieldColumns.put(column, fmeta);
+		
+		@SuppressWarnings("unchecked")
+		FieldMetadata<E, Object> fmd = (FieldMetadata<E, Object>)fmeta;
+		fields.add(fmd);
+	}
+	
+	/*
 	public void setFields(Map<String, FieldMetadata<E, Object>> fields) {
 		this.fields = fields;
 		for (Entry<String, FieldMetadata<E, Object>> e : fields.entrySet()) {
@@ -129,7 +141,7 @@ public class EntityMetadata<E> {
 			//TODO: add support of collection element type defined in OneToMany and ManyToMany annotations
 			fieldTypes.put(name, new Class<?>[] {fmeta.getType()});
 		}
-	}
+	}*/
 	
 	public String getFieldNameByGetter(Method getter) {
 		return getter2fieldName.get(getter);
@@ -141,7 +153,7 @@ public class EntityMetadata<E> {
 
 	public Collection<String> getFieldNamesByType(Class<?> type) {
 		Collection<String> fieldNames = new ArrayList<>();
-		for(FieldMetadata<E, ? extends Object> fmd : fields.values()) {
+		for(FieldMetadata<E, ? extends Object> fmd : fields) {
 			if(type.isAssignableFrom(fmd.getClassType())) {
 				fieldNames.add(fmd.getName());
 			}
@@ -157,8 +169,9 @@ public class EntityMetadata<E> {
 		}
 	}
 	
-	public FieldMetadata<E, Object> getField(String name) {
-		return fields.get(name);
+	@SuppressWarnings("unchecked")
+	public <F> FieldMetadata<E, F> getField(String column) {
+		return (FieldMetadata<E, F>)this.fieldColumns.get(column);
 	}
 
 	public Collection<IndexMetadata<E>> getIndexes() {
@@ -171,7 +184,7 @@ public class EntityMetadata<E> {
 
 
 	public void copy(E from, E to) {
-		for (FieldMetadata<E, ? extends Object> fmd : getFields().values()) {
+		for (FieldMetadata<E, ? extends Object> fmd : getFields()) {
 			@SuppressWarnings("unchecked")
 			PropertyAccessor<E, Object> pa = (PropertyAccessor<E, Object>)fmd.getAccessor();
 			Object value = fmd.getAccessor().getValue(from);

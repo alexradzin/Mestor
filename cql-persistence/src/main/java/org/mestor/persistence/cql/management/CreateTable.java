@@ -17,20 +17,21 @@
 
 package org.mestor.persistence.cql.management;
 
+import static org.mestor.persistence.cql.management.CommandHelper.quote;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.cassandra.cql3.CQL3Type;
+import org.apache.cassandra.db.marshal.CollectionType;
+import org.mestor.util.Pair;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterators;
-
-import static org.mestor.persistence.cql.management.CommandHelper.quote;
 
 
 public class CreateTable extends EditTable<CreateTable> {
@@ -39,7 +40,8 @@ public class CreateTable extends EditTable<CreateTable> {
 	}
 	
 	
-	protected Map<String, CQL3Type> fields = new LinkedHashMap<>();
+	//protected Map<String, CQL3Type> fields = new LinkedHashMap<>();
+	protected Collection<Map.Entry<String, CQL3Type>> fields = new ArrayList<>();
 	protected Collection<String> primaryKey = new ArrayList<String>();
 	protected Collection<String> index = new ArrayList<String>();
 	
@@ -61,8 +63,8 @@ public class CreateTable extends EditTable<CreateTable> {
 	}
 
 
-	public CreateTable add(String column, Class<?> clazz, FieldAttribute[] attrs) {
-		add(column, CommandHelper.toCqlType(clazz), attrs);
+	public CreateTable add(String column, Class<?> clazz, Class<?>[] generics, FieldAttribute[] attrs) {
+		add(column, CommandHelper.toCqlType(clazz, generics), attrs);
 		return getThis();
 	}
 	
@@ -70,15 +72,16 @@ public class CreateTable extends EditTable<CreateTable> {
 		return add(fields, column, type, attrs);
 	}
 	
-	protected CreateTable add(Map<String, CQL3Type> map, String column, CQL3Type type, FieldAttribute[] attrs) {
-		map.put(column, type);
+	protected CreateTable add(final Collection<Map.Entry<String, CQL3Type>> fieldTypes, final String columnName, final CQL3Type cqlType, final FieldAttribute[] attrs) {
+		fieldTypes.add(new Pair<String, CQL3Type>(columnName, cqlType));
+		
 		for (FieldAttribute attr : attrs) {
 			switch(attr) {
 				case PRIMARY_KEY:
-					primaryKey.add(column);
+					primaryKey.add(columnName);
 					break;
 				case INDEX:
-					index.add(column);
+					index.add(columnName);
 					break;
 				case NONE:
 					break; // do nothing. None is none.
@@ -90,15 +93,30 @@ public class CreateTable extends EditTable<CreateTable> {
 	}
 	
 	
-	private String getFieldsQuery(Map<String, CQL3Type> fields) {
-		return Joiner.on(", ").join(Iterators.transform(fields.entrySet().iterator(), new Function<Entry<String, CQL3Type>, String>() {
+	private String getFieldsQuery(Collection<Map.Entry<String, CQL3Type>> fields) {
+		return Joiner.on(", ").join(Iterators.transform(fields.iterator(), new Function<Entry<String, CQL3Type>, String>() {
 			@Override
 			public String apply(Entry<String, CQL3Type> field) {
-				  return quote(field.getKey()) + " " + field.getValue().toString();
+				  return quote(field.getKey()) + " " + CreateTable.this.toString(field.getValue());
 			}
 		}));
 	}
 
+	// patch to work this issue https://issues.apache.org/jira/browse/CASSANDRA-6051 around
+	private String toString(CQL3Type cql3Type) {
+		String str = cql3Type.toString();
+		if (cql3Type.isCollection()) {
+			// This is a VERY long statement with a lot of castings that theoretically throw ClassCastException
+			// However if this happens something is going very bad because if we are here current cql3type IS 
+			// a collection and therefore all castings should perform successfully.
+			if (CollectionType.Kind.MAP.equals(((CollectionType<?>)((CQL3Type.Collection)cql3Type).getType()).kind)) {
+				return str.replaceFirst("^set", "map");
+			}
+		}
+		return str;
+	}
+	
+	
 	private String getPrimaryKeyQuery(Collection<String> primaryKey) {
 		return "PRIMARY KEY (" + Joiner.on(", ").join(quote(primaryKey)) + ")";
 	}

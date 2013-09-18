@@ -94,7 +94,8 @@ public class CommandHelper {
 			}
 		}
 
-		cassandraTypes.put(Object[].class, Native.BLOB.getType());
+		// define array as list. 
+		cassandraTypes.put(Object[].class, ListType.getInstance((AbstractType<?>)null));
 	}
 	
 	// quote
@@ -178,9 +179,34 @@ public class CommandHelper {
 		throw new IllegalArgumentException(clazz == null ? null : clazz.getName());
 	}
 	
-	public static CQL3Type toCqlType(Class<?> clazz) {
+	public static CQL3Type toCqlType(Class<?> clazz, Class<?> ... generics) {
 		AbstractType<?> cassandraType = toCassandraType(clazz);
-		return cassandraType == null ? null : cassandraType.asCQL3Type();
+
+		if (cassandraType == null) {
+			return null;
+		}
+
+		// Here is a special patch for collections. 
+		// Fortunately only lists, sets and maps are supported. 
+		if (cassandraType.isCollection()) {
+			if (cassandraType instanceof ListType) {
+				// since for convenience we treat arrays as lists we need a little patch here.
+				if (clazz.isArray()) {
+					cassandraType = ListType.getInstance(toCassandraType(clazz.getComponentType()));
+				} else {
+					cassandraType = ListType.getInstance(toCassandraType(generics[0]));
+				}
+			} else if (cassandraType instanceof SetType) {
+				cassandraType = SetType.getInstance(toCassandraType(generics[0]));
+			} else if (cassandraType instanceof MapType) {
+				cassandraType = MapType.getInstance(toCassandraType(generics[0]), toCassandraType(generics[1]));
+			} else {
+				// Just in case. To be on the safe side. 
+				throw new IllegalArgumentException("Unsupported cassandra collection type " + cassandraType);
+			}
+		}
+		
+		return cassandraType.asCQL3Type();
 	}
 
 	/**

@@ -3,9 +3,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -24,7 +22,6 @@ public class MetaDataTests {
 	private final String DEF_INDEX_NAME_2 = "idx2";
 	
 
-	@SuppressWarnings("unchecked")
 	@Before
 	public void init() {
 				
@@ -59,13 +56,8 @@ public class MetaDataTests {
 		indexes.add(index2);
 		emd.setIndexes(indexes);
 
-		
-		Map<String, FieldMetadata<Person, Object>> fields = new LinkedHashMap<>();
-		
-		for (FieldMetadata<Person, Object> field : new FieldMetadata[] {nameField, ageField}) {
-			fields.put(field.getName(), field);
-		}
-		emd.setFields(fields);
+		emd.addField(nameField);
+		emd.addField(ageField);
 	}
 
 	
@@ -105,7 +97,7 @@ public class MetaDataTests {
 	
 
 	private <E, F> void assertFieldMetadata(EntityMetadata<E> emd, String fieldName, String columnName, boolean key, boolean lazy, boolean nullable) {
-		assertFieldMetadata(emd.getField(fieldName), fieldName, columnName, key, lazy, nullable);
+		assertFieldMetadata(emd.getField(columnName), fieldName, columnName, key, lazy, nullable);
 	}
 	
 	

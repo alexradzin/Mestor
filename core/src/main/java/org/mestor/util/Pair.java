@@ -15,20 +15,64 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.persistence.cql.management;
+package org.mestor.util;
 
-import org.apache.cassandra.cql3.CQL3Type;
+import java.util.Map.Entry;
 
-public abstract class AlterTable extends EditTable<AlterTable> {
-	protected String columnName;
-	protected CQL3Type columnType; 
+import com.google.common.base.Objects;
+
+/**
+ * Implementation of {@link Entry Map.Entry} interface. 
+ * This class is a container for pair of objects. It can be used 
+ * to store the pair in collection. Since it implements {@link Entry Map.Entry}
+ * there is no semantic difference between iterating over map entries or over
+ * list that contains {@link Pair}s.
+ * @author alexr
+ *
+ * @param <K> type of key
+ * @param <V> type of value
+ */
+public class Pair<K, V> implements Entry<K, V> {
+	private final K key;
+	private V value;
 	
-	protected AlterTable() {
+	public Pair(K key, V value) {
+		this.key = key;
+		this.value = value;
 	}
 
-	protected AlterTable alter(String column, Class<?> type, Class<?> ... generics) {
-		this.columnName = column;
-		this.columnType = CommandHelper.toCqlType(type, generics);
-		return getThis();
+	@Override
+	public K getKey() {
+		return key;
+	}
+
+	@Override
+	public V getValue() {
+		return value;
+	}
+
+	@Override
+	public V setValue(V value) {
+		return this.value = value;
+	}
+
+	@Override
+	public String toString() {
+		return "<" + key + ":" + value + ">";
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(key, value);
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if(obj == null || !(obj instanceof Pair)) {
+			return false;
+		}
+		@SuppressWarnings("unchecked")
+		Entry<K, V> other = (Entry<K, V>)obj;
+		return Objects.equal(key, other.getKey()) && Objects.equal(value, other.getValue());
 	}
 }

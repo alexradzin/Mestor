@@ -84,6 +84,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			emeta.setSchemaName(schema); 
 		}
 
+		// name to metadata
 		Map<String, FieldMetadata<T, Object>> fields = new LinkedHashMap<>();
 		
 		for (Field f : FieldAccessor.getFields(clazz)) {
@@ -100,6 +101,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			initMeta(fmeta, f, name, clazz, type);
 			
 			fields.put(name, fmeta);
+			
 		}
 		
 		for (Method m : clazz.getMethods()) {
@@ -158,10 +160,13 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			throw new IllegalArgumentException("Entity " + clazz + " does not have primary key");
 		}
 		
+		
+		for (FieldMetadata<T,?> fmd : fields.values()) {
+			emeta.addField(fmd);
+		}
 
-		emeta.setFields(fields);
 
-		emeta.setPrimaryKey(emeta.getFields().get(primaryKeyFields.iterator().next()));
+		emeta.setPrimaryKey(fields.get(primaryKeyFields.iterator().next()));
 		
 		if (primaryKeyFields.size() > 1) {
 			final IdClass idClass = clazz.getAnnotation(IdClass.class);

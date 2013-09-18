@@ -133,7 +133,7 @@ public class CqlPersistor implements Persistor {
 		
 		Insert insert = insertInto(keyspace, table);
 		
-		for (FieldMetadata<E, ?> fmd : emd.getFields().values()) {
+		for (FieldMetadata<E, ?> fmd : emd.getFields()) {
 			String name = fmd.getName();
 			Object value = fmd.getAccessor().getValue(entity);
 			insert.value(name, value);
@@ -165,6 +165,7 @@ public class CqlPersistor implements Persistor {
 		for (Entry<String, Object> f : data.entrySet()) {
 			String name = f.getKey();
 			Object value = f.getValue();
+			
 			emd.getField(name).getAccessor().setValue(entity, value);
 		}
 		
@@ -205,7 +206,7 @@ public class CqlPersistor implements Persistor {
 			// TODO cache this metadata too.
 			BeanMetadataFactory f = new BeanMetadataFactory();
 			EntityMetadata<P> pkMetadata = f.create(pkType);
-			for (FieldMetadata<E, Object> fmd : emd.getFields().values()) {
+			for (FieldMetadata<E, Object> fmd : emd.getFields()) {
 				if (fmd.isKey()) {
 					Object value = pkMetadata.getField(fmd.getName()).getAccessor().getValue(primaryKey);
 					clauses.add(eq(fmd.getColumn(), value));
@@ -293,8 +294,8 @@ public class CqlPersistor implements Persistor {
 		final CreateTable table = CommandBuilder.createTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 		
 		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
-		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields().values()) {
-			table.add(fmd.getColumn(), fmd.getType(), getFieldAttributes(fmd, indexedColumns));
+		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields()) {
+			table.add(fmd.getColumn(), fmd.getType(), fmd.getGenericTypes().toArray(new Class[0]), getFieldAttributes(fmd, indexedColumns));
 		}
 		
 		queryHandler.apply(table);
@@ -439,7 +440,7 @@ public class CqlPersistor implements Persistor {
 		Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
 		
 		// find fields that have to be added or altered
-		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields().values()) {
+		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields()) {
 			//AlterTable table = CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 			String column = fmd.getColumn();
 			ColumnMetadata existingColumn = existingColumns.get(column); 
