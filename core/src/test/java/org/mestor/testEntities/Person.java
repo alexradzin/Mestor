@@ -4,6 +4,7 @@ public class Person {
 
 	private String name;
 	private String surname;
+	private int age;
 	
 	public String getSurname() {
 		return surname;
@@ -13,10 +14,9 @@ public class Person {
 		this.surname = surname;
 	}
 
-	private int age;
+	
 
 	public String getName() {
-
 		return name;
 
 	}
