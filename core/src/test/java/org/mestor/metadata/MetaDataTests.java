@@ -3,8 +3,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mestor.testEntities.Person;
@@ -14,12 +19,18 @@ public class MetaDataTests {
 	private EntityMetadata<Person> emd;
 	private final String TABLE_NAME = "PeopleTable";
 	private final String AGE_COLUMN = "age";
-	private final String NAME_COLUMN = "full_name";
 	private final String AGE_FIELD = "age";
+	
 	private final String NAME_FIELD = "name";
+	private final String NAME_COLUMN = "first_name";
+	
+	private final String SURENAME_COLUMN = "last_name";
+
 	private final String SCHEME_NAME = "test-scheme";
 	private final String DEF_INDEX_NAME_1 = "idx1";
 	private final String DEF_INDEX_NAME_2 = "idx2";
+	
+	HashSet<String> predefinedIndexes = new HashSet<String>();
 	
 
 	@Before
@@ -44,22 +55,40 @@ public class MetaDataTests {
 		ageField.setColumn(AGE_COLUMN);
 		ageField.setNullable(true);
 		
+		FieldMetadata<Person, String> surnameField = new FieldMetadata<>(Person.class, String.class, "surename");
+		surnameField.setColumn(SURENAME_COLUMN);
+		surnameField.setKey(false);
+		surnameField.setNullable(false);
+		
 		//for primary key tests
+		System.out.println("b "+nameField.getColumn());
 		emd.setPrimaryKey(nameField);
 		
 		
+		
 		//test index meta data
+		predefinedIndexes.add(SURENAME_COLUMN);
+		predefinedIndexes.add(NAME_COLUMN);
+		
+		
 		List<IndexMetadata<Person>> indexes = new ArrayList<IndexMetadata<Person>>();
 		IndexMetadata<Person> index = new IndexMetadata<>(Person.class, DEF_INDEX_NAME_1, nameField);
-		IndexMetadata<Person> index2 = new IndexMetadata<>(Person.class, DEF_INDEX_NAME_2, nameField);
+		IndexMetadata<Person> index2 = new IndexMetadata<>(Person.class, DEF_INDEX_NAME_2, surnameField);
 		indexes.add(index);
 		indexes.add(index2);
 		emd.setIndexes(indexes);
 
-		emd.addField(nameField);
-		emd.addField(ageField);
+
+		
+		Map<String, FieldMetadata<Person, Object>> fields = new LinkedHashMap<>();
+		for (FieldMetadata<Person, Object> field : new FieldMetadata[] {nameField, ageField, surnameField}) {
+			emd.addField(field);			
+		}		
 	}
 
+	
+	//test 2 primary keys not possible
+	//test map 2 fields to same column name not possible
 	
 	@Test
 	//will tests table level related metadata
@@ -87,6 +116,20 @@ public class MetaDataTests {
 		assertFieldMetadata(nameMd, NAME_FIELD, NAME_COLUMN, Person.class, String.class);
 		
 	}
+	
+	
+	@Test
+	public void testIndexes(){
+		//test index 
+		Assert.assertEquals(2, emd.getIndexes().size());
+		Iterator itr = emd.getIndexes().iterator();
+		while(itr.hasNext()) {
+			IndexMetadata<Person> element = (IndexMetadata<Person>) itr.next();
+			FieldMetadata<Person,? extends Object>[]  fmd = element.getField();			
+			Assert.assertTrue(predefinedIndexes.contains(fmd[0].getColumn()));
+
+		}
+	}
 
 	@Test
 	public void testColumnsMd(){
@@ -109,6 +152,7 @@ public class MetaDataTests {
 	}
 	
 	private <E, F> void assertFieldMetadata(FieldMetadata<E, F> fmd, String fieldName, String columnName, boolean key, boolean lazy, boolean nullable) {
+		System.out.println("55 "+fmd+"   "+fieldName);
 		assertEquals(fieldName, fmd.getName());
 		assertEquals(columnName, fmd.getColumn());
 		assertEquals(key, fmd.isKey());
@@ -120,8 +164,8 @@ public class MetaDataTests {
 	
 	@Test
 	public void testDefaultTableName(){
-		if (testDefTableName) {
-			assertEquals(Person.class.getSimpleName(), emd.getTableName());
+		if(testDefTableName){			
+			Assert.assertEquals(Person.class.getSimpleName(), emd.getTableName());
 		}
 	}
 
