@@ -74,7 +74,7 @@ public class CommandHelper {
 		cassandraTypes.put(String.class, Native.TEXT.getType());
 		cassandraTypes.put(Long.class, Native.BIGINT.getType());
 		cassandraTypes.put(BigInteger.class, Native.BIGINT.getType());
-		cassandraTypes.put(BigDecimal.class, Native.DOUBLE.getType());
+		cassandraTypes.put(BigDecimal.class, Native.DECIMAL.getType());
 		
 		
 		cassandraTypes.put(byte[].class, Native.BLOB.getType());
@@ -216,11 +216,11 @@ public class CommandHelper {
 	 * @param name
 	 * @return quoted name if needed
 	 */
-	static String quote(String name) {
+	public static String quote(String name) {
 		return capitalLetter.matcher(name).find() ? "\"" + name + "\"" : name;
 	}
 	
-	static Collection<String> quote(Collection<String> strings) {
+	public static Collection<String> quote(Collection<String> strings) {
 		return Collections2.transform(strings, new Function<String, String>() {
 			@Override
 			public String apply(String s) {

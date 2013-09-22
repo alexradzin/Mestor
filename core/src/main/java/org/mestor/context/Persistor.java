@@ -13,7 +13,7 @@ public interface Persistor {
 	
 	public <T> Object[] fetchProperty(T entity, String ... propertyNames);
 	
-	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory();
+	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory(Class<T> type);
 	
 	public void createSchema(String name, Map<String, Object> properties);
 	public void dropSchema(String name);

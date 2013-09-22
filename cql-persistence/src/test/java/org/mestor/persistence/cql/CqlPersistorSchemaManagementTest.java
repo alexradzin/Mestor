@@ -17,14 +17,12 @@
 
 package org.mestor.persistence.cql;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.doReturn;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -32,11 +30,9 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,40 +43,29 @@ import org.apache.cassandra.locator.NetworkTopologyStrategy;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mestor.cassandra.CassandraAwareTestRunner;
-import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
-import org.mockito.Mockito;
 
-import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.core.exceptions.SyntaxError;
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
-import com.google.common.primitives.Primitives;
 
 @RunWith(CassandraAwareTestRunner.class)
 public class CqlPersistorSchemaManagementTest {
 	private final Persistor persistor;
+	private final CqlPersistorTestHelper helper;
 	
 	
-	private static Map<Class<?>, Class<?>> prop2cql = new HashMap<Class<?>, Class<?>>() {{
-		put(BigInteger.class, Long.class);
-		put(BigDecimal.class, Double.class);
-		put(byte[].class, ByteBuffer.class);
-		put(Byte[].class, ByteBuffer.class);
-	}};
 	
 	
 	public CqlPersistorSchemaManagementTest() throws IOException {
-		persistor = createAndConnect(Collections.<String, Object>emptyMap());
+		helper = new CqlPersistorTestHelper();
+		persistor = helper.getPersistor();
 	}
 	
 	
@@ -101,7 +86,7 @@ public class CqlPersistorSchemaManagementTest {
 			put("class", "SimpleStrategy");
 			put("replication_factor", 1);
 		}};
-		testCreateSchema("test1", Collections.<String, Object>singletonMap("replication", replication), true);
+		helper.testCreateSchema("test1", Collections.<String, Object>singletonMap("replication", replication), true);
 	}
 
 
@@ -114,7 +99,7 @@ public class CqlPersistorSchemaManagementTest {
 	@Test
 	public void testCreateSchemaWithReplicationAsString() throws IOException {
 		final String schemaName = "test2";
-		Persistor persistor = createAndConnect(Collections.<String, Object>singletonMap("org.mestor.cassandra.keyspace.properties", "replication = {'class':'NetworkTopologyStrategy'}"));
+		Persistor persistor = helper.createAndConnect(Collections.<String, Object>singletonMap("org.mestor.cassandra.keyspace.properties", "replication = {'class':'NetworkTopologyStrategy'}"));
 		assertFalse(Iterables.contains(persistor.getSchemaNames(), schemaName));
 		persistor.createSchema(schemaName, null);
 		assertTrue(Iterables.contains(persistor.getSchemaNames(), schemaName));
@@ -130,7 +115,7 @@ public class CqlPersistorSchemaManagementTest {
 	 */
 	@Test
 	public void testCreateDefaultSchema() {
-		testCreateSchema("test1", null, true);
+		helper.testCreateSchema("test1", null, true);
 	}
 	
 	/**
@@ -138,7 +123,7 @@ public class CqlPersistorSchemaManagementTest {
 	 */
 	@Test(expected = SyntaxError.class)
 	public void testCreateSchemaWithout() {
-		testCreateSchema("test1", Collections.<String, Object>emptyMap(), true);
+		helper.testCreateSchema("test1", Collections.<String, Object>emptyMap(), true);
 	}
 	
 	
@@ -149,11 +134,11 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableOneIntFieldPK() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			helper.testCreateSchema(schemaName, null, false);
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
-			testEditTable(createMetadata(Person.class, schemaName, "People", pk, pk), null, true);
+			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", pk, pk), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -163,10 +148,10 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableCompositePK() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			final FieldMetadata<Person, Integer> id = createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
-			final FieldMetadata<Person, String> name = createFieldMetadata(Person.class, String.class, "name", "first_name", true);
+			final FieldMetadata<Person, Integer> id = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
+			final FieldMetadata<Person, String> name = helper.createFieldMetadata(Person.class, String.class, "name", "first_name", true);
 			
 			final EntityMetadata<Person> emd = new EntityMetadata<>(Person.class);
 			emd.setEntityName("Person");
@@ -176,7 +161,7 @@ public class CqlPersistorSchemaManagementTest {
 			emd.addField(id);
 			emd.addField(name);
 
-			testEditTable(emd, null, true);
+			helper.testEditTable(emd, null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -186,18 +171,18 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableWithTwoFieldsMappedToOneColumn() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = createFieldMetadata(Person.class, int.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
 			
 			@SuppressWarnings("unchecked")
 			FieldMetadata<Person, Object>[] fields = new FieldMetadata[] {
 					pk,
-					createFieldMetadata(Person.class, String.class, "name", "full_name", false),
-					createFieldMetadata(Person.class, String.class, "last_name", "full_name", false),
+					helper.createFieldMetadata(Person.class, String.class, "name", "full_name", false),
+					helper.createFieldMetadata(Person.class, String.class, "last_name", "full_name", false),
 			};
 			
-			testEditTable(createMetadata(Person.class, schemaName, "people", pk, fields), null, true);
+			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "people", pk, fields), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -207,18 +192,18 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableWithOneFieldMappedToTwoColumn() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = createFieldMetadata(Person.class, int.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
 			
 			@SuppressWarnings("unchecked")
 			FieldMetadata<Person, Object>[] fields = new FieldMetadata[] {
 					pk,
-					createFieldMetadata(Person.class, String.class, "name", "given_name", false),
-					createFieldMetadata(Person.class, String.class, "name", "first_name", false),
+					helper.createFieldMetadata(Person.class, String.class, "name", "given_name", false),
+					helper.createFieldMetadata(Person.class, String.class, "name", "first_name", false),
 			};
 			
-			testEditTable(createMetadata(Person.class, schemaName, "people", pk, fields), null, true);
+			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "people", pk, fields), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -233,10 +218,10 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableOneIntFieldNoPK() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			helper.testCreateSchema(schemaName, null, false);
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
-			testEditTable(createMetadata(Person.class, schemaName, "People", null, pk), null, true);
+			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", null, pk), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -247,8 +232,8 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableNoFields() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
-			testEditTable(createMetadata(Person.class, schemaName, "People", null), null, true);
+			helper.testCreateSchema(schemaName, null, false);
+			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", null), null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -262,14 +247,14 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateDuplicateTable() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
-			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, "People", pk, pk);
-			testEditTable(emd, null, true);
+			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, "People", pk, pk);
+			helper.testEditTable(emd, null, true);
 			// try again
 			try {
 				persistor.createTable(emd, null);
@@ -288,20 +273,20 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		final String tableName = "People";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
 			// first create metadata
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
 			// now create table
-			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, tableName, pk, pk);
-			testEditTable(emd, null, true);
+			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, tableName, pk, pk);
+			helper.testEditTable(emd, null, true);
 			
 			// drop table 
 			persistor.dropTable(schemaName, tableName);
-			TableMetadata tmd = findTableMetadata(schemaName, tableName);
+			TableMetadata tmd = helper.findTableMetadata(schemaName, tableName);
 			assertNull(tmd);
 		} finally {
 			persistor.dropSchema(schemaName);
@@ -321,29 +306,29 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		final String tableName = "People";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 
 			
 			// first create metadata
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
 			
-			FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, "name");
+			FieldMetadata<Person, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
-			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
+			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
 			emd.setIndexes(Collections.singletonList(new IndexMetadata<Person>(Person.class, "name_index", nameField)));
 			
 			// now create table
-			testEditTable(emd, null, true);
+			helper.testEditTable(emd, null, true);
 
 
 			// create entity metadata again without index 
-			EntityMetadata<Person> emd2 = createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
+			EntityMetadata<Person> emd2 = helper.createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
 			// update (alter) table
-			testEditTable(emd2, null, false);
+			helper.testEditTable(emd2, null, false);
 			
 		} finally {
 			persistor.dropSchema(schemaName);
@@ -356,35 +341,35 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableWithColumnsOfAllTypes() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<ManySimpleTypes, Integer> pk = createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
+			FieldMetadata<ManySimpleTypes, Integer> pk = helper.createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
 			
 			@SuppressWarnings("unchecked")
 			FieldMetadata<ManySimpleTypes, Object>[] fields = new FieldMetadata[] {
 					pk,
-					createFieldMetadata(ManySimpleTypes.class, long.class, "longPrimitive"),
-					createFieldMetadata(ManySimpleTypes.class, float.class, "floatPrimitive"),
-					createFieldMetadata(ManySimpleTypes.class, double.class, "doublePrimitive"), 
-					createFieldMetadata(ManySimpleTypes.class, Integer.class, "intWrapper"),
-					createFieldMetadata(ManySimpleTypes.class, Long.class, "longWrapper"),
-					createFieldMetadata(ManySimpleTypes.class, Float.class, "floatWrapper"),
-					createFieldMetadata(ManySimpleTypes.class, Double.class, "doubleWrapper"),
-					createFieldMetadata(ManySimpleTypes.class, BigDecimal.class, "bigDecimal"),
-					createFieldMetadata(ManySimpleTypes.class, BigInteger.class, "bigInteger"),
-					createFieldMetadata(ManySimpleTypes.class, boolean.class, "booleanPrimitive"),
-					createFieldMetadata(ManySimpleTypes.class, Boolean.class, "booleanWrapper"),
-					createFieldMetadata(ManySimpleTypes.class, String.class, "string"),
-					createFieldMetadata(ManySimpleTypes.class, ByteBuffer.class, "bytebuffer"),
-					createFieldMetadata(ManySimpleTypes.class, byte[].class, "bytearray"),
-					createFieldMetadata(ManySimpleTypes.class, InetAddress.class, "inet"),
-					createFieldMetadata(ManySimpleTypes.class, Date.class, "date"),
-					createFieldMetadata(ManySimpleTypes.class, UUID.class, "uuid"),
+					helper.createFieldMetadata(ManySimpleTypes.class, long.class, "longPrimitive"),
+					helper.createFieldMetadata(ManySimpleTypes.class, float.class, "floatPrimitive"),
+					helper.createFieldMetadata(ManySimpleTypes.class, double.class, "doublePrimitive"), 
+					helper.createFieldMetadata(ManySimpleTypes.class, Integer.class, "intWrapper"),
+					helper.createFieldMetadata(ManySimpleTypes.class, Long.class, "longWrapper"),
+					helper.createFieldMetadata(ManySimpleTypes.class, Float.class, "floatWrapper"),
+					helper.createFieldMetadata(ManySimpleTypes.class, Double.class, "doubleWrapper"),
+					helper.createFieldMetadata(ManySimpleTypes.class, BigDecimal.class, "bigDecimal"),
+					helper.createFieldMetadata(ManySimpleTypes.class, BigInteger.class, "bigInteger"),
+					helper.createFieldMetadata(ManySimpleTypes.class, boolean.class, "booleanPrimitive"),
+					helper.createFieldMetadata(ManySimpleTypes.class, Boolean.class, "booleanWrapper"),
+					helper.createFieldMetadata(ManySimpleTypes.class, String.class, "string"),
+					helper.createFieldMetadata(ManySimpleTypes.class, ByteBuffer.class, "bytebuffer"),
+					helper.createFieldMetadata(ManySimpleTypes.class, byte[].class, "bytearray"),
+					helper.createFieldMetadata(ManySimpleTypes.class, InetAddress.class, "inet"),
+					helper.createFieldMetadata(ManySimpleTypes.class, Date.class, "date"),
+					helper.createFieldMetadata(ManySimpleTypes.class, UUID.class, "uuid"),
 			};
 			
 			
-			EntityMetadata<ManySimpleTypes> emd = createMetadata(ManySimpleTypes.class, schemaName, "TypesTest", pk, fields);
-			testEditTable(emd, null, true);
+			EntityMetadata<ManySimpleTypes> emd = helper.createMetadata(ManySimpleTypes.class, schemaName, "TypesTest", pk, fields);
+			helper.testEditTable(emd, null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -395,50 +380,28 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateTableWithInnerCollections() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<InnerCollections, Integer> pk = createFieldMetadata(InnerCollections.class, int.class, "id", "id", true);
+			FieldMetadata<InnerCollections, Integer> pk = helper.createFieldMetadata(InnerCollections.class, int.class, "id", "id", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<ManySimpleTypes, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<InnerCollections, Object>[] fields = new FieldMetadata[] {
 					pk,
-					createFieldMetadata(InnerCollections.class, String[].class, "stringArray"),
-					createFieldMetadata(InnerCollections.class, List.class, new Class[] {String.class}, "stringList"),
-					createFieldMetadata(InnerCollections.class, Set.class, new Class[] {String.class}, "stringSet"),
-					createFieldMetadata(InnerCollections.class, Map.class, new Class[] {String.class, Integer.class    }, "stringToIntegerMap"),
+					helper.createFieldMetadata(InnerCollections.class, String[].class, "stringArray"),
+					helper.createFieldMetadata(InnerCollections.class, List.class, new Class[] {String.class}, "stringList"),
+					helper.createFieldMetadata(InnerCollections.class, Set.class, new Class[] {String.class}, "stringSet"),
+					helper.createFieldMetadata(InnerCollections.class, Map.class, new Class[] {String.class, Integer.class}, "stringToIntegerMap"),
 			};
 			
 			
-			EntityMetadata<InnerCollections> emd = createMetadata(InnerCollections.class, schemaName, "InnerCollections", pk, fields);
-			testEditTable(emd, null, true);
+			EntityMetadata<InnerCollections> emd = helper.createMetadata(InnerCollections.class, schemaName, "InnerCollections", pk, fields);
+			helper.testEditTable(emd, null, true);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
 	}
 	
 	
-	private <T, F> FieldMetadata<T, F> createFieldMetadata(Class<T> classType, Class<F> type, String name) {
-		return createFieldMetadata(classType, type, name, name, false);
-	}
-	
-	private <T, F> FieldMetadata<T, F> createFieldMetadata(Class<T> classType, Class<F> type, Class<?>[] generics, String name) {
-		return createFieldMetadata(classType, type, generics, name, name, false);
-	}
-	
-	private <T, F> FieldMetadata<T, F> createFieldMetadata(Class<T> classType, Class<F> type, String name, String column, boolean key) {
-		return createFieldMetadata(classType, type, null, name, column, key);
-	}
-	
-	
-	private <T, F> FieldMetadata<T, F> createFieldMetadata(Class<T> classType, Class<F> type, Class<?>[] generics, String name, String column, boolean key) {
-		FieldMetadata<T, F> field = new FieldMetadata<>(classType, type, name);
-		field.setColumn(column);
-		field.setKey(key);
-		if (generics != null) {
-			field.setGenericTypes(Arrays.asList(generics));
-		}
-		return field;
-	}
 	
 	
 	/**
@@ -449,14 +412,14 @@ public class CqlPersistorSchemaManagementTest {
 	public void testCreateAndValidateTable() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
-			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, "People", pk, pk);
-			testEditTable(emd, null, true);
+			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, "People", pk, pk);
+			helper.testEditTable(emd, null, true);
 			persistor.validateTable(emd, null);
 		} finally {
 			persistor.dropSchema(schemaName);
@@ -467,13 +430,13 @@ public class CqlPersistorSchemaManagementTest {
 	public void testValidateNotExistingTable() {
 		final String schemaName = "test1";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
-			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, "People", pk, pk);
+			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, "People", pk, pk);
 			persistor.validateTable(emd, null);
 		} finally {
 			persistor.dropSchema(schemaName);
@@ -508,27 +471,27 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		final String tableName = "People";
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 
 			
 			// first create metadata
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
-			EntityMetadata<Person> emd = createMetadata(Person.class, schemaName, tableName, pk, pk);
+			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, tableName, pk, pk);
 			// now create table
-			testEditTable(emd, null, true);
+			helper.testEditTable(emd, null, true);
 
 			
 			// create similar metadata but with 2 additional fields
-			FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, "name");
+			FieldMetadata<Person, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
-			FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age");
+			FieldMetadata<Person, Integer> ageField = helper.createFieldMetadata(Person.class, Integer.class, "age");
 			ageField.setColumn("age");
 			
-			EntityMetadata<Person> emd2 = createMetadata(Person.class, schemaName, tableName, pk, pk, nameField, ageField);
+			EntityMetadata<Person> emd2 = helper.createMetadata(Person.class, schemaName, tableName, pk, pk, nameField, ageField);
 
 			Map<String, Object> props = null;
 			if (throwOnViolation != null) {
@@ -560,24 +523,24 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		
 		try {
-			testCreateSchema(schemaName, null, false);
+			helper.testCreateSchema(schemaName, null, false);
 			EntityMetadata<Person> emd = new EntityMetadata<>(Person.class);
 			emd.setEntityName(Person.class.getSimpleName());
 			emd.setTableName("People");
 			emd.setSchemaName(schemaName);
 
 			
-			FieldMetadata<Person, Integer> pk = new FieldMetadata<>(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
 			emd.setPrimaryKey(pk);
 			
 			
-			FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, "name");
+			FieldMetadata<Person, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
-			FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age");
+			FieldMetadata<Person, Integer> ageField = helper.createFieldMetadata(Person.class, Integer.class, "age");
 			ageField.setColumn("age");
 			
 			emd.addField(pk);
@@ -591,11 +554,11 @@ public class CqlPersistorSchemaManagementTest {
 			));
 			
 			
-			testEditTable(emd, null, true);
+			helper.testEditTable(emd, null, true);
 			
 			
 			// now add column, i.e. alter table.
-			FieldMetadata<Person, String> lastNameField = new FieldMetadata<>(Person.class, String.class, "lastName");
+			FieldMetadata<Person, String> lastNameField = helper.createFieldMetadata(Person.class, String.class, "lastName");
 			lastNameField.setColumn("last_name");
 			emd.addField(lastNameField);
 			
@@ -605,169 +568,20 @@ public class CqlPersistorSchemaManagementTest {
 					new IndexMetadata<Person>(Person.class, "age_index", ageField)
 			));
 			
-			testEditTable(emd, null, false);
+			helper.testEditTable(emd, null, false);
 
 			// drop table and check that it is indeed dropped.
 			final String keyspace = emd.getSchemaName();
 			final String table = emd.getTableName();
 			persistor.dropTable(keyspace, table);
-			assertNull(findTableMetadata(keyspace, table));
+			assertNull(helper.findTableMetadata(keyspace, table));
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
 	}
 	
 	
-	private Persistor createAndConnect(Map<String, Object> props) throws IOException {
-		EntityContext ctx = Mockito.mock(EntityContext.class);
-		doReturn(props).when(ctx).getProperties();
-		return new CqlPersistor(ctx);
-	}
 
 	
-	private void testCreateSchema(String schemaName, Map<String, Object> with, boolean drop) {
-		assertFalse(Iterables.contains(persistor.getSchemaNames(), schemaName));
-		persistor.createSchema(schemaName, with);
-		assertTrue(Iterables.contains(persistor.getSchemaNames(), schemaName));
-		if (drop) {
-			persistor.dropSchema(schemaName);
-		}
-	}
-
-	/**
-	 * 
-	 * @param entityMetadata
-	 * @param properties
-	 * @param create true for create, false for update
-	 */
-	private <E> void testEditTable(EntityMetadata<E> entityMetadata, Map<String, Object> properties, boolean create) {
-		final String keyspace = entityMetadata.getSchemaName();
-		final String table = entityMetadata.getTableName();
-
-		TableMetadata existingTable = findTableMetadata(keyspace, table);
-		if (create) {
-			assertNull(existingTable);
-			persistor.createTable(entityMetadata, properties);
-		} else {
-			assertNotNull(existingTable);
-			persistor.updateTable(entityMetadata, properties);
-		}
-
-		TableMetadata tmd = findTableMetadata(keyspace, table);
-		assertNotNull(tmd);
-		assertMatches(entityMetadata, properties, tmd);
-	}
-
-	
-	
-	private TableMetadata findTableMetadata(String keyspace, String table) {
-		// search for just created table. Since (at least in current configuration) cassandra is case-insensitive 
-		// and creates tables using lower case and we do not know whether this is configurable 
-		// we have to search for table by iterating over all tables to make test more not sensitive to the possible 
-		// future configuration changes. 
-		for (TableMetadata t : ((CqlPersistor)persistor).getCluster().getMetadata().getKeyspace(keyspace).getTables()) {
-			if (t.getName().equalsIgnoreCase(table)) {
-				return t;
-			}
-		}
-		return null;
-	}
-	
-	private <E> void assertMatches(EntityMetadata<E> emd, Map<String, Object> properties, TableMetadata tmd) {
-		assertNotNull(tmd);
-		
-		assertEquals(emd.getTableName().toLowerCase(), tmd.getName().toLowerCase());
-		assertEquals(emd.getSchemaName(), tmd.getKeyspace().getName());
-		
-		Collection<String> actualIndexedColumns = new HashSet<>();
-		
-		for (FieldMetadata<E, ?> fmd : emd.getFields()) {
-			String column = fmd.getColumn();
-			ColumnMetadata cmd = tmd.getColumn(column);
-			assertNotNull("Column " + column + " is not found", cmd);
-			assertEquals(column, cmd.getName());
-			
-			
-			
-			Class<?> fmdType = fmd.getType();
-			Class<?> fmdTypeComponent = fmdType.getComponentType();
-			Set<Class<?>> specialArrayTypes = new HashSet<>(Arrays.<Class<?>>asList(byte.class, Byte.class));
-			if (fmdType.isArray() && !specialArrayTypes.contains(fmdTypeComponent)) {
-				assertEquals(List.class, cmd.getType().asJavaClass());
-				assertEquals(fmdTypeComponent, cmd.getType().getTypeArguments().iterator().next().asJavaClass());
-			} else {
-				assertEquals(toCqlJavaType(fmd.getType()), cmd.getType().asJavaClass());
-			}
-			
-			if(cmd.getIndex() != null) {
-				actualIndexedColumns.add(cmd.getIndex().getIndexedColumn().getName());
-			}
-		}
-		
-		Collection<String> exepectedPKColumns = 
-		Collections2.transform(
-		Collections2.filter(emd.getFields(), new Predicate<FieldMetadata<?, ?>>() {
-			@Override
-			public boolean apply(FieldMetadata<?, ?> fmd) {
-				return fmd.isKey();
-			}
-		}), 
-		new Function<FieldMetadata<?, ?>, String>() {
-			@Override
-			public String apply(FieldMetadata<?, ?> fmd) {
-				return fmd.getColumn();
-			}
-		});
-		
-		Collection<String> actualPKColumns = 
-		Collections2.transform(tmd.getPrimaryKey(), new Function<ColumnMetadata, String>() {
-			@Override
-			public String apply(ColumnMetadata cmd) {
-				return cmd.getName();
-			}
-		});
-		
-	
-		assertArrayEquals(exepectedPKColumns.toArray(), actualPKColumns.toArray());
-		
-		Map<String, String> expectedIndexes = new HashMap<>();
-		
-		for (IndexMetadata<E> imd : emd.getIndexes()) {
-			FieldMetadata<E, ? extends Object>[] indexFields = imd.getField();
-			assertEquals(1, indexFields.length);
-			expectedIndexes.put(imd.getName(), indexFields[0].getColumn());
-		}
-
-		assertEquals("Unexpected list of indexed columns", new HashSet<String>(expectedIndexes.values()), new HashSet<String>(actualIndexedColumns));
-	}
-	
-	private Class<?> toCqlJavaType(Class<?> type) {
-		Class<?> cqlType = prop2cql.get(type);
-		if (cqlType != null) {
-			return cqlType;
-		}
-		
-		return Primitives.wrap(type);
-	}
-	
-	
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	private <T> EntityMetadata<T> createMetadata(Class<T> clazz, String schemaName, String tableName, FieldMetadata pk, FieldMetadata ... fieldsMetadata) {
-		EntityMetadata<T> emd = new EntityMetadata<>(clazz);
-		emd.setEntityName(clazz.getSimpleName());
-		emd.setTableName(tableName);
-		emd.setSchemaName(schemaName);
-		
-		if (pk != null) {
-			pk.setKey(true);
-		}
-		emd.setPrimaryKey(pk);
-		
-		for (FieldMetadata<T, Object> field : fieldsMetadata) {
-			emd.addField(field);
-		}
-		
-		return emd;
-	}
 	
 }

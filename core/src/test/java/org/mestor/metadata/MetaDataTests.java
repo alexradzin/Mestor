@@ -45,13 +45,13 @@ public class MetaDataTests {
 		emd.setSchemaName(SCHEME_NAME);
 
 		//set field metadata per property 
-		FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, NAME_FIELD);		
+		FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, NAME_FIELD, null, null, null);		
 		nameField.setColumn(NAME_COLUMN);
 		nameField.setKey(true);
 		nameField.setNullable(false);
 		nameField.setLazy(false);
 		
-		FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age");
+		FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age", null, null, null);
 		ageField.setColumn(AGE_COLUMN);
 		ageField.setNullable(true);
 		

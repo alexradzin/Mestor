@@ -429,7 +429,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	 * @return object wrapper factory
 	 */
 	private <T> ObjectWrapperFactory<T> getObjectWrapperFactory(Class<T> entityClass) {
-		return persistor.getObjectWrapperFactory();
+		return persistor.getObjectWrapperFactory(entityClass);
 	}
 
 	// Implementation of EntityContext

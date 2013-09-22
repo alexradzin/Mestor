@@ -26,6 +26,7 @@ import javassist.util.proxy.MethodHandler;
 import org.mestor.context.DirtyEntityManager;
 import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
 import org.mestor.reflection.MethodAccessor;
 
 public class PropertyAccessHandler<T> implements MethodHandler {
@@ -53,13 +54,15 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 		
 		if (MethodAccessor.isGetter(thisMethod)) {
 			final Object result;
-			String fieldName = metadata.getFieldNameByGetter(thisMethod);
+			FieldMetadata<T, Object> fmd = metadata.getFieldByGetter(thisMethod);
+			String fieldName = fmd.getName();
 			
-			if ((lazy || metadata.getField(fieldName).isLazy()) && !retreivedFields.contains(fieldName)) {
+			if ((lazy || fmd.isLazy()) && !retreivedFields.contains(fieldName)) {
 				// retrieve that property from DB
-				result = persistor.fetchProperty(self, fieldName);
+				Object[] fieldValues = persistor.fetchProperty(self, fieldName);
+				result = fieldValues == null ? null : fieldValues[0];
 				// put value into wrapped object
-				metadata.getField(fieldName).getAccessor().setValue(instance, result);
+				fmd.getAccessor().setValue(instance, result);
 				retreivedFields.add(fieldName);
 			} else {
 				result = thisMethod.invoke(instance, args);
@@ -72,7 +75,9 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 		
 		if (MethodAccessor.isSetter(thisMethod)) {
 			thisMethod.invoke(instance, args);
-			changedFields.add(metadata.getFieldNameBySetter(thisMethod));
+			FieldMetadata<T, ?> fmd = metadata.getFieldBySetter(thisMethod);
+			changedFields.add(fmd.getName());
+			thisMethod.invoke(instance, args);
 			return null; // setter does not return value
 		}
 		

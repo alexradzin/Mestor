@@ -17,6 +17,7 @@
 
 package org.mestor.persistence.cql;
 
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -87,7 +88,7 @@ public abstract class RowFunctionAdapter<R> implements Function<Row, R> {
 
 		if (InetAddress.class.isAssignableFrom(type)) {
 			checkTypes(types, 1, name);
-			return (T)row.getDate(name);
+			return (T)row.getInet(name);
 		}
 
 		if (UUID.class.isAssignableFrom(type)) {
@@ -98,7 +99,7 @@ public abstract class RowFunctionAdapter<R> implements Function<Row, R> {
 		
 		if (BigInteger.class.isAssignableFrom(type)) {
 			checkTypes(types, 1, name);
-			return (T)row.getVarint(name);
+			return (T)BigInteger.valueOf(row.getLong(name));
 		}
 		
 		if (BigDecimal.class.isAssignableFrom(type)) {
@@ -133,6 +134,21 @@ public abstract class RowFunctionAdapter<R> implements Function<Row, R> {
 		if (Map.class.isAssignableFrom(type)) {
 			checkTypes(types, 3, name);
 			return (T)row.getMap(name, types[1], types[2]);
+		}
+		
+		if (type.isArray()) {
+			checkTypes(types, 1, name);
+			
+			Class<?> t = types[0].getComponentType();
+			List<?> list = row.getList(name, t);
+			int n = list.size();
+			// create typed array and copy list elements there
+			Object array = Array.newInstance(type.getComponentType(), n);
+			for(int i = 0; i < n; i++) {
+				Array.set(array, i, list.get(i));
+			}
+
+			return (T)array;
 		}
 		
 		throw new UnsupportedOperationException(type.getName());

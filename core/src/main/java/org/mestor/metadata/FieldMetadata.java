@@ -36,9 +36,12 @@ public class FieldMetadata<T, F> {
 
 	private PropertyAccessor<T, F> accessor;
 
-	
 	public FieldMetadata(Class<T> classType, Class<F> type, String name) {
-		accessor = new PropertyAccessor<T, F>(classType, name, null, null, null);
+		this(classType, type, name, null, null, null);
+	}
+	
+	public FieldMetadata(Class<T> classType, Class<F> type, String name, Field field, Method getter, Method setter) {
+		accessor = new PropertyAccessor<T, F>(classType, name, field, getter, setter);
 		this.classType = classType;
 		this.type = type;
 		this.name = name;

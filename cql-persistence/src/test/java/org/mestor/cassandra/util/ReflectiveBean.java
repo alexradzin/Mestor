@@ -15,32 +15,56 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.persistence.cql;
+package org.mestor.cassandra.util;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
-import com.datastax.driver.core.Row;
-
-class RowSplitter extends RowFunctionAdapter<Map<String, Object>> /*implements Function<Row, Map<String, Object>>*/ {
-	private final Map<String, Class<?>[]> fields;
-	
-	RowSplitter(Map<String, Class<?>[]> fields) {
-		this.fields = fields;
+/** 
+ * This class contains utilities that provide naive implementation 
+ * of bean properties access. Good for tests.
+ * @author alexr
+ *
+ */
+public class ReflectiveBean {
+	public static <T> Field getField(Class<?> clazz, String name) {
+		try {
+			Field f = clazz.getDeclaredField(name);
+			return f;
+		} catch (ReflectiveOperationException e) {
+			return null;
+		}
 	}
 
-	@Override
-	public Map<String, Object> apply(Row row) {
-		Map<String, Object> data = new LinkedHashMap<>();
-		
-		
-		for (Entry<String, Class<?>[]> field : fields.entrySet()) {
-			String fieldName = field.getKey();
-			Class<?>[] fieldType = field.getValue();
-			data.put(fieldName, getValue(row, fieldName, fieldType));
+	public static <T> Method getGetter(Class<?> clazz, String name) {
+		try {
+			String methodName = getMethodName(name, "get");
+			Method m = clazz.getMethod(methodName);
+			return m;
+		} catch (ReflectiveOperationException e1) {
+			try {
+				String methodName = getMethodName(name, "is");
+				Method m = clazz.getMethod(methodName);
+				return m;
+			} catch (ReflectiveOperationException e2) {
+				return null;
+			}
 		}
-		
-		return data;
+	}
+
+	
+	public static <T> Method getSetter(Class<?> clazz, Class<?> type, String name) {
+		try {
+			String methodName = getMethodName(name, "set");
+			Method m = clazz.getMethod(methodName, type);
+			return m;
+		} catch (ReflectiveOperationException e) {
+			return null;
+		}
+	}
+	
+	
+	private static String getMethodName(String propertyName, String prefix) {
+		return prefix + propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
 	}
 }

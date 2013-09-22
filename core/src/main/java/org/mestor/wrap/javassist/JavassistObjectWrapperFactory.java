@@ -44,7 +44,7 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		Class<T> clazz = (Class<T>)obj.getClass();
 		T proxy = ClassAccessor.newInstance(createClass(clazz));
 		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context.getPersistor(), context.getDirtyEntityManager(), true);
+		MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context.getPersistor(), context.getDirtyEntityManager(), false);
 		((ProxyObject)proxy).setHandler(mi);
 		return proxy;
 	}
@@ -83,10 +83,14 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 			f.setSuperclass(clazz);
 		}
 
+		final EntityMetadata<T> emd = context.getEntityMetadata(clazz);
+
+		
 		f.setFilter(new MethodFilter() {
 			@Override
 			public boolean isHandled(Method m) {
-				return context.getEntityMetadata(clazz).getFieldNameByGetter(m) != null;
+				System.out.println("isHandled(" + m + "): " + (emd.getFieldByGetter(m) != null || emd.getFieldBySetter(m) != null));
+				return emd.getFieldByGetter(m) != null || emd.getFieldBySetter(m) != null;
 			}
 		});
 		

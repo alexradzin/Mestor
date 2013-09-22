@@ -56,7 +56,7 @@ public class DummyPersistor implements Persistor {
 	}
 
 	@Override
-	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory() {
+	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory(Class<T> type) {
 		// TODO Auto-generated method stub
 		return null;
 	}
