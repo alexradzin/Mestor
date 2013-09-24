@@ -48,6 +48,7 @@ import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.testEntities.Person;
 
 @RunWith(CassandraAwareTestRunner.class)
 public class CqlPersistorBasicCrudTest {
@@ -57,6 +58,7 @@ public class CqlPersistorBasicCrudTest {
 	public CqlPersistorBasicCrudTest() throws IOException {
 		helper = new CqlPersistorTestHelper();
 		persistor = helper.getPersistor();
+		doReturn(helper.getPersistor()).when(helper.ctx).getPersistor();
 	}
 
 	@Test
@@ -64,7 +66,7 @@ public class CqlPersistorBasicCrudTest {
 		final String schemaName = "test1";
 		try {
 			helper.testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
 			
 			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, "People", pk, pk);
 			helper.testEditTable(emd, null, true);
@@ -101,11 +103,11 @@ public class CqlPersistorBasicCrudTest {
 		final String schemaName = "test1";
 		try {
 			helper.testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
 			
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<Person, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<Person, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(Person.class, String.class, "name", "first_name", false),
 					helper.createFieldMetadata(Person.class, String.class, "lastName", "last_name", false),
@@ -158,10 +160,10 @@ public class CqlPersistorBasicCrudTest {
 		final String schemaName = "test1";
 		try {
 			helper.testCreateSchema(schemaName, null, false);
-			FieldMetadata<ManySimpleTypes, Integer> pk = helper.createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
+			FieldMetadata<ManySimpleTypes, Integer, Integer> pk = helper.createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<ManySimpleTypes, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<ManySimpleTypes, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(ManySimpleTypes.class, long.class, "longPrimitive"),
 					helper.createFieldMetadata(ManySimpleTypes.class, float.class, "floatPrimitive"),
@@ -246,10 +248,10 @@ public class CqlPersistorBasicCrudTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<InnerCollections, Integer> pk = helper.createFieldMetadata(InnerCollections.class, int.class, "id", "id", true);
+			FieldMetadata<InnerCollections, Integer, Integer> pk = helper.createFieldMetadata(InnerCollections.class, int.class, "id", "id", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<ManySimpleTypes, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<ManySimpleTypes, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(InnerCollections.class, String[].class, "stringArray"),
 					helper.createFieldMetadata(InnerCollections.class, List.class, new Class[] {String.class}, "stringList"),
@@ -314,11 +316,11 @@ public class CqlPersistorBasicCrudTest {
 		final String schemaName = "test1";
 		try {
 			helper.testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
 			
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<Person, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<Person, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(Person.class, String.class, "name", "first_name", false),
 			};

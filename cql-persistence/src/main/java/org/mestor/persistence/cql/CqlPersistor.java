@@ -42,12 +42,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
+import org.mestor.metadata.EntityComparator;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
+import org.mestor.metadata.ValueConverter;
 import org.mestor.metadata.jpa.BeanMetadataFactory;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
 import org.mestor.persistence.cql.management.AlterTable;
@@ -84,6 +87,7 @@ public class CqlPersistor implements Persistor {
 	private Session session;
 
 	private Map<String, Object> defaultKeyspaceProperties;
+	
 
 	private final Function<Query, Void> sessionHandler = new Function<Query, Void>() {
 		@Override
@@ -93,6 +97,20 @@ public class CqlPersistor implements Persistor {
 		}
 	};
 
+	
+	/**
+	 * This interface provides bidirectional access to underlined {@link ValueConverter}. It is good to reuse
+	 * code that should be executed when entity is stored in database and fetched from it.  
+	 * The interface is named after pushmi-pullyu (pronounced "push-me—pull-you"), 
+	 * character of "The Story of Doctor Dolittle" by Hugh Lofting.   
+	 * It is a "gazelle-unicorn cross" which has two heads (one of each) at opposite ends of its body.
+	 * @author alexr
+	 */
+	private static interface PushmiPullyuConverter {
+		public Object convert(ValueConverter<Object, Object> conveter, Object from);
+	}
+	
+	
 	@SuppressWarnings({ "cast", "unchecked" })
 	public CqlPersistor(EntityContext context) throws IOException {
 		if (context == null) {
@@ -136,10 +154,17 @@ public class CqlPersistor implements Persistor {
 
 		Insert insert = insertInto(quote(keyspace), quote(table));
 
-		for (FieldMetadata<E, ?> fmd : emd.getFields()) {
+		for (FieldMetadata<E, Object, ?> fmd : emd.getFields()) {
 			String name = fmd.getColumn();
-			Object value = fmd.getAccessor().getValue(entity);
-			insert.value(quote(name), transformValue(value));
+			Object value = convertValue(fmd, transformValue(fmd.getAccessor().getValue(entity)), new PushmiPullyuConverter() {
+				@Override
+				public Object convert(ValueConverter<Object, Object> conveter, Object v) {
+					return conveter.toColumn(v);
+				}
+			});
+			if (value != null) {
+				insert.value(quote(name), value);
+			}
 		}
 
 		session.execute(insert);
@@ -147,7 +172,64 @@ public class CqlPersistor implements Persistor {
 		// TODO implement cascade here
 	}
 
-	// TODO: this method in future should take care on custom types
+	
+
+
+	/**
+	 * This method converts given value into other form using appropriate converter. The method is used in 
+	 * both direction: when saving object in database for converting java types to corresponding column types 
+	 * and when fetching object from database for converting column types to java types.
+	 * The direction is controlled by {@link PushmiPullyuConverter}.  
+	 * @param fmd
+	 * @param obj
+	 * @param pushmiPullyu
+	 * @return converted object
+	 */
+	private <E> Object convertValue(FieldMetadata<E, Object, ?> fmd, Object obj, PushmiPullyuConverter pushmiPullyu) {
+		Object result = obj;
+		
+		
+		if (obj instanceof Collection) {
+			@SuppressWarnings("unchecked")
+			Collection<Object> collection = (Collection<Object>)obj;
+			
+			final Collection<Object> resCollection;
+			if (obj instanceof List) {
+				resCollection = new ArrayList<Object>();
+			} else if (obj instanceof Set) {
+				resCollection = new LinkedHashSet<Object>(); //LinkedHashSet to preserve the order just in case  
+			} else {
+				throw new IllegalArgumentException("Only List or Set are supported, got " + obj.getClass());
+			}
+			
+			ValueConverter<Object, Object> elementConverter = fmd.getConverter(1);
+			for (Object element : collection) {
+				resCollection.add(pushmiPullyu.convert(elementConverter, element));
+			}
+			result = resCollection;
+		} else if (obj instanceof Map) {
+			@SuppressWarnings({ "rawtypes", "unchecked" })
+			final Map<Object, Object> map = (Map)obj;
+			final Map<Object, Object> resMap = new LinkedHashMap<>();
+			
+			ValueConverter<Object, Object> keyConverter = fmd.getConverter(1);
+			ValueConverter<Object, Object> valueConverter = fmd.getConverter(2);
+			
+			for (Entry<Object, Object> entry : map.entrySet()) {
+				Object key = entry.getKey();
+				Object value = entry.getValue();
+				resMap.put(pushmiPullyu.convert(keyConverter, key), pushmiPullyu.convert(valueConverter, value));
+			}
+			
+			result = resMap;
+		}
+
+		
+		return pushmiPullyu.convert(fmd.getConverter(0), result);
+	}
+	
+	
+	
 	private Object transformValue(Object value) {
 		if (value == null) {
 			return value;
@@ -169,6 +251,7 @@ public class CqlPersistor implements Persistor {
 		return value;
 	}
 
+	
 	@Override
 	public <E, P> E fetch(Class<E> clazz, P primaryKey) {
 		EntityMetadata<E> emd = context.getEntityMetadata(clazz);
@@ -176,10 +259,10 @@ public class CqlPersistor implements Persistor {
 		Select.Selection select = select();
 
 		Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<String, Class<?>[]>();
-		for (FieldMetadata<E, ?> fmd : emd.getFields()) {
+		for (FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
 			if (!fmd.isLazy()) {
 				select.column(quote(fmd.getColumn()));
-				fieldTypes.put(fmd.getColumn(), emd.getFieldTypes().get(fmd.getColumn()));
+				fieldTypes.put(fmd.getColumn(), emd.getColumnTypes(fmd.getColumn()));
 			}
 		}
 
@@ -200,11 +283,44 @@ public class CqlPersistor implements Persistor {
 			throw new IllegalArgumentException("Class " + clazz
 					+ " must have accessible default constructor");
 		}
-		for (Entry<String, Object> f : data.entrySet()) {
-			String name = f.getKey();
-			Object value = f.getValue();
 
-			emd.getField(name).getAccessor().setValue(entity, value);
+		// set primary key. If we are here the primary key definitely equals to one that is 
+		// in persisted entity.
+		emd.getPrimaryKey().getAccessor().setValue(entity, primaryKey);
+
+		// create fetch context lazily
+		boolean fetchContextOriginator = false;
+		if (fetchContext.get() == null) {
+			fetchContext.set(new TreeMap<Object, Object>(new EntityComparator<Object>(context)));
+			fetchContextOriginator = true;
+		}
+		
+		// store the just created instance of entity into fetchContext BEFORE populating of all its properties
+		// to prevent possible infinite recursion if entity refers to itself either directly or indirectly.
+		fetchContext.get().put(entity, entity);
+		
+		try {
+			for (Entry<String, Object> d : data.entrySet()) {
+				String columnName = d.getKey();
+				Object columnValue = d.getValue();
+				
+				FieldMetadata<E, Object, Object> fmd = emd.getField(columnName);
+				//Object fieldValue = fmd.getConverter().fromColumn(columnValue);
+				
+				Object fieldValue = convertValue(fmd, columnValue, new PushmiPullyuConverter() {
+					@Override
+					public Object convert(ValueConverter<Object, Object> conveter, Object v) {
+						return conveter.fromColumn(v);
+					}
+				});
+				
+				
+				fmd.getAccessor().setValue(entity, fieldValue);
+			}
+		} finally {
+			if (fetchContextOriginator) {
+				fetchContext.remove();
+			}
 		}
 
 		return getObjectWrapperFactory(clazz).wrap(entity);
@@ -244,7 +360,7 @@ public class CqlPersistor implements Persistor {
 			// TODO cache this metadata too.
 			BeanMetadataFactory f = new BeanMetadataFactory();
 			EntityMetadata<P> pkMetadata = f.create(pkType);
-			for (FieldMetadata<E, Object> fmd : emd.getFields()) {
+			for (FieldMetadata<E, Object, Object> fmd : emd.getFields()) {
 				if (fmd.isKey()) {
 					Object value = pkMetadata.getField(fmd.getName())
 							.getAccessor().getValue(primaryKey);
@@ -303,19 +419,19 @@ public class CqlPersistor implements Persistor {
 		Select.Selection select = select();
 
 		List<String> columns = new ArrayList<>();
-		Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<String, Class<?>[]>();
-		for (FieldMetadata<E, ?> fmd : emd.getFields()) {
+		Map<String, Class<?>[]> columnTypes = new LinkedHashMap<String, Class<?>[]>();
+		for (FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
 			if (propertyNamesSet.contains(fmd.getName())) {
 				final String column = fmd.getColumn();
 				columns.add(column);
 				select.column(quote(column));
-				fieldTypes.put(column, emd.getFieldTypes().get(column));
+				columnTypes.put(column, emd.getColumnTypes(column));
 			}
 		}
 
 		Object[] result = new Object[propertyNames.length];
 
-		Map<String, Object> rawResult = doSelect(select, emd, primaryKey, fieldTypes).iterator().next();
+		Map<String, Object> rawResult = doSelect(select, emd, primaryKey, columnTypes).iterator().next();
 
 		for (int i = 0; i < result.length; i++) {
 			result[i] = rawResult.get(columns.get(i));
@@ -369,8 +485,8 @@ public class CqlPersistor implements Persistor {
 				.in(entityMetadata.getSchemaName()).with(properties);
 
 		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
-		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields()) {
-			table.add(fmd.getColumn(), fmd.getType(), fmd.getGenericTypes()
+		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+			table.add(fmd.getColumn(), fmd.getColumnType(), fmd.getColumnGenericTypes()
 					.toArray(new Class[0]),
 					getFieldAttributes(fmd, indexedColumns));
 		}
@@ -479,7 +595,7 @@ public class CqlPersistor implements Persistor {
 		return transform(session.execute(query), new RowSplitter(fields));
 	}
 
-	private <E> FieldAttribute[] getFieldAttributes(FieldMetadata<E, ?> fmd,
+	private <E> FieldAttribute[] getFieldAttributes(FieldMetadata<E, ?, ?> fmd,
 			Collection<String> indexedColumns) {
 		Collection<FieldAttribute> attrs = new ArrayList<>();
 		if (fmd.isKey()) {
@@ -495,7 +611,7 @@ public class CqlPersistor implements Persistor {
 			EntityMetadata<E> entityMetadata) {
 		Collection<String> indexedColumns = new LinkedHashSet<String>();
 		for (IndexMetadata<E> imd : entityMetadata.getIndexes()) {
-			for (FieldMetadata<E, ?> fmd : imd.getField()) {
+			for (FieldMetadata<E, ?, ?> fmd : imd.getField()) {
 				indexedColumns.add(fmd.getColumn());
 			}
 		}
@@ -531,29 +647,30 @@ public class CqlPersistor implements Persistor {
 		Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
 
 		// find fields that have to be added or altered
-		for (FieldMetadata<E, ?> fmd : entityMetadata.getFields()) {
+		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
 			// AlterTable table =
 			// CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 			String column = fmd.getColumn();
+			Class<?> columnType = fmd.getColumnType();
+			
 			ColumnMetadata existingColumn = existingColumns.get(column);
 			if (existingColumn == null) {
 				handle(queryHandler,
 						CommandBuilder.alterTable().addColumn(column,
-								fmd.getType()), entityMetadata, properties);
+								columnType), entityMetadata, properties);
 				continue;
 			}
 
 			Class<?> existingType = existingColumn.getType().asJavaClass();
-			Class<?> fieldType = fmd.getType();
 
 			boolean existingColumnIsIndexed = existingColumn.getIndex() != null;
 			boolean fieldIsIndexed = indexedColumns.contains(fmd.getColumn());
 
-			if (!existingType.isAssignableFrom(fieldType)
+			if (!existingType.isAssignableFrom(columnType)
 					|| existingColumnIsIndexed != fieldIsIndexed) {
 				handle(queryHandler,
 						CommandBuilder.alterTable().alterColumn(column,
-								fmd.getType()), entityMetadata, properties);
+								columnType), entityMetadata, properties);
 				continue;
 			}
 		}
@@ -659,10 +776,10 @@ public class CqlPersistor implements Persistor {
 		for (IndexMetadata<E> imd : entityMetadata.getIndexes()) {
 			requiredIndexes.addAll(Collections2.transform(
 					Arrays.asList(imd.getField()),
-					new Function<FieldMetadata<E, ? extends Object>, String>() {
+					new Function<FieldMetadata<E, ? extends Object, ? extends Object>, String>() {
 						@Override
 						public String apply(
-								FieldMetadata<E, ? extends Object> fmd) {
+								FieldMetadata<E, ? extends Object, ? extends Object> fmd) {
 							return fmd.getColumn();
 						}
 					}));
@@ -675,4 +792,5 @@ public class CqlPersistor implements Persistor {
 	Cluster getCluster() {
 		return cluster;
 	}
+	
 }

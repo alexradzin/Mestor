@@ -15,68 +15,53 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.reflection;
+package org.mestor.metadata.jpa.conversion;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.metadata.FieldMetadata;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
+import javax.persistence.AttributeConverter;
 
-public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
-	private final Class<P> compositeType; 
-	private final PropertyAccessor<T, Object>[] accessors;
-	private final Map<String, PropertyAccessor<T, Object>> name2accessors;
-	private final BeanMetadataFactory mdf = new BeanMetadataFactory();
-	private final EntityMetadata<P> pm;
-	
-	
-	public CompositePropertyAccessor(Class<T> type, Class<P> compositeType, String name, PropertyAccessor<T, Object>[] accessors) {
-		super(type, name, null, null, null);
+public class SerializableConverter<T extends Serializable> implements AttributeConverter<T, ByteBuffer> {
 
-		this.compositeType = compositeType;
-		this.accessors = Arrays.copyOf(accessors, accessors.length);
-		
-		
-		name2accessors = new LinkedHashMap<>();
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			name2accessors.put(accessor.getName(), accessor);
+	@Override
+	public ByteBuffer convertToDatabaseColumn(T attribute) {
+		if (attribute == null) {
+			return null;
 		}
 		
-		
-		this.pm = mdf.create(compositeType);
-	}
-
-	
-	
-	@Override
-	public P getValue(T instance) {
-		P p;
 		try {
-			p = compositeType.newInstance();
-		} catch (InstantiationException e) {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ObjectOutputStream oos = new ObjectOutputStream(baos);
+			oos.writeObject(attribute);
+			return ByteBuffer.wrap(baos.toByteArray());
+		} catch (IOException e) {
+			// If IOException is thrown while writing to ByteArrayOutputStream 
+			// something is going very very wrong...
 			throw new IllegalStateException(e);
-		} catch (IllegalAccessException e) {
-			throw new IllegalArgumentException("Class " + compositeType + " does not have accessible default constructor", e);
-		}
-		
-		
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			String name = accessor.getName();
-			Object value = accessor.getValue(instance);
-			
-			pm.getField(name).getAccessor().setValue(p, value);
-		}
-		
-		return p;
+		}		
 	}
-	
+
 	@Override
-	public void setValue(T instance, P value) {
-		for(FieldMetadata<?, ?, ?> fmd : pm.getFields()) {
-			name2accessors.get(fmd.getName()).setValue(instance, value);
+	public T convertToEntityAttribute(ByteBuffer dbData) {
+		if (dbData == null) {
+			return null;
 		}
+		try {
+			ByteArrayInputStream bais = new ByteArrayInputStream(dbData.array());
+			ObjectInputStream ois = new ObjectInputStream(bais);
+			@SuppressWarnings("unchecked")
+			T attribute = (T)ois.readObject();
+			return attribute;
+		} catch (IOException | ClassNotFoundException e) {
+			// If IOException is thrown while reading from ByteArrayInputStream 
+			// something is going very very wrong...
+			throw new IllegalStateException(e);
+		}		
 	}
 }

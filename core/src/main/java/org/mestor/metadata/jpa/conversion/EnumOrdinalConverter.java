@@ -15,68 +15,49 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.reflection;
+package org.mestor.metadata.jpa.conversion;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.lang.reflect.Array;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.metadata.FieldMetadata;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
+import javax.persistence.AttributeConverter;
 
-public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
-	private final Class<P> compositeType; 
-	private final PropertyAccessor<T, Object>[] accessors;
-	private final Map<String, PropertyAccessor<T, Object>> name2accessors;
-	private final BeanMetadataFactory mdf = new BeanMetadataFactory();
-	private final EntityMetadata<P> pm;
+public class EnumOrdinalConverter<T extends Enum<T>> implements AttributeConverter<T, Integer> {
+	private final Class<T> enumType;
+	private T[] elements;
 	
-	
-	public CompositePropertyAccessor(Class<T> type, Class<P> compositeType, String name, PropertyAccessor<T, Object>[] accessors) {
-		super(type, name, null, null, null);
-
-		this.compositeType = compositeType;
-		this.accessors = Arrays.copyOf(accessors, accessors.length);
-		
-		
-		name2accessors = new LinkedHashMap<>();
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			name2accessors.put(accessor.getName(), accessor);
-		}
-		
-		
-		this.pm = mdf.create(compositeType);
+	public EnumOrdinalConverter(Class<T> enumType) {
+		this.enumType = enumType;
+		elements = init();
 	}
 
-	
-	
-	@Override
-	public P getValue(T instance) {
-		P p;
+	private T[] init() {
+		Object values;
 		try {
-			p = compositeType.newInstance();
-		} catch (InstantiationException e) {
+			values = enumType.getMethod("values").invoke(null);
+		} catch (ReflectiveOperationException e) {
 			throw new IllegalStateException(e);
-		} catch (IllegalAccessException e) {
-			throw new IllegalArgumentException("Class " + compositeType + " does not have accessible default constructor", e);
 		}
 		
-		
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			String name = accessor.getName();
-			Object value = accessor.getValue(instance);
-			
-			pm.getField(name).getAccessor().setValue(p, value);
+		int n = Array.getLength(values);
+		@SuppressWarnings("unchecked")
+		T[] elems = (T[])Array.newInstance(enumType, n);
+		for (int i = 0; i < n; i++) {
+			@SuppressWarnings("unchecked")
+			T element = (T)Array.get(values, i);
+			int ordinal = element.ordinal();
+			elems[ordinal] = element;
 		}
-		
-		return p;
+		return elems;
 	}
 	
+	
 	@Override
-	public void setValue(T instance, P value) {
-		for(FieldMetadata<?, ?, ?> fmd : pm.getFields()) {
-			name2accessors.get(fmd.getName()).setValue(instance, value);
-		}
+	public Integer convertToDatabaseColumn(T attribute) {
+		return attribute == null ? null : attribute.ordinal();
+	}
+
+	@Override
+	public T convertToEntityAttribute(Integer ordinal) {
+		return ordinal == null ? null : elements[ordinal];
 	}
 }

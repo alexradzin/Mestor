@@ -288,7 +288,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		@SuppressWarnings("unchecked")
 		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
 		
-		FieldMetadata<?, ?> pkMeta = emeta.getPrimaryKey();
+		FieldMetadata<?, ?, ?> pkMeta = emeta.getPrimaryKey();
 		if (pkMeta == null) {
 			throw new IllegalStateException("Unable to retrieve entity " + entityClass + " using primary key because it does not have primary key");
 		}

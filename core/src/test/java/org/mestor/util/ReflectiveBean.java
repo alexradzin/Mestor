@@ -15,71 +15,56 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.util;
 
-import java.util.Arrays;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
-public class IndexMetadata<T> {
-	private final Class<T> type;
-	private final String name;
-	private final FieldMetadata<T, ? extends Object, ? extends Object>[] fields;
-
-
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object> field) {
-		this(type, name, new FieldMetadata[] {field});
-	}
-	
-	
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object>[] fields) {
-		this.type = type;
-		this.name = name;
-		this.fields = Arrays.copyOf(fields, fields.length);
-	}
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] fieldNames) {
-		this.type = entityMetadata.getEntityType();
-		this.name = name;
-		
-		
-		fields = new FieldMetadata[fieldNames.length];
-		
-		for (int i = 0; i < fieldNames.length; i++) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(fieldNames[i]);
-			if (fmd == null) {
-				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + fieldNames[i]);
-			}
-			fields[i] = fmd;
-		}
-	}
-
-
-	public Class<T> getType() {
-		return type;
-	}
-
-
-	public String getName() {
-		return name;
-	}
-
-
-	public FieldMetadata<T, ? extends Object, ? extends Object>[] getField() {
-		return fields;
-	}
-
-	public String[] getFieldNames() {
-		if (fields == null) {
+/** 
+ * This class contains utilities that provide naive implementation 
+ * of bean properties access. Good for tests.
+ * @author alexr
+ *
+ */
+public class ReflectiveBean {
+	public static <T> Field getField(Class<?> clazz, String name) {
+		try {
+			Field f = clazz.getDeclaredField(name);
+			return f;
+		} catch (ReflectiveOperationException e) {
 			return null;
 		}
-		String[] names = new String[fields.length];
-		for (int i = 0; i < fields.length; i++) {
-			names[i] = fields[i].getName();
+	}
+
+	public static <T> Method getGetter(Class<?> clazz, String name) {
+		try {
+			String methodName = getMethodName(name, "get");
+			Method m = clazz.getMethod(methodName);
+			return m;
+		} catch (ReflectiveOperationException e1) {
+			try {
+				String methodName = getMethodName(name, "is");
+				Method m = clazz.getMethod(methodName);
+				return m;
+			} catch (ReflectiveOperationException e2) {
+				return null;
+			}
 		}
-		return names;
+	}
+
+	
+	public static <T> Method getSetter(Class<?> clazz, Class<?> type, String name) {
+		try {
+			String methodName = getMethodName(name, "set");
+			Method m = clazz.getMethod(methodName, type);
+			return m;
+		} catch (ReflectiveOperationException e) {
+			return null;
+		}
 	}
 	
 	
+	private static String getMethodName(String propertyName, String prefix) {
+		return prefix + propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
+	}
 }

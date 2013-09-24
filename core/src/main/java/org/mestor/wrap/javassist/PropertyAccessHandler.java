@@ -54,7 +54,7 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 		
 		if (MethodAccessor.isGetter(thisMethod)) {
 			final Object result;
-			FieldMetadata<T, Object> fmd = metadata.getFieldByGetter(thisMethod);
+			FieldMetadata<T, Object, Object> fmd = metadata.getFieldByGetter(thisMethod);
 			String fieldName = fmd.getName();
 			
 			if ((lazy || fmd.isLazy()) && !retreivedFields.contains(fieldName)) {
@@ -75,7 +75,7 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 		
 		if (MethodAccessor.isSetter(thisMethod)) {
 			thisMethod.invoke(instance, args);
-			FieldMetadata<T, ?> fmd = metadata.getFieldBySetter(thisMethod);
+			FieldMetadata<T, ?, ?> fmd = metadata.getFieldBySetter(thisMethod);
 			changedFields.add(fmd.getName());
 			thisMethod.invoke(instance, args);
 			return null; // setter does not return value

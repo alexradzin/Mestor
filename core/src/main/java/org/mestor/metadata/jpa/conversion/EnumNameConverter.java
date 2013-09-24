@@ -15,37 +15,25 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.persistence.cql;
+package org.mestor.metadata.jpa.conversion;
 
-public class Person {
-	private int id;
-	private String name;
-	private String lastName;
-	private int age;
+import javax.persistence.AttributeConverter;
+
+public class EnumNameConverter<T extends Enum<T>> implements AttributeConverter<T, String> {
+	private final Class<T> enumType;
 	
+	public EnumNameConverter(Class<T> enumType) {
+		this.enumType = enumType;
+	}
+
 	
-	public int getId() {
-		return id;
+	@Override
+	public String convertToDatabaseColumn(T attribute) {
+		return attribute == null ? null : attribute.name();
 	}
-	public void setId(int id) {
-		this.id = id;
-	}
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
-	public int getAge() {
-		return age;
-	}
-	public String getLastName() {
-		return lastName;
-	}
-	public void setLastName(String lastName) {
-		this.lastName = lastName;
-	}
-	public void setAge(int age) {
-		this.age = age;
+
+	@Override
+	public T convertToEntityAttribute(String name) {
+		return name == null ? null : Enum.valueOf(enumType, name);
 	}
 }

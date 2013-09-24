@@ -31,18 +31,19 @@ import org.mestor.reflection.PropertyAccessor;
 public class EntityMetadata<E> {
 	private Class<E> entityType;
 	private String entityName;
-	private FieldMetadata<E, ? extends Object> primaryKey;
+	private FieldMetadata<E, Object, Object> primaryKey;
 
 	private String tableName;
 	private String schemaName;
 	
-	private Collection<FieldMetadata<E, Object>> fields = new ArrayList<>();
-	private Map<String, FieldMetadata<E, ?>> fieldColumns = new LinkedHashMap<>();
+	private Collection<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
+	private Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
 	private Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<>();
+	private Map<String, Class<?>[]> columnTypes = new LinkedHashMap<>();
 	private Collection<IndexMetadata<E>> indexes = new ArrayList<>();
 	
-	private Map<Method, FieldMetadata<E, ?>> getter2field = new HashMap<>();
-	private Map<Method, FieldMetadata<E, ?>> setter2field = new HashMap<>();
+	private Map<Method, FieldMetadata<E, ?, ?>> getter2field = new HashMap<>();
+	private Map<Method, FieldMetadata<E, ?, ?>> setter2field = new HashMap<>();
 
 	
 	
@@ -76,11 +77,12 @@ public class EntityMetadata<E> {
 	}
 
 
-	public void setPrimaryKey(FieldMetadata<E, ? extends Object> primaryKey) {
-		this.primaryKey = primaryKey;
+	@SuppressWarnings("unchecked")
+	public <F,C> void setPrimaryKey(FieldMetadata<E, F, C> primaryKey) {
+		this.primaryKey = (FieldMetadata<E, Object, Object>)primaryKey;
 	}
 
-	public FieldMetadata<E, ? extends Object> getPrimaryKey() {
+	public FieldMetadata<E, Object, Object> getPrimaryKey() {
 		return this.primaryKey;
 	}
 
@@ -104,15 +106,29 @@ public class EntityMetadata<E> {
 	}
 	
 	
-	public Collection<FieldMetadata<E, Object>> getFields() {
+	public Collection<FieldMetadata<E, Object, Object>> getFields() {
 		return Collections.unmodifiableCollection(fields);
 	}
 
-	public Map<String, Class<?>[]> getFieldTypes() {
-		return Collections.unmodifiableMap(fieldTypes);
+	@SuppressWarnings("unchecked")
+	public <C> Class<C>[] getFieldTypes(String columnName) {
+		return (Class<C>[])fieldTypes.get(columnName);
 	}
 
-	public <F> void addField(FieldMetadata<E, F> fmeta) {
+	/**
+	 * Retrieves type of specified column. The type is typically identified by 
+	 * one class. However to identify list of set we need 2 classes (list and the list element).
+	 * For maps we need 3 classes (map itself, key and value). 
+	 * This is the reason that this method returns an array of {@link Class}.
+	 * @param columnName
+	 * @return array of {@link Class} objects that identify the column type
+	 */
+	@SuppressWarnings("unchecked")
+	public <C> Class<C>[] getColumnTypes(String columnName) {
+		return (Class<C>[])columnTypes.get(columnName);
+	}
+
+	public <F, C> void addField(FieldMetadata<E, F, C> fmeta) {
 		final PropertyAccessor<E, F> accessor = fmeta.getAccessor();
 		final Method getter = accessor.getGetter();
 		if (getter != null) {
@@ -129,28 +145,34 @@ public class EntityMetadata<E> {
 		types.add(fmeta.getType());
 		types.addAll(fmeta.getGenericTypes());
 		fieldTypes.put(column, types.toArray(new Class[0]));
+		
+		List<Class<?>> cTypes = new ArrayList<>();
+		cTypes.add(fmeta.getColumnType());
+		cTypes.addAll(fmeta.getColumnGenericTypes());
+		columnTypes.put(column, cTypes.toArray(new Class[0]));
+		
 		fieldColumns.put(column, fmeta);
 		
 		@SuppressWarnings("unchecked")
-		FieldMetadata<E, Object> fmd = (FieldMetadata<E, Object>)fmeta;
+		FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
 		fields.add(fmd);
 	}
 	
 	
 	@SuppressWarnings("unchecked")
-	public <F> FieldMetadata<E, F> getFieldByGetter(Method getter) {
-		return (FieldMetadata<E, F>)getter2field.get(getter);
+	public <F, C> FieldMetadata<E, F, C> getFieldByGetter(Method getter) {
+		return (FieldMetadata<E, F, C>)getter2field.get(getter);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <F> FieldMetadata<E, F> getFieldBySetter(Method setter) {
-		return (FieldMetadata<E, F>)setter2field.get(setter);
+	public <F, C> FieldMetadata<E, F, C> getFieldBySetter(Method setter) {
+		return (FieldMetadata<E, F, C>)setter2field.get(setter);
 	}
 
 
 	public Collection<String> getFieldNamesByType(Class<?> type) {
 		Collection<String> fieldNames = new ArrayList<>();
-		for(FieldMetadata<E, ? extends Object> fmd : fields) {
+		for(FieldMetadata<E, ? extends Object, ? extends Object> fmd : fields) {
 			if(type.isAssignableFrom(fmd.getClassType())) {
 				fieldNames.add(fmd.getName());
 			}
@@ -161,8 +183,8 @@ public class EntityMetadata<E> {
 	
 	
 	@SuppressWarnings("unchecked")
-	public <F> FieldMetadata<E, F> getField(String column) {
-		return (FieldMetadata<E, F>)this.fieldColumns.get(column);
+	public <F, C> FieldMetadata<E, F, C> getField(String column) {
+		return (FieldMetadata<E, F, C>)this.fieldColumns.get(column);
 	}
 
 	public Collection<IndexMetadata<E>> getIndexes() {
@@ -175,7 +197,7 @@ public class EntityMetadata<E> {
 
 
 	public void copy(E from, E to) {
-		for (FieldMetadata<E, ? extends Object> fmd : getFields()) {
+		for (FieldMetadata<E, ? extends Object, ? extends Object> fmd : getFields()) {
 			@SuppressWarnings("unchecked")
 			PropertyAccessor<E, Object> pa = (PropertyAccessor<E, Object>)fmd.getAccessor();
 			Object value = fmd.getAccessor().getValue(from);

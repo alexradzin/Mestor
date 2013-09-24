@@ -20,6 +20,6 @@ package org.mestor.metadata;
 public interface MetadataFactory {
 	public void setSchema(String schema);
 	public <T> EntityMetadata<T> create(Class<T> clazz);
-	public <T, F> FieldMetadata<T, F> create(Class<T> clazz, Class<F> fieldClass, String name);
+	public <T, F, C> FieldMetadata<T, F, C> create(Class<T> clazz, Class<F> fieldClass, String name);
 	public <T> IndexMetadata<T> create(EntityMetadata<T> entityMetadata, String name, String[] indexedFields);
 }

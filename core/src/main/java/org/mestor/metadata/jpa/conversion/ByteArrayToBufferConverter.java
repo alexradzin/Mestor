@@ -15,71 +15,23 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.metadata.jpa.conversion;
 
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 
-public class IndexMetadata<T> {
-	private final Class<T> type;
-	private final String name;
-	private final FieldMetadata<T, ? extends Object, ? extends Object>[] fields;
+import javax.persistence.AttributeConverter;
 
+public class ByteArrayToBufferConverter implements AttributeConverter<byte[], ByteBuffer> {
 
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object> field) {
-		this(type, name, new FieldMetadata[] {field});
+	@Override
+	public ByteBuffer convertToDatabaseColumn(byte[] array) {
+		return array == null ? null : ByteBuffer.wrap(array);
 	}
-	
-	
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object>[] fields) {
-		this.type = type;
-		this.name = name;
-		this.fields = Arrays.copyOf(fields, fields.length);
-	}
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] fieldNames) {
-		this.type = entityMetadata.getEntityType();
-		this.name = name;
-		
-		
-		fields = new FieldMetadata[fieldNames.length];
-		
-		for (int i = 0; i < fieldNames.length; i++) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(fieldNames[i]);
-			if (fmd == null) {
-				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + fieldNames[i]);
-			}
-			fields[i] = fmd;
-		}
+
+	@Override
+	public byte[] convertToEntityAttribute(ByteBuffer buffer) {
+		return buffer == null ? null : buffer.array();
 	}
 
 
-	public Class<T> getType() {
-		return type;
-	}
-
-
-	public String getName() {
-		return name;
-	}
-
-
-	public FieldMetadata<T, ? extends Object, ? extends Object>[] getField() {
-		return fields;
-	}
-
-	public String[] getFieldNames() {
-		if (fields == null) {
-			return null;
-		}
-		String[] names = new String[fields.length];
-		for (int i = 0; i < fields.length; i++) {
-			names[i] = fields[i].getName();
-		}
-		return names;
-	}
-	
-	
 }

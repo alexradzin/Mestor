@@ -15,71 +15,26 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.metadata.jpa.conversion;
 
-import java.util.Arrays;
+import javax.persistence.AttributeConverter;
 
-public class IndexMetadata<T> {
-	private final Class<T> type;
-	private final String name;
-	private final FieldMetadata<T, ? extends Object, ? extends Object>[] fields;
+import org.mestor.metadata.ValueConverter;
 
-
+public class ValueAttributeConverter<V, C> implements ValueConverter<V, C> {
+	private final AttributeConverter<V, C> attributeConverter;
 	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object> field) {
-		this(type, name, new FieldMetadata[] {field});
+	public ValueAttributeConverter(AttributeConverter<V, C> attributeConverter) {
+		this.attributeConverter = attributeConverter;
 	}
 	
-	
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object>[] fields) {
-		this.type = type;
-		this.name = name;
-		this.fields = Arrays.copyOf(fields, fields.length);
-	}
-	
-	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] fieldNames) {
-		this.type = entityMetadata.getEntityType();
-		this.name = name;
-		
-		
-		fields = new FieldMetadata[fieldNames.length];
-		
-		for (int i = 0; i < fieldNames.length; i++) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(fieldNames[i]);
-			if (fmd == null) {
-				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + fieldNames[i]);
-			}
-			fields[i] = fmd;
-		}
+	@Override
+	public C toColumn(V value) {
+		return attributeConverter.convertToDatabaseColumn(value);
 	}
 
-
-	public Class<T> getType() {
-		return type;
+	@Override
+	public V fromColumn(C column) {
+		return attributeConverter.convertToEntityAttribute(column);
 	}
-
-
-	public String getName() {
-		return name;
-	}
-
-
-	public FieldMetadata<T, ? extends Object, ? extends Object>[] getField() {
-		return fields;
-	}
-
-	public String[] getFieldNames() {
-		if (fields == null) {
-			return null;
-		}
-		String[] names = new String[fields.length];
-		for (int i = 0; i < fields.length; i++) {
-			names[i] = fields[i].getName();
-		}
-		return names;
-	}
-	
-	
 }

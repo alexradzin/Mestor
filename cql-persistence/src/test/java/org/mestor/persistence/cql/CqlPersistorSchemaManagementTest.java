@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -48,6 +49,7 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
+import org.mestor.testEntities.Person;
 
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
@@ -66,6 +68,7 @@ public class CqlPersistorSchemaManagementTest {
 	public CqlPersistorSchemaManagementTest() throws IOException {
 		helper = new CqlPersistorTestHelper();
 		persistor = helper.getPersistor();
+		doReturn(helper.getPersistor()).when(helper.ctx).getPersistor();
 	}
 	
 	
@@ -135,7 +138,7 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		try {
 			helper.testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", pk, pk), null, true);
@@ -150,8 +153,8 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			final FieldMetadata<Person, Integer> id = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
-			final FieldMetadata<Person, String> name = helper.createFieldMetadata(Person.class, String.class, "name", "first_name", true);
+			final FieldMetadata<Person, Integer, Integer> id = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
+			final FieldMetadata<Person, String, String> name = helper.createFieldMetadata(Person.class, String.class, "name", "first_name", true);
 			
 			final EntityMetadata<Person> emd = new EntityMetadata<>(Person.class);
 			emd.setEntityName("Person");
@@ -173,10 +176,10 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<Person, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<Person, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(Person.class, String.class, "name", "full_name", false),
 					helper.createFieldMetadata(Person.class, String.class, "last_name", "full_name", false),
@@ -194,10 +197,10 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, int.class, "id", "identifier", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<Person, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<Person, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(Person.class, String.class, "name", "given_name", false),
 					helper.createFieldMetadata(Person.class, String.class, "name", "first_name", false),
@@ -219,7 +222,7 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		try {
 			helper.testCreateSchema(schemaName, null, false);
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", null, pk), null, true);
 		} finally {
@@ -249,7 +252,7 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
@@ -276,7 +279,7 @@ public class CqlPersistorSchemaManagementTest {
 			helper.testCreateSchema(schemaName, null, false);
 			
 			// first create metadata
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
@@ -310,12 +313,12 @@ public class CqlPersistorSchemaManagementTest {
 
 			
 			// first create metadata
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
 			
-			FieldMetadata<Person, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
+			FieldMetadata<Person, String, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
 			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
@@ -343,10 +346,10 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<ManySimpleTypes, Integer> pk = helper.createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
+			FieldMetadata<ManySimpleTypes, Integer, Integer> pk = helper.createFieldMetadata(ManySimpleTypes.class, int.class, "intPrimitive", "intPrimitive", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<ManySimpleTypes, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<ManySimpleTypes, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(ManySimpleTypes.class, long.class, "longPrimitive"),
 					helper.createFieldMetadata(ManySimpleTypes.class, float.class, "floatPrimitive"),
@@ -382,10 +385,10 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<InnerCollections, Integer> pk = helper.createFieldMetadata(InnerCollections.class, int.class, "id", "id", true);
+			FieldMetadata<InnerCollections, Integer, Integer> pk = helper.createFieldMetadata(InnerCollections.class, int.class, "id", "id", true);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<InnerCollections, Object>[] fields = new FieldMetadata[] {
+			FieldMetadata<InnerCollections, Object, Object>[] fields = new FieldMetadata[] {
 					pk,
 					helper.createFieldMetadata(InnerCollections.class, String[].class, "stringArray"),
 					helper.createFieldMetadata(InnerCollections.class, List.class, new Class[] {String.class}, "stringList"),
@@ -414,7 +417,7 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
@@ -432,7 +435,7 @@ public class CqlPersistorSchemaManagementTest {
 		try {
 			helper.testCreateSchema(schemaName, null, false);
 			
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
@@ -475,7 +478,7 @@ public class CqlPersistorSchemaManagementTest {
 
 			
 			// first create metadata
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 
@@ -485,10 +488,10 @@ public class CqlPersistorSchemaManagementTest {
 
 			
 			// create similar metadata but with 2 additional fields
-			FieldMetadata<Person, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
+			FieldMetadata<Person, String, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
-			FieldMetadata<Person, Integer> ageField = helper.createFieldMetadata(Person.class, Integer.class, "age");
+			FieldMetadata<Person, Integer, Integer> ageField = helper.createFieldMetadata(Person.class, Integer.class, "age");
 			ageField.setColumn("age");
 			
 			EntityMetadata<Person> emd2 = helper.createMetadata(Person.class, schemaName, tableName, pk, pk, nameField, ageField);
@@ -530,17 +533,17 @@ public class CqlPersistorSchemaManagementTest {
 			emd.setSchemaName(schemaName);
 
 			
-			FieldMetadata<Person, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
+			FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			pk.setKey(true);
 			
 			emd.setPrimaryKey(pk);
 			
 			
-			FieldMetadata<Person, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
+			FieldMetadata<Person, String, String> nameField = helper.createFieldMetadata(Person.class, String.class, "name");
 			nameField.setColumn("first_name");
 			
-			FieldMetadata<Person, Integer> ageField = helper.createFieldMetadata(Person.class, Integer.class, "age");
+			FieldMetadata<Person, Integer, Integer> ageField = helper.createFieldMetadata(Person.class, Integer.class, "age");
 			ageField.setColumn("age");
 			
 			emd.addField(pk);
@@ -558,7 +561,7 @@ public class CqlPersistorSchemaManagementTest {
 			
 			
 			// now add column, i.e. alter table.
-			FieldMetadata<Person, String> lastNameField = helper.createFieldMetadata(Person.class, String.class, "lastName");
+			FieldMetadata<Person, String, String> lastNameField = helper.createFieldMetadata(Person.class, String.class, "lastName");
 			lastNameField.setColumn("last_name");
 			emd.addField(lastNameField);
 			

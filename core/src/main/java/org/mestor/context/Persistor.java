@@ -25,4 +25,6 @@ public interface Persistor {
 	public <E> void validateTable(EntityMetadata<E> entityMetadata, Map<String, Object> properties);
 	public <E> void dropTable(String keyspace, String tableName);
 	public Iterable<String> getTableNames(String keyspace);
+	
+	public final static ThreadLocal<Map<Object, Object>> fetchContext = new ThreadLocal<>();
 }

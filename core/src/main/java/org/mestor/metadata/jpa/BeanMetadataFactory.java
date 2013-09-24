@@ -94,13 +94,13 @@ public class BeanMetadataFactory implements MetadataFactory {
 	public <T> EntityMetadata<T> create(Class<T> clazz) {
 		EntityMetadata<T> emeta = new EntityMetadata<>(clazz);
 		
-		Map<String, FieldMetadata<T, Object>> fields = new LinkedHashMap<>();
+		Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
 		
 		for (Field f : FieldAccessor.getFields(clazz)) {
 			String name = getFieldName(f);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<T, Object> fmeta = create(clazz, (Class<Object>)f.getType(), name);
+			FieldMetadata<T, Object, Object> fmeta = create(clazz, (Class<Object>)f.getType(), name);
 			fmeta.setField(f);
 			
 			fields.put(name, fmeta);
@@ -113,7 +113,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 			}
 			
 			String fieldName = getFieldName(m);
-			FieldMetadata<T, Object> fmeta = fields.get(fieldName);
+			FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
 			
 			if (fmeta == null) {
 				@SuppressWarnings("unchecked")
@@ -145,7 +145,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 		
 		// process field and method level index annotations
 		
-		for (FieldMetadata<T, Object> fmeta : entityMetadata.getFields()) {
+		for (FieldMetadata<T, Object, Object> fmeta : entityMetadata.getFields()) {
 			findIndexes(entityMetadata, fmeta.getAccessor().getField(), fmeta.getName(), indexes);
 			findIndexes(entityMetadata, fmeta.getAccessor().getGetter(), fmeta.getName(), indexes);
 		}
@@ -216,7 +216,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 	
 
 	@Override
-	public <T, F> FieldMetadata<T, F> create(Class<T> clazz, Class<F> fieldClass, String fieldName) {
+	public <T, F, C> FieldMetadata<T, F, C> create(Class<T> clazz, Class<F> fieldClass, String fieldName) {
 		return new FieldMetadata<>(clazz, fieldClass, fieldName);
 	}
 	

@@ -15,71 +15,35 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.metadata.jpa.conversion;
 
-import java.util.Arrays;
+import javax.persistence.AttributeConverter;
 
-public class IndexMetadata<T> {
-	private final Class<T> type;
-	private final String name;
-	private final FieldMetadata<T, ? extends Object, ? extends Object>[] fields;
+/**
+ * Dummy implmentation of {@link AttributeConverter} that actually does no conversion 
+ * returning the same object that was received as a parameter.
+ * 
+ * Generally this class should be parametrized by one parameter only because both its methods
+ * return the same type that they get. However we have to use 2 parameters that by convention 
+ * must be the same to make access to this converter more convenient and similar to other 
+ * converters. 
+ * @author alexr
+ *
+ * @param <T>
+ */
+public class DummyAttributeConverter<X, Y> implements AttributeConverter<X, Y> {
 
-
-	
 	@SuppressWarnings("unchecked")
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object> field) {
-		this(type, name, new FieldMetadata[] {field});
+	@Override
+	public Y convertToDatabaseColumn(X attribute) {
+		return (Y)attribute;
 	}
-	
-	
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object>[] fields) {
-		this.type = type;
-		this.name = name;
-		this.fields = Arrays.copyOf(fields, fields.length);
-	}
-	
+
 	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] fieldNames) {
-		this.type = entityMetadata.getEntityType();
-		this.name = name;
-		
-		
-		fields = new FieldMetadata[fieldNames.length];
-		
-		for (int i = 0; i < fieldNames.length; i++) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(fieldNames[i]);
-			if (fmd == null) {
-				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + fieldNames[i]);
-			}
-			fields[i] = fmd;
-		}
+	@Override
+	public X convertToEntityAttribute(Y dbData) {
+		return (X)dbData;
 	}
 
 
-	public Class<T> getType() {
-		return type;
-	}
-
-
-	public String getName() {
-		return name;
-	}
-
-
-	public FieldMetadata<T, ? extends Object, ? extends Object>[] getField() {
-		return fields;
-	}
-
-	public String[] getFieldNames() {
-		if (fields == null) {
-			return null;
-		}
-		String[] names = new String[fields.length];
-		for (int i = 0; i < fields.length; i++) {
-			names[i] = fields[i].getName();
-		}
-		return names;
-	}
-	
-	
 }

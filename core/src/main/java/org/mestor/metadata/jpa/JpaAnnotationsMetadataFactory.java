@@ -85,7 +85,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 		// name to metadata
-		Map<String, FieldMetadata<T, Object>> fields = new LinkedHashMap<>();
+		Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
 		
 		for (Field f : FieldAccessor.getFields(clazz)) {
 			if (isTransient(f)) {
@@ -95,7 +95,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			@SuppressWarnings("unchecked")
 			Class<Object> type = (Class<Object>)f.getType();
 			final String name = getFieldName(f);
-			FieldMetadata<T, Object> fmeta = create(clazz, type, name);
+			FieldMetadata<T, Object, Object> fmeta = create(clazz, type, name);
 			
 			fmeta.setField(f);
 			initMeta(fmeta, f, name, clazz, type);
@@ -110,7 +110,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			}
 
 			String fieldName = getFieldName(m);
-			FieldMetadata<T, Object> fmeta = fields.get(fieldName);
+			FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
 			
 			
 			if (isTransient(m)) {
@@ -134,7 +134,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 				continue;
 			}
 			String fieldName = getFieldName(m);
-			FieldMetadata<T, Object> fmeta = fields.get(fieldName);
+			FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
 			
 			if (fmeta == null) {
 				continue;
@@ -146,8 +146,8 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		Collection<String> primaryKeyFields = new ArrayList<>();
 		Collection<PropertyAccessor<T, ? extends Object>> primaryKeyAccessors = new ArrayList<>();
 		
-		for (Entry<String, FieldMetadata<T, Object>> entry : fields.entrySet()) {
-			FieldMetadata<T, ? extends Object> fmeta = entry.getValue();
+		for (Entry<String, FieldMetadata<T, Object, Object>> entry : fields.entrySet()) {
+			FieldMetadata<T, ? extends Object, ? extends Object> fmeta = entry.getValue();
 					
 			if (fmeta.isKey()) {
 				primaryKeyFields.add(entry.getKey());
@@ -161,7 +161,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 		
 		
-		for (FieldMetadata<T,?> fmd : fields.values()) {
+		for (FieldMetadata<T, ?, ?> fmd : fields.values()) {
 			emeta.addField(fmd);
 		}
 
@@ -180,7 +180,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			String name = Joiner.on("_").join(primaryKeyFields);
 			
 			@SuppressWarnings("unchecked")
-			FieldMetadata<T, Object> keyMetadata = new FieldMetadata<>(clazz, idClass.value(), name);
+			FieldMetadata<T, Object, Object> keyMetadata = new FieldMetadata<>(clazz, idClass.value(), name);
 			
 			@SuppressWarnings("unchecked")
 			PropertyAccessor<T, Object>[] primaryKeyAccessorsArr = primaryKeyAccessors.toArray(new PropertyAccessor[primaryKeyAccessors.size()]); 
@@ -218,7 +218,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 	
 	
-	private <T, M> void initMeta(FieldMetadata<T, M> fmeta, AccessibleObject ao, String memberName, Class<T> clazz, Class<M> memberType) {
+	private <T, F, C> void initMeta(FieldMetadata<T, F, C> fmeta, AccessibleObject ao, String memberName, Class<T> clazz, Class<F> memberType) {
 		fmeta.setColumn(extractName(ao.getAnnotation(Column.class), namingStrategy.getColumnName(ao)));
 		fmeta.setKey(ao.getAnnotation(Id.class) != null);
 		

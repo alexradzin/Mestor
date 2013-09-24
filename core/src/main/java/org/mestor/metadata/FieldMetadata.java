@@ -20,19 +20,24 @@ package org.mestor.metadata;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.mestor.reflection.PropertyAccessor;
 
-public class FieldMetadata<T, F> {
+public class FieldMetadata<T, F, C> {
 	private Class<T> classType;
 	private Class<F> type;
+	private Class<C> columnType;
 	private String name;
 	private String column;
 	private boolean nullable;
 	private boolean key;
 	private boolean lazy = false;
 	private Collection<Class<?>> genericTypes = new ArrayList<Class<?>>();
+	private Collection<Class<?>> columnGenericTypes = new ArrayList<Class<?>>();
+	private List<ValueConverter<?, ?>> converters = new ArrayList<>();
 
 	private PropertyAccessor<T, F> accessor;
 
@@ -40,11 +45,19 @@ public class FieldMetadata<T, F> {
 		this(classType, type, name, null, null, null);
 	}
 	
+	@SuppressWarnings("unchecked")
 	public FieldMetadata(Class<T> classType, Class<F> type, String name, Field field, Method getter, Method setter) {
+		this(classType, type, (Class<C>)type, name, field, getter, setter, new DummyValueConverter<F, C>(), new DummyValueConverter<F, C>(), new DummyValueConverter<F, C>());
+	}
+	
+	@SafeVarargs
+	public FieldMetadata(Class<T> classType, Class<F> type, Class<C> columnType, String name, Field field, Method getter, Method setter, ValueConverter<F, C> ...converters) {
 		accessor = new PropertyAccessor<T, F>(classType, name, field, getter, setter);
 		this.classType = classType;
 		this.type = type;
+		this.columnType = columnType;
 		this.name = name;
+		this.converters.addAll(Arrays.asList(converters));
 	}
 
 
@@ -149,6 +162,44 @@ public class FieldMetadata<T, F> {
 	public void setGenericTypes(Collection<Class<?>> genericTypes) {
 		this.genericTypes = genericTypes;
 	}
+
+	public Class<C> getColumnType() {
+		return columnType;
+	}
+
+	public void setColumnType(Class<C> columnType) {
+		this.columnType = columnType;
+	}
+
+	
+	public Collection<Class<?>> getColumnGenericTypes() {
+		return columnGenericTypes;
+	}
+
+
+	public void setColumnGenericTypes(Collection<Class<?>> columnGenericTypes) {
+		this.columnGenericTypes = columnGenericTypes;
+	}
+	
+	
+	
+	public ValueConverter<F, C> getConverter() {
+		return getConverter(0);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <F1, C1> ValueConverter<F1, C1> getConverter(int i) {
+		return (ValueConverter<F1, C1>)converters.get(i);
+	}
+
+	public void setConverter(ValueConverter<F, C> primary, ValueConverter<?, ?> ... secondary) {
+		converters.clear();
+		converters.add(primary);
+		if (secondary != null) {
+			converters.addAll(Arrays.asList(secondary));
+		}
+	}
+
 	
 	
 }

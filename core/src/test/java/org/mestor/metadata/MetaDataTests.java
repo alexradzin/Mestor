@@ -5,9 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -45,17 +43,17 @@ public class MetaDataTests {
 		emd.setSchemaName(SCHEME_NAME);
 
 		//set field metadata per property 
-		FieldMetadata<Person, String> nameField = new FieldMetadata<>(Person.class, String.class, NAME_FIELD, null, null, null);		
+		FieldMetadata<Person, String, String> nameField = new FieldMetadata<>(Person.class, String.class, NAME_FIELD, null, null, null);		
 		nameField.setColumn(NAME_COLUMN);
 		nameField.setKey(true);
 		nameField.setNullable(false);
 		nameField.setLazy(false);
 		
-		FieldMetadata<Person, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age", null, null, null);
+		FieldMetadata<Person, Integer, Integer> ageField = new FieldMetadata<>(Person.class, Integer.class, "age", null, null, null);
 		ageField.setColumn(AGE_COLUMN);
 		ageField.setNullable(true);
 		
-		FieldMetadata<Person, String> surnameField = new FieldMetadata<>(Person.class, String.class, "surename");
+		FieldMetadata<Person, String, String> surnameField = new FieldMetadata<>(Person.class, String.class, "surename");
 		surnameField.setColumn(SURENAME_COLUMN);
 		surnameField.setKey(false);
 		surnameField.setNullable(false);
@@ -79,9 +77,9 @@ public class MetaDataTests {
 		emd.setIndexes(indexes);
 
 
-		
-		Map<String, FieldMetadata<Person, Object>> fields = new LinkedHashMap<>();
-		for (FieldMetadata<Person, Object> field : new FieldMetadata[] {nameField, ageField, surnameField}) {
+		@SuppressWarnings("unchecked")
+		FieldMetadata<Person, Object, Object>[] fields = new FieldMetadata[] {nameField, ageField, surnameField};
+		for (FieldMetadata<Person, Object, Object> field : fields) {
 			emd.addField(field);			
 		}		
 	}
@@ -98,7 +96,7 @@ public class MetaDataTests {
 		assertEquals(SCHEME_NAME, emd.getSchemaName());
 		
 		//test primary key
-		FieldMetadata<Person,? extends Object> pkField = emd.getPrimaryKey();
+		FieldMetadata<Person,? extends Object,? extends Object> pkField = emd.getPrimaryKey();
 		assertEquals(NAME_COLUMN, pkField.getColumn());
 		
 		//test index 
@@ -106,12 +104,12 @@ public class MetaDataTests {
 		assertEquals(2, emd.getIndexes().size());
 		@SuppressWarnings("unchecked")
 		IndexMetadata<Person> temp =  (IndexMetadata<Person>)emd.getIndexes().toArray()[0];
-		FieldMetadata<Person,? extends Object>[] fmd = temp.getField();
+		FieldMetadata<Person,? extends Object,? extends Object>[] fmd = temp.getField();
 		assertNotNull(fmd);
 		assertEquals(1, fmd.length);
 		
 		@SuppressWarnings("unchecked")
-		FieldMetadata<Person, String> nameMd = (FieldMetadata<Person, String>)fmd[0];
+		FieldMetadata<Person, String, String> nameMd = (FieldMetadata<Person, String, String>)fmd[0];
 		
 		assertFieldMetadata(nameMd, NAME_FIELD, NAME_COLUMN, Person.class, String.class);
 		
@@ -122,12 +120,11 @@ public class MetaDataTests {
 	public void testIndexes(){
 		//test index 
 		Assert.assertEquals(2, emd.getIndexes().size());
-		Iterator itr = emd.getIndexes().iterator();
+		Iterator<IndexMetadata<Person>> itr = emd.getIndexes().iterator();
 		while(itr.hasNext()) {
-			IndexMetadata<Person> element = (IndexMetadata<Person>) itr.next();
-			FieldMetadata<Person,? extends Object>[]  fmd = element.getField();			
+			IndexMetadata<Person> element = itr.next();
+			FieldMetadata<Person, ? extends Object, ? extends Object>[]  fmd = element.getField();			
 			Assert.assertTrue(predefinedIndexes.contains(fmd[0].getColumn()));
-
 		}
 	}
 
@@ -144,14 +141,14 @@ public class MetaDataTests {
 	}
 	
 	
-	private <E, F> void assertFieldMetadata(FieldMetadata<E, F> fmd, String fieldName, String columnName, Class<E> entityType, Class<F> fieldType) {
+	private <E, F, C> void assertFieldMetadata(FieldMetadata<E, F, C> fmd, String fieldName, String columnName, Class<E> entityType, Class<F> fieldType) {
 		assertEquals(fieldName, fmd.getName());
 		assertEquals(columnName, fmd.getColumn());
 		assertEquals(entityType, fmd.getClassType());
 		assertEquals(fieldType, fmd.getType());
 	}
 	
-	private <E, F> void assertFieldMetadata(FieldMetadata<E, F> fmd, String fieldName, String columnName, boolean key, boolean lazy, boolean nullable) {
+	private <E, F, C> void assertFieldMetadata(FieldMetadata<E, F, C> fmd, String fieldName, String columnName, boolean key, boolean lazy, boolean nullable) {
 		System.out.println("55 "+fmd+"   "+fieldName);
 		assertEquals(fieldName, fmd.getName());
 		assertEquals(columnName, fmd.getColumn());

@@ -55,7 +55,7 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
 		
 		@SuppressWarnings("unchecked")
-		FieldMetadata<T, K> pkMeta = (FieldMetadata<T, K>)metadata.getPrimaryKey();
+		FieldMetadata<T, K, K> pkMeta = (FieldMetadata<T, K, K>)metadata.getPrimaryKey();
 		pkMeta.getAccessor().setValue(obj, pk);
 		return wrap(obj);
 	}
@@ -89,7 +89,7 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		f.setFilter(new MethodFilter() {
 			@Override
 			public boolean isHandled(Method m) {
-				System.out.println("isHandled(" + m + "): " + (emd.getFieldByGetter(m) != null || emd.getFieldBySetter(m) != null));
+				//System.out.println("isHandled(" + m + "): " + (emd.getFieldByGetter(m) != null || emd.getFieldBySetter(m) != null));
 				return emd.getFieldByGetter(m) != null || emd.getFieldBySetter(m) != null;
 			}
 		});

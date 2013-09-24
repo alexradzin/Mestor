@@ -15,68 +15,56 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.reflection;
+package org.mestor.metadata.jpa.conversion;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.metadata.FieldMetadata;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
+import javax.persistence.AttributeConverter;
 
-public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
-	private final Class<P> compositeType; 
-	private final PropertyAccessor<T, Object>[] accessors;
-	private final Map<String, PropertyAccessor<T, Object>> name2accessors;
-	private final BeanMetadataFactory mdf = new BeanMetadataFactory();
-	private final EntityMetadata<P> pm;
+import com.google.common.collect.Lists;
+
+public class CompositeConveter<F, C> implements AttributeConverter<F, C> {
+	private List<AttributeConverter<Object, Object>> converters = new ArrayList<>();
 	
 	
-	public CompositePropertyAccessor(Class<T> type, Class<P> compositeType, String name, PropertyAccessor<T, Object>[] accessors) {
-		super(type, name, null, null, null);
-
-		this.compositeType = compositeType;
-		this.accessors = Arrays.copyOf(accessors, accessors.length);
-		
-		
-		name2accessors = new LinkedHashMap<>();
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			name2accessors.put(accessor.getName(), accessor);
-		}
-		
-		
-		this.pm = mdf.create(compositeType);
+	@SafeVarargs
+	public CompositeConveter(AttributeConverter<Object, Object> ... converters) {
+		this(Arrays.asList(converters));
 	}
 
-	
-	
-	@Override
-	public P getValue(T instance) {
-		P p;
-		try {
-			p = compositeType.newInstance();
-		} catch (InstantiationException e) {
-			throw new IllegalStateException(e);
-		} catch (IllegalAccessException e) {
-			throw new IllegalArgumentException("Class " + compositeType + " does not have accessible default constructor", e);
-		}
-		
-		
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			String name = accessor.getName();
-			Object value = accessor.getValue(instance);
-			
-			pm.getField(name).getAccessor().setValue(p, value);
-		}
-		
-		return p;
+	public CompositeConveter(List<AttributeConverter<Object, Object>> converters) {
+		converters.addAll(converters);
 	}
 	
+
 	@Override
-	public void setValue(T instance, P value) {
-		for(FieldMetadata<?, ?, ?> fmd : pm.getFields()) {
-			name2accessors.get(fmd.getName()).setValue(instance, value);
+	public C convertToDatabaseColumn(F attribute) {
+		Object a = attribute;
+		for (AttributeConverter<Object, Object> converter : converters) {
+			a = converter.convertToDatabaseColumn(a);
 		}
+		
+		// the last converter in chain must return value compatible with type C
+		@SuppressWarnings("unchecked")
+		C result = (C)a;
+		
+		return result;
+	}
+
+	@Override
+	public F convertToEntityAttribute(C dbData) {
+		// iterate over converters with reverse order
+		Object d = dbData;
+		for (AttributeConverter<Object, Object> converter : Lists.reverse(converters)) {
+			d = converter.convertToEntityAttribute(d);
+		}
+		
+		// the last converter in chain must return value compatible with type F
+		@SuppressWarnings("unchecked")
+		F result = (F)d;
+		
+		return result;
 	}
 }

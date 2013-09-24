@@ -15,56 +15,21 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.cassandra.util;
+package org.mestor.metadata;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
-/** 
- * This class contains utilities that provide naive implementation 
- * of bean properties access. Good for tests.
- * @author alexr
- *
- */
-public class ReflectiveBean {
-	public static <T> Field getField(Class<?> clazz, String name) {
-		try {
-			Field f = clazz.getDeclaredField(name);
-			return f;
-		} catch (ReflectiveOperationException e) {
-			return null;
-		}
+public class DummyValueConverter<V, C> implements ValueConverter<V, C> {
+	@SuppressWarnings("unchecked")
+	@Override
+	public C toColumn(V value) {
+		return (C)value;
 	}
 
-	public static <T> Method getGetter(Class<?> clazz, String name) {
-		try {
-			String methodName = getMethodName(name, "get");
-			Method m = clazz.getMethod(methodName);
-			return m;
-		} catch (ReflectiveOperationException e1) {
-			try {
-				String methodName = getMethodName(name, "is");
-				Method m = clazz.getMethod(methodName);
-				return m;
-			} catch (ReflectiveOperationException e2) {
-				return null;
-			}
-		}
+	@SuppressWarnings("unchecked")
+	@Override
+	public V fromColumn(C column) {
+		return (V)column;
 	}
 
-	
-	public static <T> Method getSetter(Class<?> clazz, Class<?> type, String name) {
-		try {
-			String methodName = getMethodName(name, "set");
-			Method m = clazz.getMethod(methodName, type);
-			return m;
-		} catch (ReflectiveOperationException e) {
-			return null;
-		}
-	}
-	
-	
-	private static String getMethodName(String propertyName, String prefix) {
-		return prefix + propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
-	}
+
 }
