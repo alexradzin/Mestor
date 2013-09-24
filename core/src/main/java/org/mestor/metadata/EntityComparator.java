@@ -18,17 +18,18 @@
 package org.mestor.metadata;
 
 import java.util.Comparator;
-import java.util.Map;
+
+import org.mestor.context.EntityContext;
+import org.mestor.wrap.ObjectWrapperFactory;
 
 public class EntityComparator<E> implements Comparator<E> {
-	private final Map<Class<?>, EntityMetadata<?>> entityClasses;
+	private final EntityContext context;
 	
-	public EntityComparator(Map<Class<?>, EntityMetadata<?>> entityClasses) {
-		this.entityClasses = entityClasses;
+	public EntityComparator(EntityContext context) {
+		this.context = context;
 	}
 	
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public int compare(E one, E two) {
 		if(one == null) {
@@ -38,8 +39,14 @@ public class EntityComparator<E> implements Comparator<E> {
 			return 1; // one is definitely not null here
 		}
 		// both not null
-		Class<E> c1 = (Class<E>)one.getClass();
-		Class<E> c2 = (Class<E>)two.getClass();
+		Class<E> c1 = getRealClass(one);
+		Class<E> c2 = getRealClass(two);
+		
+		// since Class is not Comparable we ought to compare full class names  
+		int clazzComp = c1.getName().compareTo(c2.getName());
+		if (clazzComp != 0) {
+			return clazzComp;
+		}
 		
 		EntityMetadata<E> m1 = getMetadata(c1);
 		EntityMetadata<E> m2 = getMetadata(c2);
@@ -49,8 +56,8 @@ public class EntityComparator<E> implements Comparator<E> {
 			return compareImpl(one, two);
 		}
 		
-		FieldMetadata<E, ?> pkMeta1 = m1.getPrimaryKey();
-		FieldMetadata<E, ?> pkMeta2 = m2.getPrimaryKey();
+		FieldMetadata<E, ?, ?> pkMeta1 = m1.getPrimaryKey();
+		FieldMetadata<E, ?, ?> pkMeta2 = m2.getPrimaryKey();
 
 		if (pkMeta1 == null || pkMeta2 == null) {
 			// at least one of them does not have primary key. Compare as regular objects
@@ -59,7 +66,7 @@ public class EntityComparator<E> implements Comparator<E> {
 		
 		// both are entities that have primary keys
 		Object pk1 = pkMeta1.getAccessor().getValue(one);
-		Object pk2 = pkMeta1.getAccessor().getValue(one);
+		Object pk2 = pkMeta2.getAccessor().getValue(two);
 		
 		return compareImpl(pk1, pk2);
 	}
@@ -74,8 +81,20 @@ public class EntityComparator<E> implements Comparator<E> {
 	
 	
 	private EntityMetadata<E> getMetadata(Class<E> entityClass) {
-		@SuppressWarnings("unchecked")
-		EntityMetadata<E> eMeta = (EntityMetadata<E>)entityClasses.get(entityClass);
+		EntityMetadata<E> eMeta = context.getEntityMetadata(entityClass);
 		return eMeta;
+	}
+	
+	private Class<E> getRealClass(E entity) {
+		@SuppressWarnings("unchecked")
+		Class<E> clazz = (Class<E>)entity.getClass();		
+		ObjectWrapperFactory<E> owf = context.getPersistor().getObjectWrapperFactory(clazz);
+		E instance = entity;
+		if(owf.isWrapped(entity)) {
+			instance = owf.unwrap(entity);
+		}
+		@SuppressWarnings("unchecked")
+		Class<E> realClazz = (Class<E>)instance.getClass();
+		return realClazz;
 	}
 }
