@@ -51,11 +51,9 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.metadata.ValueConverter;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
 import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
-import org.mestor.persistence.cql.management.CommandHelper;
 import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
 import org.mestor.util.CollectionUtils;
@@ -153,8 +151,20 @@ public class CqlPersistor implements Persistor {
 		String keyspace = emd.getSchemaName();
 
 		Insert insert = insertInto(quote(keyspace), quote(table));
-
-		for (FieldMetadata<E, Object, ?> fmd : emd.getFields()) {
+		
+		
+		Collection<FieldMetadata<E, Object, Object>> allFields = emd.getFields();
+		
+		FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
+		if (pkmd != null) {
+			String pkColumn = pkmd.getColumn();
+			if (emd.getField(pkColumn) == null) {
+				allFields = new ArrayList<>(allFields);
+				allFields.add(pkmd);
+			}
+		}
+		
+		for (FieldMetadata<E, Object, ?> fmd : allFields) {
 			String name = fmd.getColumn();
 			Object value = convertValue(fmd, transformValue(fmd.getAccessor().getValue(entity)), new PushmiPullyuConverter() {
 				@Override
@@ -345,34 +355,11 @@ public class CqlPersistor implements Persistor {
 		// TODO add support of cascade here.
 	}
 
-	private <E, P> Iterable<Clause> getPrimaryKeyClause(EntityMetadata<E> emd,
-			P primaryKey) {
-		@SuppressWarnings("unchecked")
-		Class<P> pkType = (Class<P>) primaryKey.getClass();
-
-		Collection<Clause> clauses = new ArrayList<>();
-
-		if (CommandHelper.toCassandraType(pkType) == null) {
-			// This is not cassandra basic type. Therefore this is custom type
-			// that should be separated field-by-field
-			// Iterate over all fields and check which of them is included into
-			// composite primary key.
-			// TODO cache this metadata too.
-			BeanMetadataFactory f = new BeanMetadataFactory();
-			EntityMetadata<P> pkMetadata = f.create(pkType);
-			for (FieldMetadata<E, Object, Object> fmd : emd.getFields()) {
-				if (fmd.isKey()) {
-					Object value = pkMetadata.getField(fmd.getName())
-							.getAccessor().getValue(primaryKey);
-					clauses.add(eq(quote(fmd.getColumn()), value));
-				}
-			}
-		} else {
-			String pkName = emd.getPrimaryKey().getColumn();
-			clauses.add(eq(quote(pkName), primaryKey));
-		}
-
-		return clauses;
+	private <E, P> Iterable<Clause> getPrimaryKeyClause(EntityMetadata<E> emd, P primaryKey) {
+		FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
+		Object pkColumnValue = pkmd.getConverter().toColumn(primaryKey);
+		String pkName = emd.getPrimaryKey().getColumn();
+		return Arrays.asList(eq(quote(pkName), pkColumnValue));
 	}
 
 	@Override
@@ -485,10 +472,17 @@ public class CqlPersistor implements Persistor {
 				.in(entityMetadata.getSchemaName()).with(properties);
 
 		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
+		
+		FieldMetadata<E, ?, ?> pkmd = entityMetadata.getPrimaryKey();
+		if (pkmd != null) {
+			String pkColumn = pkmd.getColumn();
+			if (entityMetadata.getField(pkColumn) == null) {
+				addColumn(table, pkmd, indexedColumns);					
+			}
+		}
+		
 		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
-			table.add(fmd.getColumn(), fmd.getColumnType(), fmd.getColumnGenericTypes()
-					.toArray(new Class[0]),
-					getFieldAttributes(fmd, indexedColumns));
+			addColumn(table, fmd, indexedColumns);					
 		}
 
 		queryHandler.apply(table);
@@ -505,6 +499,12 @@ public class CqlPersistor implements Persistor {
 					.named(createIndexName(keyspaceName, tableName, column))
 					.on(tableName).column(column));
 		}
+	}
+	
+	private <E> void addColumn(CreateTable table, FieldMetadata<E, ?, ?> fmd, Collection<String> indexedColumns) {
+			table.add(fmd.getColumn(), fmd.getColumnType(), fmd.getColumnGenericTypes()
+					.toArray(new Class[0]),
+					getFieldAttributes(fmd, indexedColumns));
 	}
 
 	@Override

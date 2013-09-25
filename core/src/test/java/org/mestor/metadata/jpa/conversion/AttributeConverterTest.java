@@ -33,6 +33,8 @@ import org.junit.Test;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.MetadataTestHelper;
+import org.mestor.testEntities.Country;
+import org.mestor.testEntities.Passport;
 import org.mestor.testEntities.Person;
 
 public class AttributeConverterTest {
@@ -63,6 +65,12 @@ public class AttributeConverterTest {
 		oos.writeObject(str);
 		
 		test(new SerializableConverter<String>(), str, ByteBuffer.wrap(baos.toByteArray()));
+		
+		
+		Passport p = new Passport(Country.IL, "1234567890");
+		Passport p2 = new SerializableConverter<Passport>().convertToEntityAttribute(new SerializableConverter<Passport>().convertToDatabaseColumn(p));
+		assertEquals(p.getCountry(), p2.getCountry());
+		assertEquals(p.getPassportId(), p2.getPassportId());
 	}
 	
 	@Test

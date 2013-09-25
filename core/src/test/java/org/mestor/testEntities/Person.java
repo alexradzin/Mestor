@@ -9,6 +9,15 @@ import com.google.common.base.Objects;
 
 public class Person {
 	private int id;
+
+	// 2 ways to create composite primary key.
+	// 1st way: fields are here and corresponding fields are in IdClass (Passport) 
+	private Country country;
+	private String passportId;
+	
+	// 2nd way: hold here field of type Passport directly.
+	private Passport passport;
+	
 	private String name;
 	private String lastName;
 	private int age;
@@ -90,6 +99,29 @@ public class Person {
 	public void setParents(Map<ParentRole, Person> parents) {
 		this.parents = parents;
 	}
+	public Country getCountry() {
+		return country;
+	}
+	public void setCountry(Country country) {
+		this.country = country;
+	}
+
+	public String getPassportId() {
+		return passportId;
+	}
+
+	public void setPassportId(String passportId) {
+		this.passportId = passportId;
+	}
+
+	public Passport getPassport() {
+		return passport;
+	}
+
+	public void setPassport(Passport passport) {
+		this.passport = passport;
+	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof Person)) {

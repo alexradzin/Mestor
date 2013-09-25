@@ -52,14 +52,20 @@ public class FieldMetadata<T, F, C> {
 	
 	@SafeVarargs
 	public FieldMetadata(Class<T> classType, Class<F> type, Class<C> columnType, String name, Field field, Method getter, Method setter, ValueConverter<F, C> ...converters) {
-		accessor = new PropertyAccessor<T, F>(classType, name, field, getter, setter);
+		this(classType, type, columnType, new PropertyAccessor<T, F>(classType, type, name, field, getter, setter), converters);
+		this.name = name;
+	}
+
+	@SafeVarargs
+	public FieldMetadata(Class<T> classType, Class<F> type, Class<C> columnType, PropertyAccessor<T, F> accessor, ValueConverter<F, C> ...converters) {
+		this.accessor = accessor;
 		this.classType = classType;
 		this.type = type;
 		this.columnType = columnType;
-		this.name = name;
 		this.converters.addAll(Arrays.asList(converters));
 	}
-
+	
+	
 
 	public Class<T> getClassType() {
 		return classType;
@@ -120,17 +126,17 @@ public class FieldMetadata<T, F, C> {
 
 
 	public void setField(Field field) {
-		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getName(), field, accessor.getGetter(), accessor.getSetter());
+		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), field, accessor.getGetter(), accessor.getSetter());
 	}
 
 
 	public void setGetter(Method getter) {
-		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getName(), accessor.getField(), getter, accessor.getSetter());
+		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), accessor.getField(), getter, accessor.getSetter());
 	}
 
 
 	public void setSetter(Method setter) {
-		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getName(), accessor.getField(), accessor.getGetter(), setter);
+		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), accessor.getField(), accessor.getGetter(), setter);
 	}
 
 
@@ -199,7 +205,4 @@ public class FieldMetadata<T, F, C> {
 			converters.addAll(Arrays.asList(secondary));
 		}
 	}
-
-	
-	
 }

@@ -15,55 +15,35 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata.jpa.conversion;
+package org.mestor.testEntities;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
 
-import javax.persistence.AttributeConverter;
-
-public class SerializableConverter<T extends Serializable> implements AttributeConverter<T, ByteBuffer> {
-
-	@Override
-	public ByteBuffer convertToDatabaseColumn(T attribute) {
-		if (attribute == null) {
-			return null;
-		}
-		
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			ObjectOutputStream oos = new ObjectOutputStream(baos);
-			oos.writeObject(attribute);
-			return ByteBuffer.wrap(baos.toByteArray());
-		} catch (IOException e) {
-			// If IOException is thrown while writing to ByteArrayOutputStream 
-			// something is going very very wrong...
-			throw new IllegalStateException(e);
-		}		
+public class Passport implements Serializable {
+	private Country country;
+	private String passportId;
+	
+	
+	public Passport() {
+		super();
 	}
-
-	@Override
-	public T convertToEntityAttribute(ByteBuffer dbData) {
-		if (dbData == null) {
-			return null;
-		}
-		try {
-			byte[] array = new byte[dbData.remaining()];
-			dbData.get(array);			
-			ByteArrayInputStream bais = new ByteArrayInputStream(array);
-			ObjectInputStream ois = new ObjectInputStream(bais);
-			@SuppressWarnings("unchecked")
-			T attribute = (T)ois.readObject();
-			return attribute;
-		} catch (IOException | ClassNotFoundException e) {
-			// If IOException is thrown while reading from ByteArrayInputStream 
-			// something is going very very wrong...
-			throw new IllegalStateException(e);
-		}		
+	public Passport(Country country, String passportId) {
+		super();
+		this.country = country;
+		this.passportId = passportId;
 	}
+	public Country getCountry() {
+		return country;
+	}
+	public void setCountry(Country country) {
+		this.country = country;
+	}
+	public String getPassportId() {
+		return passportId;
+	}
+	public void setPassportId(String passportId) {
+		this.passportId = passportId;
+	}
+	
+	
 }

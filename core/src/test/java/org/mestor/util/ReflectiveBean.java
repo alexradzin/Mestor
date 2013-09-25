@@ -28,6 +28,9 @@ import java.lang.reflect.Method;
  */
 public class ReflectiveBean {
 	public static <T> Field getField(Class<?> clazz, String name) {
+		if (name == null) {
+			return null;
+		}
 		try {
 			Field f = clazz.getDeclaredField(name);
 			return f;
@@ -37,6 +40,9 @@ public class ReflectiveBean {
 	}
 
 	public static <T> Method getGetter(Class<?> clazz, String name) {
+		if (name == null) {
+			return null;
+		}
 		try {
 			String methodName = getMethodName(name, "get");
 			Method m = clazz.getMethod(methodName);
@@ -54,6 +60,9 @@ public class ReflectiveBean {
 
 	
 	public static <T> Method getSetter(Class<?> clazz, Class<?> type, String name) {
+		if (name == null) {
+			return null;
+		}
 		try {
 			String methodName = getMethodName(name, "set");
 			Method m = clazz.getMethod(methodName, type);

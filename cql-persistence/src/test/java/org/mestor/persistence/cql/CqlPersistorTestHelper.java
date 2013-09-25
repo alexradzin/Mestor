@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -174,6 +175,17 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 				return fmd.getColumn();
 			}
 		});
+		
+		
+		FieldMetadata<E, ?, ?> pkmd = emd.getPrimaryKey();
+		if (pkmd != null) {
+			String pkColumn = pkmd.getColumn();
+			
+			if (emd.getField(pkColumn) == null) {
+				exepectedPKColumns = new ArrayList<String>(exepectedPKColumns); // collection after guava transforms is unmodifiable.
+				exepectedPKColumns.add(pkColumn);
+			}
+		}
 		
 		Collection<String> actualPKColumns = 
 		Collections2.transform(tmd.getPrimaryKey(), new Function<ColumnMetadata, String>() {

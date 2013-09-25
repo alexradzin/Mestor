@@ -34,7 +34,7 @@ public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
 	
 	
 	public CompositePropertyAccessor(Class<T> type, Class<P> compositeType, String name, PropertyAccessor<T, Object>[] accessors) {
-		super(type, name, null, null, null);
+		super(type, compositeType, name, null, null, null);
 
 		this.compositeType = compositeType;
 		this.accessors = Arrays.copyOf(accessors, accessors.length);
@@ -67,7 +67,7 @@ public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
 			String name = accessor.getName();
 			Object value = accessor.getValue(instance);
 			
-			pm.getField(name).getAccessor().setValue(p, value);
+			pm.getFieldByName(name).getAccessor().setValue(p, value);
 		}
 		
 		return p;
@@ -75,8 +75,9 @@ public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
 	
 	@Override
 	public void setValue(T instance, P value) {
-		for(FieldMetadata<?, ?, ?> fmd : pm.getFields()) {
-			name2accessors.get(fmd.getName()).setValue(instance, value);
+		for(FieldMetadata<P, ?, ?> fmd : pm.getFields()) {
+			Object pmFieldValue = fmd.getAccessor().getValue(value);
+			name2accessors.get(fmd.getName()).setValue(instance, pmFieldValue);
 		}
 	}
 }

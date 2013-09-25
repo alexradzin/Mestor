@@ -38,6 +38,7 @@ public class EntityMetadata<E> {
 	
 	private Collection<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
 	private Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
+	private Map<String, FieldMetadata<E, ?, ?>> fieldNames = new LinkedHashMap<>();
 	private Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<>();
 	private Map<String, Class<?>[]> columnTypes = new LinkedHashMap<>();
 	private Collection<IndexMetadata<E>> indexes = new ArrayList<>();
@@ -152,6 +153,7 @@ public class EntityMetadata<E> {
 		columnTypes.put(column, cTypes.toArray(new Class[0]));
 		
 		fieldColumns.put(column, fmeta);
+		fieldNames.put(fmeta.getName(), fmeta);
 		
 		@SuppressWarnings("unchecked")
 		FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
@@ -185,6 +187,11 @@ public class EntityMetadata<E> {
 	@SuppressWarnings("unchecked")
 	public <F, C> FieldMetadata<E, F, C> getField(String column) {
 		return (FieldMetadata<E, F, C>)this.fieldColumns.get(column);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <F, C> FieldMetadata<E, F, C> getFieldByName(String name) {
+		return (FieldMetadata<E, F, C>)this.fieldNames.get(name);
 	}
 
 	public Collection<IndexMetadata<E>> getIndexes() {

@@ -94,6 +94,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 	public <T> EntityMetadata<T> create(Class<T> clazz) {
 		EntityMetadata<T> emeta = new EntityMetadata<>(clazz);
 		
+		
 		Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
 		
 		for (Field f : FieldAccessor.getFields(clazz)) {
@@ -130,6 +131,11 @@ public class BeanMetadataFactory implements MetadataFactory {
 		}
 		
 
+		for(FieldMetadata<T, Object, Object> field : fields.values()) {
+			emeta.addField(field);
+		}
+		
+		
 		emeta.setIndexes(findIndexes(emeta));
 		
 		return emeta;

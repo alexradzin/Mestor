@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 
 public class PropertyAccessor<T, P> {
 	private final Class<T> type;
+	private final Class<P> propertyType;
 	private final String name;
 	private final Field field;
 	private final Method getter;
@@ -32,8 +33,9 @@ public class PropertyAccessor<T, P> {
 	private final Access<? extends AccessibleObject> writeAccess;
 
 	
-	public PropertyAccessor(Class<T> type, String name, Field field, Method getter, Method setter, Class<? extends Access<AccessibleObject>> readAccessType, Class<? extends Access<AccessibleObject>> writeAccessType) {
+	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter, Class<? extends Access<AccessibleObject>> readAccessType, Class<? extends Access<AccessibleObject>> writeAccessType) {
 		this.type = type;
+		this.propertyType = fieldType;
 		this.name = name;
 		this.field = field;
 		this.getter = getter;
@@ -48,8 +50,9 @@ public class PropertyAccessor<T, P> {
 	}
 
 
-	public PropertyAccessor(Class<T> type, String name, Field field, Method getter, Method setter) {
+	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter) {
 		this.type = type;
+		this.propertyType = fieldType;
 		this.name = name;
 		this.field = field;
 		this.getter = getter;
@@ -144,6 +147,7 @@ public class PropertyAccessor<T, P> {
 	}
 	
 	
+	
 	public P getValue(T instance) {
 		return readAccess.get(instance);
 	}
@@ -157,6 +161,9 @@ public class PropertyAccessor<T, P> {
 		return type;
 	}
 
+	public Class<P> getPropertyType() {
+		return propertyType;
+	}
 	public String getName() {
 		return name;
 	}
