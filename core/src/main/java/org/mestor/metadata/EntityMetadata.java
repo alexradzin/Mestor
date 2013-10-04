@@ -32,6 +32,8 @@ public class EntityMetadata<E> {
 	private Class<E> entityType;
 	private String entityName;
 	private FieldMetadata<E, Object, Object> primaryKey;
+	private FieldMetadata<E, Object, Object> discrimintor;
+	private FieldMetadata<E, Object, Object> joiner;
 
 	private String tableName;
 	private String schemaName;
@@ -87,6 +89,14 @@ public class EntityMetadata<E> {
 		return this.primaryKey;
 	}
 
+	public FieldMetadata<E, Object, Object> getDiscrimintor() {
+		return this.discrimintor;
+	}
+
+	public FieldMetadata<E, Object, Object> getJoiner() {
+		return this.joiner;
+	}
+	
 	public String getTableName() {
 		return tableName;
 	}
@@ -158,6 +168,13 @@ public class EntityMetadata<E> {
 		@SuppressWarnings("unchecked")
 		FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
 		fields.add(fmd);
+		
+		if (fmd.isDiscriminator()) {
+			discrimintor = fmd;
+		}
+		if (fmd.isJoiner()) {
+			joiner = fmd;
+		}
 	}
 	
 	

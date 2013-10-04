@@ -24,10 +24,13 @@ import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
 
 public class PrimaryKeyConverter<E, K> implements AttributeConverter<E, K> {
-	private Persistor persistor;
-	private EntityMetadata<E> emd;
-	private Class<E> clazz;
-	private EntityContext context;
+	protected final Persistor persistor;
+	/**
+	 * {@see #getEntityMetadata()} for reasons why this field is not final
+	 */
+	protected EntityMetadata<E> emd;
+	protected final Class<E> clazz;
+	protected final EntityContext context;
 
 	/**
 	 * This constructor is needed to simplify generic access to functionality of this
@@ -37,14 +40,10 @@ public class PrimaryKeyConverter<E, K> implements AttributeConverter<E, K> {
 	 * @param context
 	 */
 	public PrimaryKeyConverter(Class<E> clazz, EntityContext context) {
-		this(context.getEntityMetadata(clazz), context.getPersistor());
+		this.emd = context.getEntityMetadata(clazz);
+		this.persistor = context.getPersistor();
 		this.clazz = clazz;
 		this.context = context;
-	}
-	
-	public PrimaryKeyConverter(EntityMetadata<E> emd, Persistor persistor) {
-		this.emd = emd;
-		this.persistor = persistor;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -75,7 +74,7 @@ public class PrimaryKeyConverter<E, K> implements AttributeConverter<E, K> {
 	 * registered in context. 
 	 * @return
 	 */
-	private EntityMetadata<E> getEntityMetadata() {
+	protected EntityMetadata<E> getEntityMetadata() {
 		if (emd != null) {
 			return emd;
 		}

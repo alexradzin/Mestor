@@ -29,11 +29,25 @@ public class PropertyAccessor<T, P> {
 	private final Method getter;
 	private final Method setter;
 	
-	private final Access<? extends AccessibleObject> readAccess;
-	private final Access<? extends AccessibleObject> writeAccess;
+	private final Access<T, P, ? extends AccessibleObject> readAccess;
+	private final Access<T, P, ? extends AccessibleObject> writeAccess;
 
+
+	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter, Access<T, P, ? extends AccessibleObject> readAccess, Access<T, P, ? extends AccessibleObject> writeAccess) {
+		this.type = type;
+		this.propertyType = fieldType;
+		this.name = name;
+		this.field = field;
+		this.getter = getter;
+		this.setter = setter;
+		
+		this.readAccess = readAccess;
+		this.writeAccess = writeAccess;
+	}
 	
-	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter, Class<? extends Access<AccessibleObject>> readAccessType, Class<? extends Access<AccessibleObject>> writeAccessType) {
+	
+	
+	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter, Class<? extends Access<T, P, AccessibleObject>> readAccessType, Class<? extends Access<T, P, AccessibleObject>> writeAccessType) {
 		this.type = type;
 		this.propertyType = fieldType;
 		this.name = name;
@@ -60,8 +74,8 @@ public class PropertyAccessor<T, P> {
 
 		// discover access mode automatically
 		
-		final MethodAccess methodAccess = new MethodAccess();
-		final FieldAccess fieldAccess = new FieldAccess();
+		final MethodAccess<T, P> methodAccess = new MethodAccess<T, P>(getter, setter);
+		final FieldAccess<T, P> fieldAccess = new FieldAccess<T, P>(field);
 		
 		
 		if (getter != null) {
@@ -73,7 +87,7 @@ public class PropertyAccessor<T, P> {
 		}
 		
 		if (setter != null) {
-			this.writeAccess = new MethodAccess();
+			this.writeAccess = methodAccess;
 		} else if (field != null ) {
 			this.writeAccess = fieldAccess;
 		} else {
@@ -81,70 +95,6 @@ public class PropertyAccessor<T, P> {
 		}
 	}
 	
-	
-	
-	public abstract class Access<A extends AccessibleObject> {
-		public abstract P get(T instance);
-		public abstract void set(T instance, P parameter);
-	}
-
-	
-	@SuppressWarnings("unchecked")
-	public class FieldAccess extends Access<Field> {
-		FieldAccess() {
-			if (field != null) {
-				field.setAccessible(true);
-			}
-		}
-		
-		@Override
-		public P get(T instance) {
-			try {
-				return (P)field.get(instance);
-			} catch (IllegalAccessException e) {
-				throw new IllegalStateException(e);
-			}
-		}
-
-		@Override
-		public void set(T instance, P parameter) {
-			try {
-				field.set(instance, parameter);
-			} catch (IllegalAccessException e) {
-				throw new IllegalStateException(e);
-			}
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	public class MethodAccess extends Access<Method> {
-		MethodAccess() {
-			if (setter != null) {
-				setter.setAccessible(true);
-			}
-			if (getter != null) {
-				getter.setAccessible(true);
-			}
-		}
-		
-		@Override
-		public P get(T instance) {
-			try {
-				return (P)getter.invoke(instance);
-			} catch (ReflectiveOperationException e) {
-				throw new IllegalStateException(e);
-			}
-		}
-
-		@Override
-		public void set(T instance, P parameter) {
-			try {
-				setter.invoke(instance, parameter);
-			} catch (ReflectiveOperationException e) {
-				throw new IllegalStateException(e);
-			}
-		}
-	}
 	
 	
 	
@@ -184,12 +134,12 @@ public class PropertyAccessor<T, P> {
 	}
 
 
-	public Access<? extends AccessibleObject> getReadAccess() {
+	public Access<T, P, ? extends AccessibleObject> getReadAccess() {
 		return readAccess;
 	}
 
 
-	public Access<? extends AccessibleObject> getWriteAccess() {
+	public Access<T, P, ? extends AccessibleObject> getWriteAccess() {
 		return writeAccess;
 	}
 	

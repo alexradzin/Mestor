@@ -48,8 +48,8 @@ public class EntityComparator<E> implements Comparator<E> {
 			return clazzComp;
 		}
 		
-		EntityMetadata<E> m1 = getMetadata(c1);
-		EntityMetadata<E> m2 = getMetadata(c2);
+		EntityMetadata<E> m1 = getPrimaryKeyMetadata(c1, one);
+		EntityMetadata<E> m2 = getPrimaryKeyMetadata(c2, two);
 		
 		if (m1 == null || m2 == null) {
 			// at least one of them is not entity. Compare as regular objects
@@ -79,10 +79,24 @@ public class EntityComparator<E> implements Comparator<E> {
 		return one.hashCode() - two.hashCode();
 	}
 	
-	
-	private EntityMetadata<E> getMetadata(Class<E> entityClass) {
-		EntityMetadata<E> eMeta = context.getEntityMetadata(entityClass);
-		return eMeta;
+	/**
+	 * Retrieves metadata of not null primary key for specific class. 
+	 * If primary key of current entity is null looks for primary key in its super class etc. 
+	 * @param entityClass
+	 * @param entity
+	 * @return
+	 */
+	private EntityMetadata<E> getPrimaryKeyMetadata(Class<E> entityClass, E entity) {
+		for (Class<?> c = entityClass; !Object.class.equals(c); c = c.getSuperclass()) {
+			EntityMetadata<E> eMeta = context.getEntityMetadata(entityClass);
+			FieldMetadata<E, ?, ?> pkMeta = eMeta.getPrimaryKey();
+			Object pk = pkMeta.getAccessor().getValue(entity);
+			if (pk != null) {
+				return eMeta;
+			}
+		}
+		
+		return null;
 	}
 	
 	private Class<E> getRealClass(E entity) {

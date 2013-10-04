@@ -97,7 +97,7 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 	 * @param properties
 	 * @param create true for create, false for update
 	 */
-	<E> void testEditTable(EntityMetadata<E> entityMetadata, Map<String, Object> properties, boolean create) {
+	<E> void testEditTable(EntityMetadata<E> entityMetadata, Map<String, Object> properties, boolean create, String ... additionalIndexes) {
 		final String keyspace = entityMetadata.getSchemaName();
 		final String table = entityMetadata.getTableName();
 
@@ -112,7 +112,7 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 
 		TableMetadata tmd = findTableMetadata(keyspace, table);
 		assertNotNull(tmd);
-		assertMatches(entityMetadata, properties, tmd);
+		assertMatches(entityMetadata, properties, tmd, additionalIndexes);
 	}
 
 	
@@ -130,7 +130,7 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 		return null;
 	}
 	
-	<E> void assertMatches(EntityMetadata<E> emd, Map<String, Object> properties, TableMetadata tmd) {
+	<E> void assertMatches(EntityMetadata<E> emd, Map<String, Object> properties, TableMetadata tmd, String ... additionalIndexes) {
 		assertNotNull(tmd);
 		
 		assertEquals(emd.getTableName().toLowerCase(), tmd.getName().toLowerCase());
@@ -140,6 +140,9 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 		
 		for (FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
 			String column = fmd.getColumn();
+			if (column == null) {
+				continue;
+			}
 			ColumnMetadata cmd = tmd.getColumn(column);
 			assertNotNull("Column " + column + " is not found", cmd);
 			assertEquals(column, cmd.getName());
@@ -205,8 +208,14 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 			assertEquals(1, indexFields.length);
 			expectedIndexes.put(imd.getName(), indexFields[0].getColumn());
 		}
+		
+		
+		Set<String> allExpectedIndexes = new HashSet<>(expectedIndexes.values());
+		if (additionalIndexes != null) {
+			allExpectedIndexes.addAll(Arrays.asList(additionalIndexes));
+		}
 
-		assertEquals("Unexpected list of indexed columns", new HashSet<String>(expectedIndexes.values()), new HashSet<String>(actualIndexedColumns));
+		assertEquals("Unexpected list of indexed columns", allExpectedIndexes, new HashSet<String>(actualIndexedColumns));
 	}
 	
 	private Class<?> toCqlJavaType(Class<?> type) {

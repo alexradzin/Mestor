@@ -17,75 +17,35 @@
 
 package org.mestor.wrap.javassist;
 
-import javassist.util.proxy.MethodHandler;
-import javassist.util.proxy.ProxyFactory;
-import javassist.util.proxy.ProxyObject;
+import java.lang.reflect.Method;
+
+import javassist.util.proxy.MethodFilter;
 
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.EntityMetadata;
-import org.mestor.metadata.FieldMetadata;
-import org.mestor.reflection.ClassAccessor;
-import org.mestor.wrap.ObjectWrapperFactory;
 
-public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T> {
+public class HierarchyAwareMethodFilter<T> implements MethodFilter {
 	private final EntityContext context;
+	private final Class<T> clazz;
 	
-	
-	public JavassistObjectWrapperFactory(EntityContext context) {
+	public HierarchyAwareMethodFilter(EntityContext context, Class<T> clazz) {
 		this.context = context;
+		this.clazz = clazz;
 	}
 
 	@Override
-	public T wrap(T obj) {
-		@SuppressWarnings("unchecked")
-		Class<T> clazz = (Class<T>)obj.getClass();
-		T proxy = ClassAccessor.newInstance(createClass(clazz));
-		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context, false);
-		((ProxyObject)proxy).setHandler(mi);
-		return proxy;
-	}
-	
-	@Override
-	public <K> T makeLazy(Class<T> clazz, K pk) {
-		T obj = ClassAccessor.newInstance(clazz);
-		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		
-		@SuppressWarnings("unchecked")
-		FieldMetadata<T, K, K> pkMeta = (FieldMetadata<T, K, K>)metadata.getPrimaryKey();
-		pkMeta.getAccessor().setValue(obj, pk);
-		return wrap(obj);
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public T unwrap(T obj) {
-		return ((PropertyAccessHandler<T>)((ProxyObject)obj).getHandler()).getPayload();
-	}
-	
-	@Override
-	public boolean isWrapped(T obj) {
-		return obj instanceof ProxyObject;
-	}
-	
-	
-	
-	private Class<? extends T> createClass(final Class<T> clazz) {
-
-		ProxyFactory f = new ProxyFactory();
-
-		if (clazz.isInterface()) {
-			f.setInterfaces(new Class[] {clazz});
-		} else {
-			f.setSuperclass(clazz);
+	public boolean isHandled(Method m) {
+		for (Class<?> c = clazz; !Object.class.equals(c); c = c.getSuperclass()) {
+			EntityMetadata<?> emd = context.getEntityMetadata(c);
+			if (emd != null && isHandled(emd, m)) {
+				return true;
+			}
 		}
-
-		f.setFilter(new HierarchyAwareMethodFilter<>(context, clazz));
-		
-		@SuppressWarnings("unchecked")
-		Class<? extends T> c = f.createClass();
-		return c;
-		
+		return false;
 	}
-	
+
+	private <E> boolean isHandled(EntityMetadata<E> emd, Method m) {
+		return emd.getFieldByGetter(m) != null || emd.getFieldBySetter(m) != null;
+	}
+
 }

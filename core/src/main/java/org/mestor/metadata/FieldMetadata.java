@@ -22,7 +22,9 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.mestor.reflection.PropertyAccessor;
 
@@ -33,11 +35,12 @@ public class FieldMetadata<T, F, C> {
 	private String name;
 	private String column;
 	private boolean nullable;
-	private boolean key;
+	private Set<FieldRole> role = EnumSet.noneOf(FieldRole.class);
 	private boolean lazy = false;
 	private Collection<Class<?>> genericTypes = new ArrayList<Class<?>>();
 	private Collection<Class<?>> columnGenericTypes = new ArrayList<Class<?>>();
 	private List<ValueConverter<?, ?>> converters = new ArrayList<>();
+	private F defaultValue;
 
 	private PropertyAccessor<T, F> accessor;
 
@@ -116,15 +119,46 @@ public class FieldMetadata<T, F, C> {
 
 	
 	public boolean isKey() {
-		return key;
+		return isFieldInRole(FieldRole.PRIMARY_KEY);
 	}
 
 
 	public void setKey(boolean key) {
-		this.key = key;
+		setFieldRole(FieldRole.PRIMARY_KEY, key);
 	}
 
 
+	public boolean isDiscriminator() {
+		return isFieldInRole(FieldRole.DISCRIMINATOR);
+	}
+
+
+	public void setDiscriminator(boolean discriminator) {
+		setFieldRole(FieldRole.DISCRIMINATOR, discriminator);
+	}
+
+	public boolean isJoiner() {
+		return isFieldInRole(FieldRole.JOINER);
+	}
+
+
+	public void setJoiner(boolean discriminator) {
+		setFieldRole(FieldRole.JOINER, discriminator);
+	}
+	
+	
+	private void setFieldRole(FieldRole fieldRole, boolean onoff) {
+		if (onoff) {
+			role.add(fieldRole);
+		} else {
+			role.remove(fieldRole);
+		}
+	}
+	
+	private boolean isFieldInRole(FieldRole fieldRole) {
+		return role.contains(fieldRole);
+	}
+	
 	public void setField(Field field) {
 		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), field, accessor.getGetter(), accessor.getSetter());
 	}
@@ -205,4 +239,33 @@ public class FieldMetadata<T, F, C> {
 			converters.addAll(Arrays.asList(secondary));
 		}
 	}
+	
+	public void setDefaultValue(F defaultValue) {
+		this.defaultValue = defaultValue;
+	}
+	
+	public <E> Object getDefaultValue() {
+		if (defaultValue != null) {
+			return defaultValue;
+		}
+		// default value was not explicitly defined, so we have to discover it. 
+		if (!type.isPrimitive()) {
+			return null;
+		}
+		// this is a primitive
+		if (int.class.equals(type) || long.class.equals(type) || short.class.equals(type) || byte.class.equals(type)) {
+			return 0;
+		}
+		if (float.class.equals(type)) {
+			return 0.0f;
+		}
+		if (double.class.equals(type)) {
+			return 0.0;
+		}
+		if (boolean.class.equals(type)) {
+			return false;
+		}
+		return null;
+	}
+	
 }

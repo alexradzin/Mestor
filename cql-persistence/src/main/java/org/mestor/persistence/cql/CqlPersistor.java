@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -56,6 +57,7 @@ import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
+import org.mestor.reflection.ClassAccessor;
 import org.mestor.util.CollectionUtils;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
@@ -64,6 +66,8 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Query;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
@@ -143,10 +147,21 @@ public class CqlPersistor implements Persistor {
 		}
 	}
 
+	
 	@Override
 	public <E> void store(E entity) {
-		Class<E> clazz = getEntityClass(entity);
-		EntityMetadata<E> emd = context.getEntityMetadata(clazz);
+		for (EntityMetadata<?> emd : getDownUpHierarchy(context.getEntityMetadata(getEntityClass(entity))).values()) {
+			@SuppressWarnings("unchecked")
+			EntityMetadata<E> meta = (EntityMetadata<E>)emd;
+			storeImpl(meta, entity);
+			if (meta.getJoiner() == null) {
+				break;
+			}
+		}
+	}
+	
+	
+	private <E> void storeImpl(EntityMetadata<E> emd, E entity) {
 		String table = emd.getTableName();
 		String keyspace = emd.getSchemaName();
 
@@ -166,6 +181,37 @@ public class CqlPersistor implements Persistor {
 		
 		for (FieldMetadata<E, Object, ?> fmd : allFields) {
 			String name = fmd.getColumn();
+			if (name == null) {
+				if(fmd.isDiscriminator()) {
+					// find column name in parent class
+					for (Class<?> clazz = emd.getEntityType().getSuperclass(); !Object.class.equals(clazz); clazz = clazz.getSuperclass()) {
+						EntityMetadata<?> meta = context.getEntityMetadata(clazz);
+						if (meta == null) {
+							continue;
+						}
+						if (!table.equals(meta.getTableName())) {
+							break;
+						}
+						FieldMetadata<?, ?, ?> discriminator = meta.getDiscrimintor();
+						if (discriminator == null) {
+							continue;
+						}
+						String discriminatorColumn = discriminator.getColumn();
+						if (discriminatorColumn != null) {
+							name = discriminatorColumn;
+							break;
+						}
+					}
+				}
+			}
+			if (name == null) {
+				continue;
+			}
+			if (!belongsTo(fmd, entity)) {
+				// Ignore this fields since it arrived from other class. 
+				// This is a typical case of entities inheritance with single or joined table.
+				continue;
+			}
 			Object value = convertValue(fmd, transformValue(fmd.getAccessor().getValue(entity)), new PushmiPullyuConverter() {
 				@Override
 				public Object convert(ValueConverter<Object, Object> conveter, Object v) {
@@ -182,6 +228,32 @@ public class CqlPersistor implements Persistor {
 		// TODO implement cascade here
 	}
 
+
+	/**
+	 * Finds all super classes of given class and creates map between table name and {@link EntityMetadata} of
+	 * corresponding class. This means that the result contains entries only for different tables. 
+	 * If for example hierarchy is stored in one table the result will contain one entry only.
+	 * Each entry shell contain metadata of class lowest in the hierarchy.
+	 * The map is sorted from bottom to top. 
+	 * @param leafMeta
+	 * @return table name to entity metadata map of hierarchy
+	 */
+	private <E> Map<String, EntityMetadata<?>> getDownUpHierarchy(EntityMetadata<E> leafMeta) {
+		Map<String, EntityMetadata<?>> table2emd = new LinkedHashMap<>();
+		for (Class<?> clazz = leafMeta.getEntityType(); clazz != null; clazz = clazz.getSuperclass()) {
+			EntityMetadata<?> emd = context.getEntityMetadata(clazz);
+			if (emd == null) {
+				continue;
+			}
+			String table = emd.getTableName();
+			if (table2emd.containsKey(table)) {
+				continue;
+			}
+			// this is the first appearance of this table
+			table2emd.put(emd.getTableName(), emd);
+		}
+		return table2emd;
+	}
 	
 
 
@@ -261,80 +333,303 @@ public class CqlPersistor implements Persistor {
 		return value;
 	}
 
+
 	
-	@Override
-	public <E, P> E fetch(Class<E> clazz, P primaryKey) {
-		EntityMetadata<E> emd = context.getEntityMetadata(clazz);
+	
+    @Override
+    public <E, P> E fetch(Class<E> clazz, P primaryKey) {
+        EntityMetadata<E> requestedEntityMetadata = context.getEntityMetadata(clazz);
+        EntityMetadata<E> emd = requestedEntityMetadata;
 
-		Select.Selection select = select();
+        Map<String, Class<?>[]> fieldTypes = new HashMap<>();
+        Select.Selection select = selectFields(emd, fieldTypes);
+        List<Row> allResult = doSelectAll(emd, primaryKey).all();
+        
+        Iterator<Map<String, Object>> result = transform(allResult, new RowSplitter(fieldTypes)).iterator();
+        
+        if (!result.hasNext()) {
+        	String requestedEntityPkFieldName = emd.getPrimaryKey().getName();
+        	for (EntityMetadata<?> e : context.getEntityMetadata()) {
+        		Class<?> c = e.getEntityType();
+        		if (clazz.isAssignableFrom(c) && !clazz.equals(c) && e.getFieldByName(emd.getPrimaryKey().getName()) != null) {
+        	        fieldTypes = new HashMap<>();
+        	        select = selectFields(e, fieldTypes);
 
-		Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<String, Class<?>[]>();
-		for (FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
-			if (!fmd.isLazy()) {
-				select.column(quote(fmd.getColumn()));
-				fieldTypes.put(fmd.getColumn(), emd.getColumnTypes(fmd.getColumn()));
-			}
-		}
+        	        String column = e.getFieldByName(requestedEntityPkFieldName).getColumn();
+        	        
+        			result = doSelect(select, e, column, primaryKey, fieldTypes).iterator();
+                	if (result.hasNext()) {
+            			@SuppressWarnings("unchecked")
+    					EntityMetadata<E> e2 = (EntityMetadata<E>)e;
+                		emd = e2;
+                		break;
+                	}
+        		}
+        	}
+        	
+        	if (!result.hasNext()) {
+        		return null;
+        	}
+        }
 
-		Iterator<Map<String, Object>> result = doSelect(select, emd, primaryKey, fieldTypes).iterator();
+        Map<String, Object> data = column2field(emd, result.next());
+        // TODO: should we throw exception if more than one record were
+        // returned?
 
-		if (!result.hasNext()) {
-			return null;
-		}
+        
+        
+        Class<? extends E> leafClazz = getRealClass(emd, data);
+        E entity = ClassAccessor.newInstance(leafClazz);
+        
+        if (!leafClazz.equals(clazz)) {
+            @SuppressWarnings("unchecked")
+			EntityMetadata<E> leafMeta = (EntityMetadata<E>)context.getEntityMetadata(leafClazz);
+            Map<String, Class<?>[]> leafFieldTypes = new HashMap<>();
+            selectFields(leafMeta, leafFieldTypes);
+            
+            
+            Map<String, Class<?>[]> allFieldTypes = new HashMap<>(fieldTypes);
+            fieldTypes.putAll(leafFieldTypes);
+            
+            if (!fieldTypes.equals(leafFieldTypes)) {
+	            result = transform(allResult, new RowSplitter(allFieldTypes)).iterator();
+	            data = column2field(leafMeta, result.next());
+	            emd = leafMeta;
+            }
+        }
+        
+        
+        // set primary key. If we are here the primary key definitely equals to one that is 
+        // in persisted entity.
+        requestedEntityMetadata.getPrimaryKey().getAccessor().setValue(entity, primaryKey);
+        
+        
+        EntityMetadata<? extends E> leafMeta = context.getEntityMetadata(leafClazz);
+        Map<String, EntityMetadata<?>> downUpHierarchy = getDownUpHierarchy(leafMeta);
 
-		Map<String, Object> data = result.next();
-		// TODO: should we throw exception if more than one record were
-		// returned?
+        
+        List<EntityMetadata<?>> downUpChain = new ArrayList<>();
+        List<EntityMetadata<?>> upDownChain = new ArrayList<>();
 
-		E entity;
-		try {
-			entity = clazz.newInstance();
-		} catch (ReflectiveOperationException e) {
-			throw new IllegalArgumentException("Class " + clazz
-					+ " must have accessible default constructor");
-		}
+        Iterator<EntityMetadata<?>> ihierarchy = downUpHierarchy.values().iterator();
+        
+        while(ihierarchy.hasNext()) {
+        	EntityMetadata<?> e = ihierarchy.next();
+        	if (clazz.equals(e.getEntityType())) {
+        		break;
+        	}
+        	upDownChain.add(e);
+        }
+        Collections.reverse(upDownChain);
 
-		// set primary key. If we are here the primary key definitely equals to one that is 
-		// in persisted entity.
-		emd.getPrimaryKey().getAccessor().setValue(entity, primaryKey);
+        while(ihierarchy.hasNext()) {
+        	EntityMetadata<?> e = ihierarchy.next();
+        	downUpChain.add(e);
+        }        
+        
+        
+        if (!downUpChain.isEmpty() && getJoinerColumn(emd) != null) {
+	        Object pk = data.get(emd.getJoiner().getName());
+	        for (EntityMetadata<?> e : downUpChain) {
+	            fieldTypes = new HashMap<>();
+	            select = selectFields(e, fieldTypes);
+	            result = doSelect(select, e, pk, fieldTypes).iterator();
+	            
+	            if (!result.hasNext()) {
+	            	break;
+	            }
+	            
+	            Map<String, Object> record = result.next(); 
+	            data.putAll(column2field(e, record));
+	            
+	            if (e.getJoiner() == null) {
+	            	break;
+	            }
+	            
+	            pk = record.get(e.getJoiner().getColumn());
+	        }
+        }
 
-		// create fetch context lazily
-		boolean fetchContextOriginator = false;
-		if (fetchContext.get() == null) {
-			fetchContext.set(new TreeMap<Object, Object>(new EntityComparator<Object>(context)));
-			fetchContextOriginator = true;
-		}
-		
-		// store the just created instance of entity into fetchContext BEFORE populating of all its properties
-		// to prevent possible infinite recursion if entity refers to itself either directly or indirectly.
-		fetchContext.get().put(entity, entity);
-		
-		try {
-			for (Entry<String, Object> d : data.entrySet()) {
-				String columnName = d.getKey();
-				Object columnValue = d.getValue();
-				
-				FieldMetadata<E, Object, Object> fmd = emd.getField(columnName);
-				//Object fieldValue = fmd.getConverter().fromColumn(columnValue);
-				
-				Object fieldValue = convertValue(fmd, columnValue, new PushmiPullyuConverter() {
-					@Override
-					public Object convert(ValueConverter<Object, Object> conveter, Object v) {
-						return conveter.fromColumn(v);
-					}
-				});
-				
-				
-				fmd.getAccessor().setValue(entity, fieldValue);
-			}
-		} finally {
-			if (fetchContextOriginator) {
-				fetchContext.remove();
-			}
-		}
+        Object key = primaryKey;
+        for (EntityMetadata<?> e : upDownChain) {
+            fieldTypes = new HashMap<>();
+            select = selectFields(e, fieldTypes);
+            String jc = getJoinerColumn(e);
+            if (jc == null) {
+            	break;
+            }
 
-		return getObjectWrapperFactory(clazz).wrap(entity);
+            result = doSelect(select, e, jc, key, fieldTypes).iterator();
+            
+            if (!result.hasNext()) {
+            	break;
+            }
+            
+            Map<String, Object> record = result.next(); 
+            data.putAll(column2field(e, record));
+            
+            key = record.get(e.getJoiner().getColumn());
+        }
+        
+
+
+        // create fetch context lazily
+        boolean fetchContextOriginator = false;
+        if (fetchContext.get() == null) {
+            fetchContext.set(new TreeMap<Object, Object>(new EntityComparator<Object>(context)));
+            fetchContextOriginator = true;
+        }
+        
+        // store the just created instance of entity into fetchContext BEFORE populating of all its properties
+        // to prevent possible infinite recursion if entity refers to itself either directly or indirectly.
+        fetchContext.get().put(entity, entity);
+        
+        try {
+        	populateData(entity, emd, data);
+        } finally {
+            if (fetchContextOriginator) {
+            	fetchContext.remove();
+            }
+        }
+
+        return getObjectWrapperFactory(clazz).wrap(entity);
+    }
+
+    
+	private <E> String getJoinerColumn(EntityMetadata<E> emd) {
+        FieldMetadata<?, ?, ?> joiner = emd.getJoiner();
+        return joiner == null ? null : joiner.getColumn(); 
 	}
+    
+    private <E>  Select.Selection selectFields(EntityMetadata<E> emd, Map<String, Class<?>[]> fieldTypes) {
+		return selectFor(
+				emd, 
+				new Predicate<FieldMetadata<E, Object, Object>>(){
+					@Override
+					public boolean apply(FieldMetadata<E, Object, Object> fmd) {
+						return fmd.getColumn() != null && !fmd.isLazy();
+					}
+				}, 
+				fieldTypes);
+    }
+    
+	
+	
+	
+	
+
+	private <E> Map<String, Object> column2field(EntityMetadata<E> emd, Map<String, Object> data) {
+		Map<String, Object> field2value = new HashMap<>();
+		
+		for (Entry<String, Object> col2val : data.entrySet()) {
+			String column = col2val.getKey();
+			
+			String field = findFieldNameByColumn(emd, column);
+			
+			if(field == null) {
+				field = column;
+			}
+			field2value.put(field, col2val.getValue());
+		}
+		
+		return field2value;
+	}
+	
+	
+	
+	private <E> void populateData(E entity, EntityMetadata<E> emd, Map<String, Object> data) {
+		for (Entry<String, Object> d : data.entrySet()) {
+			String fieldName = d.getKey();
+			Object columnValue = d.getValue();
+			FieldMetadata<E, Object, Object> fmd = findFieldMetadata(emd, fieldName);
+			
+			
+			if (!belongsTo(fmd, entity) && isDefaultValue(fmd, columnValue)) {
+				// Field metadata does not not belong to current entity. This can happen when working with single table, 
+				// i.e. when different types a stored in one table. This is valid only if columnValue is null. 
+				// Otherwise IllegalArgumentException will be thrown when trying to set value.
+				continue;
+			}
+			
+			
+			Object fieldValue = convertValue(fmd, columnValue, new PushmiPullyuConverter() {
+				@Override
+				public Object convert(ValueConverter<Object, Object> conveter, Object v) {
+					return conveter.fromColumn(v);
+				}
+			});
+			
+			
+			fmd.getAccessor().setValue(entity, fieldValue);
+		}
+	}
+	
+	/**
+	 * Retrieves field metadata even if it is defined in super class' entity metadata. 
+	 * @param emd
+	 * @param name - either field or column name
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private <E> FieldMetadata<E, Object, Object> findFieldMetadata(final EntityMetadata<E> entityMetadata, final String name) {
+		EntityMetadata<E> emd = entityMetadata;
+		for (Class<?> clazz = emd.getEntityType(); !Object.class.equals(clazz); clazz = clazz.getSuperclass(), emd = (EntityMetadata<E>)context.getEntityMetadata(clazz)) {
+			if (emd == null) {
+				continue;
+			}
+			FieldMetadata<E, Object, Object> fmd = emd.getFieldByName(name);
+			if (fmd == null) {
+				// try to get metdata by column name for virtual columns that are not represented in entity
+				// for example for discrimintator
+				fmd = emd.getField(name); 
+			}
+			if (fmd != null) {
+				return fmd;
+			}
+		}
+
+		return null;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private <E> String findFieldNameByColumn(final EntityMetadata<E> entityMetadata, final String column) {
+		EntityMetadata<E> emd = entityMetadata;
+		for (Class<?> clazz = emd.getEntityType(); !Object.class.equals(clazz); clazz = clazz.getSuperclass(), emd = (EntityMetadata<E>)context.getEntityMetadata(clazz)) {
+			if (emd == null) {
+				continue;
+			}
+			FieldMetadata<E, Object, Object> fmd = emd.getField(column); 
+			if (fmd != null) {
+				return fmd.getName();
+			}
+		}
+
+		return null;
+	}
+	
+	private <E> Class<? extends E> getRealClass(EntityMetadata<E> emd, Map<String, Object> data) {
+		FieldMetadata<E, ?, ?> dmd = emd.getDiscrimintor();
+		if (dmd == null) {
+			return emd.getEntityType();
+		}
+		
+		String discriminatorColumn = dmd.getColumn();
+		Object discriminatorValue = data.get(discriminatorColumn);
+		if (discriminatorValue == null) {
+			return emd.getEntityType();
+		}
+		
+		for (EntityMetadata<?> e : context.getEntityMetadata()) {
+			if (emd.getEntityType().isAssignableFrom(e.getEntityType()) && discriminatorValue.equals(e.getDiscrimintor().getDefaultValue())) {
+				@SuppressWarnings("unchecked")
+				Class<? extends E> c =  (Class<? extends E>)e.getEntityType();
+				return c;
+			}
+		}
+		
+		return emd.getEntityType();
+	}
+
 
 	@Override
 	public <E> void remove(E entity) {
@@ -355,13 +650,48 @@ public class CqlPersistor implements Persistor {
 		// TODO add support of cascade here.
 	}
 
-	private <E, P> Iterable<Clause> getPrimaryKeyClause(EntityMetadata<E> emd, P primaryKey) {
+	
+	private <E, P> Iterable<Clause> getPrimaryKeyClause(final EntityMetadata<E> entityMetadata, final P primaryKey) {
+		EntityMetadata<E> emd = entityMetadata;
+		FieldMetadata<E, Object, Object> dmd = emd.getDiscrimintor();
+		
+		boolean discriminator = false;
+		Collection<Clause> clause = new ArrayList<>();
+		if (dmd != null && dmd.getColumn() != null) {
+			String discriminatorColumn = dmd.getColumn();
+			Object discriminatorValue = dmd.getDefaultValue();
+			if (discriminatorValue != null && !isPrimaryKey(emd.getSchemaName(), emd.getTableName(), emd.getPrimaryKey().getColumn())) {
+				clause.add(eq(quote(discriminatorColumn), discriminatorValue));
+				discriminator = true;
+			}
+		}
+		
+		if (!discriminator) {
+			FieldMetadata<E, Object, Object> jmd = emd.getJoiner();
+			if (jmd != null) {
+				String joinerColumn = jmd.getColumn();
+				clause.add(eq(quote(joinerColumn), primaryKey));
+			} 
+		}
+		
+		
+		
 		FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
 		Object pkColumnValue = pkmd.getConverter().toColumn(primaryKey);
 		String pkName = emd.getPrimaryKey().getColumn();
-		return Arrays.asList(eq(quote(pkName), pkColumnValue));
+		clause.add(eq(quote(pkName), pkColumnValue));
+		return clause;
 	}
 
+	private boolean isPrimaryKey(String keyspace, String table, String column) {
+		for (ColumnMetadata cmd : cluster.getMetadata().getKeyspace(keyspace).getTable(table).getPrimaryKey()) {
+			if (column.equals(cmd.getName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	@Override
 	public <E> boolean exists(Class<E> entityClass, Object primaryKey) {
 		return count(entityClass, primaryKey).signum() == 1;
@@ -379,43 +709,95 @@ public class CqlPersistor implements Persistor {
 	
 	
 	
+	
+	private <E> Select.Selection selectFor(EntityMetadata<E> emd, Predicate<FieldMetadata<E, Object, Object>> filter, Map<String, Class<?>[]> fieldTypes) {
+		return selectFor(emd, Collections2.filter(emd.getFields(), filter), fieldTypes);
+	}
+	
+	
+	private <E> Select.Selection selectFor(EntityMetadata<E> emd, Collection<FieldMetadata<E, Object, Object>> fields, Map<String, Class<?>[]> fieldTypes) {
+		Select.Selection select = select();
+		
+		for (FieldMetadata<E, ?, ?> fmd : fields) {
+			final String column = fmd.getColumn();
+			if (column != null) {
+				select.column(quote(column));
+				fieldTypes.put(fmd.getColumn(), emd.getColumnTypes(fmd.getColumn()));
+			}
+		}
+		
+		return select;
+	}
+	
+
+	
 	private <E, P> Iterable<Map<String, Object>> doSelect(
-			Select.Builder queryBuilder, EntityMetadata<E> emd, P primaryKey,
+			Select.Builder queryBuilder, 
+			EntityMetadata<E> emd,
+			P pk,
+			Map<String, Class<?>[]> fields) {
+		return doSelect(queryBuilder, emd, emd.getPrimaryKey().getColumn(), pk, fields);
+	}
+	
+	
+	private <E, P> Iterable<Map<String, Object>> doSelect(
+			Select.Builder queryBuilder, 
+			EntityMetadata<E> emd,
+			String column,
+			P value,
 			Map<String, Class<?>[]> fields) {
 		String table = emd.getTableName();
 		String keyspace = emd.getSchemaName();
 
 		Where where = queryBuilder.from(quote(keyspace), quote(table)).allowFiltering().where();
-
-		for (Clause clause : getPrimaryKeyClause(emd, primaryKey)) {
-			where.and(clause);
+		FieldMetadata<E, Object, Object> fmd = emd.getField(column);
+		if (fmd == null) {
+			fmd = emd.getPrimaryKey();
 		}
+		Object columnValue = fmd.getConverter().toColumn(value);
+		where.and(eq(quote(column), columnValue));
 
 		return execute(where, fields);
 	}
 
+	
+	private <E, P> ResultSet doSelectAll(EntityMetadata<E> emd, P pkValue) {
+		String table = emd.getTableName();
+		String keyspace = emd.getSchemaName();
+
+		Where where = select().all().from(quote(keyspace), quote(table)).allowFiltering().where();
+		FieldMetadata<E, Object, Object> fmd = emd.getPrimaryKey();
+		String column = fmd.getColumn();
+		Object columnValue = fmd.getConverter().toColumn(pkValue);
+		where.and(eq(quote(column), columnValue));
+
+		
+		return session.execute(where);
+	}
+	
+	
+	
 	@Override
 	public <E> Object[] fetchProperty(E entity, String... propertyNames) {
 		Class<E> clazz = getEntityClass(entity);
 		EntityMetadata<E> emd = context.getEntityMetadata(clazz);
 		Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
 
-		Set<String> propertyNamesSet = new HashSet<>(Arrays.asList(propertyNames));
+		final Set<String> propertyNamesSet = new HashSet<>(Arrays.asList(propertyNames));
 
 		
-		Select.Selection select = select();
-
-		List<String> columns = new ArrayList<>();
 		Map<String, Class<?>[]> columnTypes = new LinkedHashMap<String, Class<?>[]>();
-		for (FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
-			if (propertyNamesSet.contains(fmd.getName())) {
-				final String column = fmd.getColumn();
-				columns.add(column);
-				select.column(quote(column));
-				columnTypes.put(column, emd.getColumnTypes(column));
-			}
-		}
+		Select.Selection select = selectFor(
+				emd, 
+				new Predicate<FieldMetadata<E, Object, Object>>() {
+					@Override
+					public boolean apply(FieldMetadata<E, Object, Object> fmd) {
+						return propertyNamesSet.contains(fmd.getName());
+					}
+				}, 
+				columnTypes);
 
+		List<String> columns = new ArrayList<>(columnTypes.keySet());
 		Object[] result = new Object[propertyNames.length];
 
 		Map<String, Object> rawResult = doSelect(select, emd, primaryKey, columnTypes).iterator().next();
@@ -502,9 +884,13 @@ public class CqlPersistor implements Persistor {
 	}
 	
 	private <E> void addColumn(CreateTable table, FieldMetadata<E, ?, ?> fmd, Collection<String> indexedColumns) {
-			table.add(fmd.getColumn(), fmd.getColumnType(), fmd.getColumnGenericTypes()
-					.toArray(new Class[0]),
-					getFieldAttributes(fmd, indexedColumns));
+		String column = fmd.getColumn();
+		if (column == null) {
+			return; // special case for fields that are not save as columns.
+		}
+		table.add(column, fmd.getColumnType(), fmd.getColumnGenericTypes()
+				.toArray(new Class[0]),
+				getFieldAttributes(fmd, indexedColumns));
 	}
 
 	@Override
@@ -651,6 +1037,9 @@ public class CqlPersistor implements Persistor {
 			// AlterTable table =
 			// CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
 			String column = fmd.getColumn();
+			if (column == null) {
+				continue; // special case for fields that are not save as columns.
+			}
 			Class<?> columnType = fmd.getColumnType();
 			
 			ColumnMetadata existingColumn = existingColumns.get(column);
@@ -758,7 +1147,7 @@ public class CqlPersistor implements Persistor {
 	 * @return unique index name
 	 */
 	private String createIndexName(String keyspace, String table, String column) {
-		return Joiner.on('_').join(keyspace, table, column, "index");
+		return Joiner.on('_').join(keyspace, table, column.replaceAll("[^a-zA-Z_]", "_"), "index");
 	}
 
 	@SuppressWarnings("unchecked")
@@ -769,6 +1158,18 @@ public class CqlPersistor implements Persistor {
 		return (Class<E>) obj.getClass();
 	}
 
+	/**
+	 * Composes list of column names that must be indexed:
+	 * <ul>
+	 * 	<li>explicitly defined indexed</li>
+	 * 	<li>discriminator column</li>
+	 * 	<li>indexer column</li>
+	 * 	<li>indexer column</li>
+	 * 	<li>primary keys of subclasses that share the same table</li>
+	 * </ul>
+	 * @param entityMetadata
+	 * @return
+	 */
 	private <E> Set<String> getRequiredIndexedFields(
 			EntityMetadata<E> entityMetadata) {
 		Set<String> requiredIndexes = new HashSet<>();
@@ -784,13 +1185,86 @@ public class CqlPersistor implements Persistor {
 						}
 					}));
 		}
+		
+		// Add indexes created for inherited entities 
+		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+			final String column = fmd.getColumn();
+			if (column != null && (fmd.isDiscriminator() || fmd.isJoiner())) {
+				requiredIndexes.add(column);
+			}
+		}
+		
+		String tableName = entityMetadata.getTableName();
+		Class<E> clazz = entityMetadata.getEntityType();
+		
+		for (EntityMetadata<?> e : context.getEntityMetadata()) {
+			Class<?> c = e.getEntityType();
 
+			FieldMetadata<?, ?, ?> fpk = e.getPrimaryKey();
+			if (fpk == null) {
+				continue;
+			}
+			String pkColumn = fpk.getColumn();
+			if (pkColumn == null) {
+				continue;
+			}
+			
+			// add index for PK of subclasses stored in the same table
+			if (tableName.equals(e.getTableName()) && clazz.isAssignableFrom(c) && !clazz.equals(c)) {
+				requiredIndexes.add(pkColumn);
+			}
+			
+			// add indexes for PK of super classes if each class is stored in separate table
+			if (c.isAssignableFrom(clazz) && !clazz.equals(c)) {
+				FieldMetadata<?, ?, ?> parentForeignKey = entityMetadata.getFieldByName(fpk.getName());
+				String fkColumn = parentForeignKey.getColumn();
+				if (fkColumn == null) {
+					continue;
+				}
+				requiredIndexes.add(pkColumn);
+			}
+			
+		}
+
+		
 		return requiredIndexes;
 	}
 
-	// package protected for testing
-	Cluster getCluster() {
+	// for testing
+	public Cluster getCluster() {
 		return cluster;
 	}
-	
+
+
+	/**
+	 * Checks whether given {@link FieldMetadata} belongs to given entity.
+	 * @param fmd
+	 * @param entity
+	 * @return
+	 */
+	private <E> boolean belongsTo(FieldMetadata<E, ?, ?> fmd, E entity) {
+		// TODO: should we perform some more sanity tests here based on discriminator column?
+		return fmd.getClassType().isAssignableFrom(entity.getClass());
+	}
+
+	private <E, F> boolean isDefaultValue(FieldMetadata<E, F, ?> fmd, F value) {
+		Class<F> type = fmd.getType();
+		if (!type.isPrimitive()) {
+			return value == null;
+		}
+		// this is a primitive
+		if (int.class.equals(type) || long.class.equals(type) || short.class.equals(type) || byte.class.equals(type)) {
+			return ((Number)value).intValue() == 0;
+		}
+		if (float.class.equals(type)) {
+			return ((Number)value).floatValue() == 0.0f;
+		}
+		if (double.class.equals(type)) {
+			return ((Number)value).doubleValue() == 0.0;
+		}
+		if (boolean.class.equals(type)) {
+			return ((Boolean)value).booleanValue() == false;
+		}
+		return false;
+	}
 }

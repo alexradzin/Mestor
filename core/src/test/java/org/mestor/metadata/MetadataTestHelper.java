@@ -31,9 +31,8 @@ public class MetadataTestHelper {
 	
 
 	
-	
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public <T> EntityMetadata<T> createMetadata(Class<T> clazz, String schemaName, String tableName, FieldMetadata pk, FieldMetadata ... fieldsMetadata) {
+	public final <T> EntityMetadata<T> createMetadata(Class<T> clazz, String schemaName, String tableName, FieldMetadata<T, ?, ?> pk, FieldMetadata ... fieldsMetadata) {
 		EntityMetadata<T> emd = new EntityMetadata<>(clazz);
 		emd.setEntityName(clazz.getSimpleName());
 		emd.setTableName(tableName);

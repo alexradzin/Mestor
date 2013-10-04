@@ -7,7 +7,7 @@ import java.util.Map;
 
 import com.google.common.base.Objects;
 
-public class Person {
+public class Person extends AbstractEntity {
 	private int id;
 
 	// 2 ways to create composite primary key.
