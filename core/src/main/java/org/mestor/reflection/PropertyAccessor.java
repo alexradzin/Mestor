@@ -17,11 +17,18 @@
 
 package org.mestor.reflection;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class PropertyAccessor<T, P> {
+public class PropertyAccessor<T, P> implements AnnotatedElement {
 	private final Class<T> type;
 	private final Class<P> propertyType;
 	private final String name;
@@ -142,6 +149,69 @@ public class PropertyAccessor<T, P> {
 	public Access<T, P, ? extends AccessibleObject> getWriteAccess() {
 		return writeAccess;
 	}
-	
+
+
+
+	@Override
+	public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+		return getAnnotation(annotationClass) != null;
+	}
+
+
+
+	@Override
+	public <A extends Annotation> A getAnnotation(Class<A> annotationClass) {
+		for (AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
+			if (ae == null) {
+				continue;
+			}
+			A a = ae.getAnnotation(annotationClass);
+			if (a != null) {
+				return a;
+			}
+		}
+		return null;
+	}
+
+
+
+	@Override
+	public Annotation[] getAnnotations() {
+		List<Annotation> annotations = new ArrayList<>();
+		for (AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
+			annotations.addAll(Arrays.asList(ae.getAnnotations()));
+		}
+		return annotations.toArray(new Annotation[annotations.size()]);
+	}
+
+
+
+	@Override
+	public Annotation[] getDeclaredAnnotations() {
+		List<Annotation> annotations = new ArrayList<>();
+		for (AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
+			annotations.addAll(Arrays.asList(ae.getDeclaredAnnotations()));
+		}
+		return annotations.toArray(new Annotation[annotations.size()]);
+	}
+
+	public Type getGenericType() {
+		Type genericType = null;
+		if (field != null) {
+			Type fieldType = field.getGenericType();
+			if (fieldType instanceof ParameterizedType) {
+				return fieldType;
+			}
+			genericType = fieldType;
+		}
+		if (getter != null) {
+			Type getterType = getter.getGenericReturnType();
+			if (getterType instanceof ParameterizedType) {
+				return getterType;
+			}
+			genericType = getterType;
+		}
+		return genericType;
+	}
 	
 }

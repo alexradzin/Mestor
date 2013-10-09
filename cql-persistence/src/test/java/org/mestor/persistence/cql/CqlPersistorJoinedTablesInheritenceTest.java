@@ -21,11 +21,11 @@ import static org.mockito.Mockito.doReturn;
 
 import java.util.Arrays;
 
+import org.mestor.entities.Employee;
+import org.mestor.entities.Person;
+import org.mestor.entities.Student;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
-import org.mestor.testEntities.Employee;
-import org.mestor.testEntities.Person;
-import org.mestor.testEntities.Student;
 
 public class CqlPersistorJoinedTablesInheritenceTest extends CqlPersistorInheritanceTestCase {
 	private final static String PEOPLE_TABLE = "People";

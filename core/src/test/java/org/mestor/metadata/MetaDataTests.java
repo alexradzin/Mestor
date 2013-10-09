@@ -10,7 +10,7 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mestor.testEntities.Person;
+import org.mestor.entities.Person;
 
 public class MetaDataTests {
 	private boolean testDefTableName = false;
@@ -74,7 +74,7 @@ public class MetaDataTests {
 		IndexMetadata<Person> index2 = new IndexMetadata<>(Person.class, DEF_INDEX_NAME_2, surnameField);
 		indexes.add(index);
 		indexes.add(index2);
-		emd.setIndexes(indexes);
+		emd.addAllIndexes(indexes);
 
 
 		@SuppressWarnings("unchecked")

@@ -17,7 +17,11 @@
 
 package org.mestor.reflection;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
 /**
  * Base class for implementations of {@link Access} 
@@ -35,4 +39,44 @@ public abstract class AbstractAccess<T, P, A extends AccessibleObject> implement
 		this.accessibleObjects = accessibleObjects;
 	}
 
+	
+	@Override
+	public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+		for (A accessibleObject : accessibleObjects) {
+			if (accessibleObject.isAnnotationPresent(annotationClass)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public <N extends Annotation> N getAnnotation(Class<N> annotationClass) {
+		for (A accessibleObject : accessibleObjects) {
+			N annotation = accessibleObject.getAnnotation(annotationClass);
+			if (annotation != null) {
+				return annotation;
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Annotation[] getAnnotations() {
+		Collection<Annotation> annotations = new ArrayList<>();
+		for (A accessibleObject : accessibleObjects) {
+			annotations.addAll(Arrays.asList(accessibleObject.getAnnotations()));
+		}
+		return annotations.toArray(new Annotation[annotations.size()]);
+	}
+
+	@Override
+	public Annotation[] getDeclaredAnnotations() {
+		Collection<Annotation> annotations = new ArrayList<>();
+		for (A accessibleObject : accessibleObjects) {
+			annotations.addAll(Arrays.asList(accessibleObject.getDeclaredAnnotations()));
+		}
+		return annotations.toArray(new Annotation[annotations.size()]);
+	}	
+	
 }

@@ -15,34 +15,26 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.testEntities;
+package org.mestor.entities.annotated;
 
-public class Student extends Person {
-	private String studentId;
-	private String collegeName;
-	
-	
-	
-	public Student() {
-		super();
+import java.util.List;
+
+import javax.persistence.Entity;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.ManyToMany;
+
+@Entity
+@Inheritance(strategy=InheritanceType.TABLE_PER_CLASS)
+public abstract class Address extends AbstractEntity {
+	@ManyToMany
+	private List<Person> people;
+
+	public List<Person> getPeople() {
+		return people;
 	}
-	
-	public Student(int id, String name, String lastName, Gender gender, String studentId, String colledgeName) {
-		super(id, name, lastName, gender);
-		this.studentId = studentId;
-		this.collegeName = colledgeName;
+
+	public void setPeople(List<Person> people) {
+		this.people = people;
 	}
-	
-	public String getStudentId() {
-		return studentId;
-	}
-	public void setStudentId(String studentId) {
-		this.studentId = studentId;
-	}
-	public String getCollegeName() {
-		return collegeName;
-	}
-	public void setCollegeName(String collegeName) {
-		this.collegeName = collegeName;
-	} 
 }

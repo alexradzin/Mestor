@@ -20,8 +20,15 @@ package org.mestor.em;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import javax.persistence.Cache;
+import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceUnitUtil;
+import javax.persistence.Query;
+import javax.persistence.SynchronizationType;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.metamodel.Metamodel;
 import javax.persistence.spi.PersistenceUnitInfo;
 
 import org.mestor.util.CollectionUtils;
@@ -79,6 +86,66 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 		if(!open) {
 			throw new IllegalStateException("Entity manager is closed");
 		}
+	}
+
+	@Override
+	public EntityManager createEntityManager(SynchronizationType synchronizationType) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public EntityManager createEntityManager(SynchronizationType synchronizationType, @SuppressWarnings("rawtypes") Map map) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public CriteriaBuilder getCriteriaBuilder() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Metamodel getMetamodel() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Map<String, Object> getProperties() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Cache getCache() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public PersistenceUnitUtil getPersistenceUnitUtil() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void addNamedQuery(String name, Query query) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public <T> T unwrap(Class<T> cls) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> void addNamedEntityGraph(String graphName, EntityGraph<T> entityGraph) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

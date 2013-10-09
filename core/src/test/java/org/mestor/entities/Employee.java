@@ -15,35 +15,21 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata.jpa.conversion;
+package org.mestor.entities;
 
-import javax.persistence.AttributeConverter;
-
-import org.mestor.context.EntityContext;
-import org.mestor.metadata.FieldMetadata;
-
-public class PrimaryKeyConverter<E, K> extends IndexedFieldConverter<E, K> implements AttributeConverter<E, K> {
-
-	/**
-	 * This constructor is needed to simplify generic access to functionality of this
-	 * converter. The convention is that converter can be either stateless and implement 
-	 * default constructor or be dependent on the entity type and context. 
-	 * @param clazz
-	 * @param context
-	 */
-	public PrimaryKeyConverter(Class<E> clazz, EntityContext context) {
-		super(clazz, null, context);
+public class Employee extends Person {
+	private int employeeId;
+	private String companyName;
+	public int getEmployeeId() {
+		return employeeId;
 	}
-	
-
-	@Override
-	protected E fetchExistingEntity(K primaryKey) {
-		return persistor.fetch(getEntityMetadata().getEntityType(), primaryKey);
+	public void setEmployeeId(int employeeId) {
+		this.employeeId = employeeId;
 	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	protected FieldMetadata<E, K, ?> getFieldMetadata() {
-		return 	(FieldMetadata<E, K, ?>)getEntityMetadata().getPrimaryKey();
+	public String getCompanyName() {
+		return companyName;
+	}
+	public void setCompanyName(String companyName) {
+		this.companyName = companyName;
 	}
 }

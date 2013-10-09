@@ -136,13 +136,13 @@ public class BeanMetadataFactory implements MetadataFactory {
 		}
 		
 		
-		emeta.setIndexes(findIndexes(emeta));
+		emeta.addAllIndexes(findIndexes(emeta));
 		
 		return emeta;
 	}
 
 	
-	private <T> Collection<IndexMetadata<T>> findIndexes(EntityMetadata<T> entityMetadata) {
+	protected <T> Collection<IndexMetadata<T>> findIndexes(EntityMetadata<T> entityMetadata) {
 		Map<String, IndexMetadata<T>> indexes = new LinkedHashMap<>();
 		Class<T> entityType = entityMetadata.getEntityType();
 		
@@ -156,8 +156,10 @@ public class BeanMetadataFactory implements MetadataFactory {
 			findIndexes(entityMetadata, fmeta.getAccessor().getGetter(), fmeta.getName(), indexes);
 		}
 		
+		
 		return indexes.values();
 	}
+
 
 
 	private <T> void findIndexes(EntityMetadata<T> entityMetadata, AnnotatedElement ae, String fieldName, Map<String, IndexMetadata<T>> indexes) {
@@ -227,13 +229,13 @@ public class BeanMetadataFactory implements MetadataFactory {
 	}
 	
 	@Override
-	public <T> IndexMetadata<T> create(EntityMetadata<T> entityMetadata, String name, String[] indexedFields) {
+	public <T> IndexMetadata<T> create(EntityMetadata<T> entityMetadata, String name, String... indexedFields) {
 		return new IndexMetadata<>(entityMetadata, name, indexedFields);
 	}
 	
 	
 	protected String getFieldName(AccessibleObject ao) {
-		return StandardNamingStrategy.LOWER_CAMEL_CASE.getColumnName(ao);
+		return StandardNamingStrategy.LOWER_CAMEL_CASE.getFieldName(ao);
 	}
 	
 	@Override
@@ -243,5 +245,12 @@ public class BeanMetadataFactory implements MetadataFactory {
 
 	protected String getSchema() {
 		return this.schema;
+	}
+
+
+
+	@Override
+	public void update(Map<Class<?>, EntityMetadata<?>> metadata) {
+		// empty implementation here
 	}
 }

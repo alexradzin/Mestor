@@ -215,10 +215,21 @@ public class EntityMetadata<E> {
 		return Collections.unmodifiableCollection(indexes);
 	}
 
-	public void setIndexes(Collection<IndexMetadata<E>> indexes) {
-		this.indexes = indexes;
+	public void addAllIndexes(Collection<IndexMetadata<E>> indexes) {
+		for(IndexMetadata<E> index : indexes) {
+			addIndex(index);
+		}
 	}
-
+	
+	public void addIndex(IndexMetadata<E> index) {
+		this.indexes.add(index);
+	}
+	
+	
+	public <F, C> void addIndex(FieldMetadata<E, F, C> fmd) {
+		String indexName = getTableName() + "_" + fmd.getColumn() + "_index";
+		addIndex(new IndexMetadata<>(fmd.getClassType(), indexName, fmd));
+	}
 
 	public void copy(E from, E to) {
 		for (FieldMetadata<E, ? extends Object, ? extends Object> fmd : getFields()) {

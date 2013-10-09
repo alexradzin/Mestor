@@ -15,7 +15,7 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.testEntities;
+package org.mestor.entities;
 
 public enum Country {
 	AF,  //AFGHANISTAN

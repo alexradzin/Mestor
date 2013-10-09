@@ -15,35 +15,34 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.testEntities;
+package org.mestor.entities;
 
-import java.io.Serializable;
-
-public class Passport implements Serializable {
-	private Country country;
-	private String passportId;
+public class Student extends Person {
+	private String studentId;
+	private String collegeName;
 	
 	
-	public Passport() {
+	
+	public Student() {
 		super();
 	}
-	public Passport(Country country, String passportId) {
-		super();
-		this.country = country;
-		this.passportId = passportId;
-	}
-	public Country getCountry() {
-		return country;
-	}
-	public void setCountry(Country country) {
-		this.country = country;
-	}
-	public String getPassportId() {
-		return passportId;
-	}
-	public void setPassportId(String passportId) {
-		this.passportId = passportId;
+	
+	public Student(int id, String name, String lastName, Gender gender, String studentId, String colledgeName) {
+		super(id, name, lastName, gender);
+		this.studentId = studentId;
+		this.collegeName = colledgeName;
 	}
 	
-	
+	public String getStudentId() {
+		return studentId;
+	}
+	public void setStudentId(String studentId) {
+		this.studentId = studentId;
+	}
+	public String getCollegeName() {
+		return collegeName;
+	}
+	public void setCollegeName(String collegeName) {
+		this.collegeName = collegeName;
+	} 
 }

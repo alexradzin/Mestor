@@ -117,7 +117,7 @@ public enum MestorProperties {
 	
 	//SchemaMode
 
-	NAMING_STRATEGY("naming.strategy", StandardNamingStrategy.class.getName() + "." + StandardNamingStrategy.LOWER_CASE.name()) {
+	NAMING_STRATEGY("naming.strategy", StandardNamingStrategy.class.getName() + "." + StandardNamingStrategy.LOWER_CASE_UNDERSCORE.name()) {
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		@Override
 		public <T> T  value(Map<?,?> map) {

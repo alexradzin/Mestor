@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import javax.persistence.SharedCacheMode;
+import javax.persistence.ValidationMode;
 import javax.persistence.spi.ClassTransformer;
 import javax.persistence.spi.PersistenceUnitInfo;
 import javax.persistence.spi.PersistenceUnitTransactionType;
@@ -205,6 +207,24 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 		} catch (JAXBException e) {
 			throw new IllegalStateException("Parsing of persistence.xml located at " + persistenceXmlResource + " failed ", e);
 		}
+	}
+
+	@Override
+	public SharedCacheMode getSharedCacheMode() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ValidationMode getValidationMode() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String getPersistenceXMLSchemaVersion() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

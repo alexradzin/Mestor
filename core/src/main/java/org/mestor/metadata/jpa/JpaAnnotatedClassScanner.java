@@ -17,6 +17,7 @@
 
 package org.mestor.metadata.jpa;
 
+import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.Collection;
 
@@ -46,6 +47,10 @@ public class JpaAnnotatedClassScanner implements ClassScanner {
 	
 	
 	public JpaAnnotatedClassScanner(ClassLoader[] classLoaders, Collection<URL> resources, Collection<String> packages) {
+		this(Entity.class, classLoaders, resources, packages);
+	}
+
+	public JpaAnnotatedClassScanner(Class<? extends Annotation> anno, ClassLoader[] classLoaders, Collection<URL> resources, Collection<String> packages) {
 		ConfigurationBuilder cb = new ConfigurationBuilder();
 		
 		for (ClassLoader cl : classLoaders) {
@@ -64,7 +69,8 @@ public class JpaAnnotatedClassScanner implements ClassScanner {
 		
 		reflections = new Reflections(cb);
 	}
-
+	
+	
 	@Override
 	public Collection<Class<?>> scan() {
 		return reflections.getTypesAnnotatedWith(Entity.class);

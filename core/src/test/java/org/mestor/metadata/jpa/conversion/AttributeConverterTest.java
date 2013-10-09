@@ -30,12 +30,12 @@ import java.nio.ByteBuffer;
 import javax.persistence.AttributeConverter;
 
 import org.junit.Test;
+import org.mestor.entities.Country;
+import org.mestor.entities.Passport;
+import org.mestor.entities.Person;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.MetadataTestHelper;
-import org.mestor.testEntities.Country;
-import org.mestor.testEntities.Passport;
-import org.mestor.testEntities.Person;
 
 public class AttributeConverterTest {
 	private MetadataTestHelper helper = new MetadataTestHelper();

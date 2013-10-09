@@ -15,21 +15,25 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.testEntities;
+package org.mestor.entities.annotated;
 
-public class Employee extends Person {
-	private int employeeId;
-	private String companyName;
-	public int getEmployeeId() {
-		return employeeId;
+import javax.persistence.Entity;
+
+@Entity(name = "email")
+public class EmailAddress extends Address {
+	private String name;
+	private String email;
+	
+	public String getName() {
+		return name;
 	}
-	public void setEmployeeId(int employeeId) {
-		this.employeeId = employeeId;
+	public void setName(String name) {
+		this.name = name;
 	}
-	public String getCompanyName() {
-		return companyName;
+	public String getEmail() {
+		return email;
 	}
-	public void setCompanyName(String companyName) {
-		this.companyName = companyName;
+	public void setEmail(String email) {
+		this.email = email;
 	}
 }

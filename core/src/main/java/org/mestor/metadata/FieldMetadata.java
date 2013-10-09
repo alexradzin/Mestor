@@ -198,6 +198,9 @@ public class FieldMetadata<T, F, C> {
 		return genericTypes;
 	}
 
+	public void setGenericTypes(Class<?> ... genericTypes) {
+		setGenericTypes(Arrays.asList(genericTypes));
+	}
 
 	public void setGenericTypes(Collection<Class<?>> genericTypes) {
 		this.genericTypes = genericTypes;

@@ -77,7 +77,7 @@ public enum StandardNamingStrategy implements NamingStrategy {
 	;
 
 	private final static Pattern accessMethodPrefix = Pattern.compile("^(get|set|is)");
-	private final static Pattern splitByCapitalLetter = Pattern.compile("(?=\\b[A-Z])");
+	private final static Pattern splitByCapitalLetter = Pattern.compile("(?!^)(?=[A-Z])");
 			
 	
 	
@@ -91,6 +91,11 @@ public enum StandardNamingStrategy implements NamingStrategy {
 		return transformName(extractName(clazz, Table.class, clazz.getSimpleName()));
 	}
 
+	@Override
+	public String getFieldName(AccessibleObject ao) {
+		return transformName(getPropertyName(ao));
+	}
+	
 	@Override
 	public String getColumnName(AccessibleObject ao) {
 		return transformName(extractName(ao, Column.class, getPropertyName(ao)));
@@ -120,7 +125,7 @@ public enum StandardNamingStrategy implements NamingStrategy {
 
 	
 	private String getPropertyName(AccessibleObject ao) {
-		// I beg my pardon for instanceof... This is done to make less methods in public interface NamingStrategy
+		// I beg my pardon for instanceof... This is done to decrease number of methods declared in public interface NamingStrategy
 		if (ao instanceof Field) {
 			return getPropertyName((Field)ao);
 		} 

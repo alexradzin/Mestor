@@ -15,35 +15,45 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata.jpa.conversion;
+package org.mestor.entities.annotated;
 
-import javax.persistence.AttributeConverter;
+import java.io.Serializable;
 
-import org.mestor.context.EntityContext;
-import org.mestor.metadata.FieldMetadata;
+import javax.persistence.Convert;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 
-public class PrimaryKeyConverter<E, K> extends IndexedFieldConverter<E, K> implements AttributeConverter<E, K> {
+import org.mestor.metadata.jpa.conversion.ClassNameConverter;
+import org.mestor.metadata.jpa.conversion.SerializableConverter;
 
-	/**
-	 * This constructor is needed to simplify generic access to functionality of this
-	 * converter. The convention is that converter can be either stateless and implement 
-	 * default constructor or be dependent on the entity type and context. 
-	 * @param clazz
-	 * @param context
-	 */
-	public PrimaryKeyConverter(Class<E> clazz, EntityContext context) {
-		super(clazz, null, context);
-	}
+@Entity
+public class SimpleProperty {
+	@Id
+	private String name;
+
+	@Convert(converter = ClassNameConverter.class)
+	private Class<?> type;
+
+	@Convert(converter = SerializableConverter.class)
+	private Serializable value;
+
 	
-
-	@Override
-	protected E fetchExistingEntity(K primaryKey) {
-		return persistor.fetch(getEntityMetadata().getEntityType(), primaryKey);
+	public String getName() {
+		return name;
 	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	protected FieldMetadata<E, K, ?> getFieldMetadata() {
-		return 	(FieldMetadata<E, K, ?>)getEntityMetadata().getPrimaryKey();
+	public void setName(String name) {
+		this.name = name;
+	}
+	public Class<?> getType() {
+		return type;
+	}
+	public void setType(Class<?> type) {
+		this.type = type;
+	}
+	public Serializable getValue() {
+		return value;
+	}
+	public void setValue(Serializable value) {
+		this.value = value;
 	}
 }

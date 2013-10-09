@@ -8,6 +8,7 @@ import org.mestor.wrap.ObjectWrapperFactory;
 public interface Persistor {
 	public <T> void store(T entity);
 	public <T, P> T fetch(Class<T> entityClass, P primaryKey);
+	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria);
 	public <T> void remove(T entity);
 	public <T> boolean exists(Class<T> entityClass, Object primaryKey);
 	

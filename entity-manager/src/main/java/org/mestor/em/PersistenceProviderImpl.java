@@ -5,6 +5,7 @@ import java.util.Map;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.spi.PersistenceProvider;
 import javax.persistence.spi.PersistenceUnitInfo;
+import javax.persistence.spi.ProviderUtil;
 
 public class PersistenceProviderImpl implements PersistenceProvider {
 	// Multiple @SuppressWarnings are here because interface PersistenceProvider 
@@ -29,6 +30,24 @@ public class PersistenceProviderImpl implements PersistenceProvider {
 		@SuppressWarnings({ "cast", "unchecked" })
 		Map<String, String> props = (Map<String, String>)map;
 		return new EntityManagerFactoryImpl(info, props);
+	}
+
+	@Override
+	public void generateSchema(PersistenceUnitInfo info, @SuppressWarnings("rawtypes") Map map) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean generateSchema(String persistenceUnitName, @SuppressWarnings("rawtypes") Map map) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public ProviderUtil getProviderUtil() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 

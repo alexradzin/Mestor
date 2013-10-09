@@ -118,5 +118,11 @@ public class DummyPersistor implements Persistor {
 		return null;
 	}
 
+	@Override
+	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 
 }

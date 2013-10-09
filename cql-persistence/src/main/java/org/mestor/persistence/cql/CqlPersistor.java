@@ -334,6 +334,10 @@ public class CqlPersistor implements Persistor {
 	}
 
 
+    @Override
+	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria) {
+		throw new UnsupportedOperationException("This method is not implemented yet");
+	}
 	
 	
     @Override

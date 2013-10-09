@@ -15,22 +15,46 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.testEntities;
+package org.mestor.entities.annotated;
 
-public abstract class AbstractEntity {
-	private int identifier;
-	private long lastModified;
-	public int getIdentifier() {
-		return identifier;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Table;
+
+import org.mestor.entities.Country;
+
+@Entity
+@Table(name = "address")
+public class StreetAddress extends Address {
+	@Column(name = "number")
+	private String streetNumber;
+	private String street;
+	@Column(name = "zipcode")
+	private int zip;
+	private Country country;
+	public String getStreetNumber() {
+		return streetNumber;
 	}
-	public void setIdentifier(int identifier) {
-		this.identifier = identifier;
+	public void setStreetNumber(String streetNumber) {
+		this.streetNumber = streetNumber;
 	}
-	public long getLastModified() {
-		return lastModified;
+	public String getStreet() {
+		return street;
 	}
-	public void setLastModified(long lastModified) {
-		this.lastModified = lastModified;
+	public void setStreet(String street) {
+		this.street = street;
+	}
+	public int getZip() {
+		return zip;
+	}
+	public void setZip(int zip) {
+		this.zip = zip;
+	}
+	public Country getCountry() {
+		return country;
+	}
+	public void setCountry(Country country) {
+		this.country = country;
 	}
 	
 	

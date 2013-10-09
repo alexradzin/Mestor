@@ -17,9 +17,45 @@
 
 package org.mestor.metadata;
 
+import java.util.Map;
+
 public interface MetadataFactory {
+	/**
+	 * Set current schema that will be used to create all tables, indexes etc
+	 * @param schema
+	 */
 	public void setSchema(String schema);
+	
+	/**
+	 * Creates {@link EntityMetadata} for given class.
+	 * @param clazz
+	 * @return entity meta data
+	 */
 	public <T> EntityMetadata<T> create(Class<T> clazz);
+	
+	/**
+	 * Creates {@link FieldMetadata} for specified field of given class.
+	 * @param clazz
+	 * @param fieldClass
+	 * @param name
+	 * @return the field meta data
+	 */
 	public <T, F, C> FieldMetadata<T, F, C> create(Class<T> clazz, Class<F> fieldClass, String name);
-	public <T> IndexMetadata<T> create(EntityMetadata<T> entityMetadata, String name, String[] indexedFields);
+	
+	/**
+	 * Creates {@link IndexMetadata} identified by {@code name} including specified fields for given entity meta data.
+	 * @param entityMetadata
+	 * @param name
+	 * @param indexedFields
+	 * @return index meta data
+	 */
+	public <T> IndexMetadata<T> create(EntityMetadata<T> entityMetadata, String name, String... indexedFields);
+	
+	/**
+	 * Performs all required updates of created {@link EntityMetadata}. This method should be called when all instances
+	 * {@link EntityMetadata} for all classes in context are already created, so required fixes and additions based on 
+	 * relationships between different entities can be done. 
+	 * @param metadata
+	 */
+	public void update(Map<Class<?>, EntityMetadata<?>> metadata);
 }

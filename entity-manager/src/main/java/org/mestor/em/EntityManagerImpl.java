@@ -33,12 +33,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityNotFoundException;
 import javax.persistence.EntityTransaction;
 import javax.persistence.FlushModeType;
 import javax.persistence.LockModeType;
 import javax.persistence.Query;
+import javax.persistence.StoredProcedureQuery;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaDelete;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.CriteriaUpdate;
+import javax.persistence.metamodel.Metamodel;
 import javax.persistence.spi.PersistenceUnitInfo;
 
 import org.mestor.context.DirtyEntityManager;
@@ -55,6 +64,7 @@ import org.mestor.wrap.ObjectWrapperFactory;
 
 import com.google.common.collect.Maps;
 
+//TODO use setProperty() (introduced in JPA 2.0) method for initialization
 public class EntityManagerImpl implements EntityManager, EntityContext {
 	private final PersistenceUnitInfo info;
 	private final Map<String, Object> properties;
@@ -338,20 +348,13 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		final MetadataFactory mdf;
 		try {
 			Class<MetadataFactory> mdfClass = METADATA_FACTORY_CLASS.value(allParams);
+			//TODO: add support of different naming strategies for tables, entities, fields, columns, indexes etc. 
 			NamingStrategy namingStrategy = NAMING_STRATEGY.value(allParams);
 			mdf = mdfClass.newInstance();
 			mdf.setSchema(puName);
 			
-			EntityMetadata<MetadataFactory> mdfemd = new EntityMetadata<>(mdfClass);
-			Collection<String> namingStrategyFields = mdfemd.getFieldNamesByType(NamingStrategy.class);
-			int n = namingStrategyFields.size();
-			if (n > 1) {
-				throw new IllegalStateException("Cannot set naming strategy to " + mdfClass + ": there are more than 1 properties of this type");
-			}
-			if(n == 1) {
-				String namingStrategyField = namingStrategyFields.iterator().next();
-				mdfemd.getField(namingStrategyField).getAccessor().setValue(mdf, namingStrategy);
-			}
+			setProperty(mdf, NamingStrategy.class, namingStrategy);
+			setProperty(mdf, EntityContext.class, this);
 		} catch (ReflectiveOperationException e) {
 			throw new IllegalArgumentException(e);
 		}
@@ -365,10 +368,28 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			}
 			class2metadata.put(c, md);
 		}
+		mdf.update(class2metadata);
 		
 		return class2metadata;
 	}
 
+	
+	private <M extends MetadataFactory, P> void setProperty(M mdf, Class<P> parameterType, P parameterValue) {
+		@SuppressWarnings("unchecked")
+		Class<M> mdfClass = (Class<M>)mdf.getClass();
+		EntityMetadata<M> mdfemd = new EntityMetadata<>(mdfClass);
+		Collection<String> parameterFields = mdfemd.getFieldNamesByType(parameterType);
+		int n = parameterFields.size();
+		if (n > 1) {
+			throw new IllegalStateException("Cannot set parameter of type " + parameterType + " to " + mdfClass + ": there are more than 1 properties of this type");
+		}
+		if(n == 1) {
+			String namingStrategyField = parameterFields.iterator().next();
+			mdfemd.getField(namingStrategyField).getAccessor().setValue(mdf, parameterValue);
+		}
+		
+		// property of give type is unsupported. Ignore it. 
+	}
 	
 	
 	private Persistor createPersistor(PersistenceUnitInfo info, Map<String, Object> properties, Map<String, Object> allParams) {
@@ -463,5 +484,173 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public DirtyEntityManager getDirtyEntityManager() {
 		return EntityTransactionImpl.getDirtyEntityManager();
+	}
+
+	@Override
+	public <T> T find(Class<T> entityClass, Object primaryKey, Map<String, Object> properties) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> T find(Class<T> entityClass, Object primaryKey, LockModeType lockMode) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> T find(Class<T> entityClass, Object primaryKey, LockModeType lockMode, Map<String, Object> properties) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void lock(Object entity, LockModeType lockMode, Map<String, Object> properties) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void refresh(Object entity, Map<String, Object> properties) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void refresh(Object entity, LockModeType lockMode) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void refresh(Object entity, LockModeType lockMode, Map<String, Object> properties) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void detach(Object entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public LockModeType getLockMode(Object entity) {
+		// TODO Auto-generated method stub
+		return LockModeType.NONE;
+	}
+
+	@Override
+	public void setProperty(String propertyName, Object value) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public <T> TypedQuery<T> createQuery(CriteriaQuery<T> criteriaQuery) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Query createQuery(@SuppressWarnings("rawtypes") CriteriaUpdate updateQuery) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Query createQuery(@SuppressWarnings("rawtypes") CriteriaDelete deleteQuery) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> TypedQuery<T> createQuery(String qlString, Class<T> resultClass) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> TypedQuery<T> createNamedQuery(String name, Class<T> resultClass) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public StoredProcedureQuery createNamedStoredProcedureQuery(String name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public StoredProcedureQuery createStoredProcedureQuery(String procedureName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public StoredProcedureQuery createStoredProcedureQuery(String procedureName, @SuppressWarnings("rawtypes") Class... resultClasses) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public StoredProcedureQuery createStoredProcedureQuery(String procedureName, String... resultSetMappings) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean isJoinedToTransaction() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public <T> T unwrap(Class<T> cls) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public EntityManagerFactory getEntityManagerFactory() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public CriteriaBuilder getCriteriaBuilder() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Metamodel getMetamodel() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> EntityGraph<T> createEntityGraph(Class<T> rootType) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public EntityGraph<?> createEntityGraph(String graphName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public EntityGraph<?> getEntityGraph(String graphName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public <T> List<EntityGraph<? super T>> getEntityGraphs(Class<T> entityClass) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

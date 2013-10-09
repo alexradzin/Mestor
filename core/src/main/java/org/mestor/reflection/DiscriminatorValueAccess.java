@@ -20,46 +20,85 @@ package org.mestor.reflection;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 
-/**
- * Implementation of {@link Access} that transforms instance to its class name. 
- * Good for implementation of "virtual" entity fields, i.e. fields that do not really exist.
- * In practice this class is used for discriminators.
- * @author alexr
- *
- * @param <T>
- */
-public class ClassNameAccess <T> implements Access<T, String, AccessibleObject> {
+import javax.persistence.DiscriminatorColumn;
+import javax.persistence.DiscriminatorType;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
 
+@DiscriminatorColumn
+public class DiscriminatorValueAccess<T, D> implements Access<T, D, AccessibleObject> {
+	private final Class<T> clazz;
+	private final DiscriminatorValue discriminatorValue;
+	private final DiscriminatorColumn discriminatorColumn;
+	private final String entityName;
+	
+	public DiscriminatorValueAccess(Class<T> clazz) {
+		this.clazz = clazz;
+		discriminatorValue = clazz.getAnnotation(DiscriminatorValue.class);
+		discriminatorColumn = getDiscriminatorColumn(clazz);
+		Entity entity = clazz.getAnnotation(Entity.class);
+		entityName = entity != null && !"".equals(entity.name()) ? entity.name() : clazz.getSimpleName(); 
+	}
+	
+
+	@SuppressWarnings("unchecked")
 	@Override
-	public String get(T instance) {
-		return instance.getClass().getName();
+	public D get(T instance) {
+		if (discriminatorValue != null) {
+			return (D)discriminatorValue.value();
+		}
+		
+		DiscriminatorType discriminatorType = discriminatorColumn.discriminatorType();
+		
+		switch (discriminatorType) {
+			case STRING:
+				return (D)entityName;
+			case CHAR:
+				throw new IllegalArgumentException("Cannot create implicit discriminator of type ");
+			case INTEGER:
+				return (D)Integer.valueOf(clazz.hashCode());
+			default: 
+				throw new IllegalArgumentException("Unsupported DiscriminatorType " + discriminatorType);
+		}
 	}
 
 	@Override
-	public void set(T instance, String parameter) {
+	public void set(T instance, D parameter) {
 		// Nothing to do. Class name is a fake field. 
 	}
 
 	@Override
 	public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-		return false;
+		return clazz.isAnnotationPresent(annotationClass);
 	}
 
 	@Override
 	public <N extends Annotation> N getAnnotation(Class<N> annotationClass) {
-		return null;
+		return clazz.getAnnotation(annotationClass);
 	}
 
 	@Override
 	public Annotation[] getAnnotations() {
-		return null;
+		return clazz.getAnnotations();
 	}
 
 	@Override
 	public Annotation[] getDeclaredAnnotations() {
-		return null;
+		return clazz.getDeclaredAnnotations();
 	}
 
 
+	private DiscriminatorColumn getDiscriminatorColumn(Class<?> type) {
+		Class<?>[] classes = new Class[] {type, type.getSuperclass(), getClass()};
+		
+		for (Class<?> clazz : classes) {
+			DiscriminatorColumn discriminatorColumn = clazz.getAnnotation(DiscriminatorColumn.class);
+			if (discriminatorColumn != null) {
+				return discriminatorColumn;
+			}
+		}
+		
+		throw new IllegalStateException("Cannot locate DiscriminatorColumn for class " + type);
+	}
 
 }

@@ -15,35 +15,67 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata.jpa.conversion;
+package org.mestor.entities.annotated;
 
-import javax.persistence.AttributeConverter;
+import java.net.URL;
+import java.util.Set;
 
-import org.mestor.context.EntityContext;
-import org.mestor.metadata.FieldMetadata;
+import javax.persistence.Convert;
+import javax.persistence.ElementCollection;
+import javax.persistence.Entity;
+import javax.persistence.Enumerated;
+import javax.persistence.ManyToOne;
 
-public class PrimaryKeyConverter<E, K> extends IndexedFieldConverter<E, K> implements AttributeConverter<E, K> {
+import org.mestor.metadata.jpa.conversion.ToStringConverter;
 
-	/**
-	 * This constructor is needed to simplify generic access to functionality of this
-	 * converter. The convention is that converter can be either stateless and implement 
-	 * default constructor or be dependent on the entity type and context. 
-	 * @param clazz
-	 * @param context
-	 */
-	public PrimaryKeyConverter(Class<E> clazz, EntityContext context) {
-		super(clazz, null, context);
+@Entity
+public class User extends AbstractEntity {
+	@Convert(converter=ToStringConverter.class)
+	private URL site;
+
+	private String username;
+
+	private String password;
+
+	@ElementCollection
+	@Enumerated
+	private Set<UserRole> roles;
+
+	@ManyToOne
+	private Person person;
+	
+	
+	public URL getSite() {
+		return site;
+	}
+	public void setSite(URL site) {
+		this.site = site;
+	}
+	public String getUsername() {
+		return username;
+	}
+	public void setUsername(String username) {
+		this.username = username;
+	}
+	public String getPassword() {
+		return password;
+	}
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	public Set<UserRole> getRoles() {
+		return roles;
+	}
+	public void setRoles(Set<UserRole> roles) {
+		this.roles = roles;
+	}
+	public Person getPerson() {
+		return person;
+	}
+	public void setPerson(Person person) {
+		this.person = person;
 	}
 	
-
-	@Override
-	protected E fetchExistingEntity(K primaryKey) {
-		return persistor.fetch(getEntityMetadata().getEntityType(), primaryKey);
-	}
 	
-	@Override
-	@SuppressWarnings("unchecked")
-	protected FieldMetadata<E, K, ?> getFieldMetadata() {
-		return 	(FieldMetadata<E, K, ?>)getEntityMetadata().getPrimaryKey();
-	}
+	
 }

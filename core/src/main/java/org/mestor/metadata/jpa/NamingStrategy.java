@@ -23,5 +23,6 @@ public interface NamingStrategy {
 	public String getEntityName(Class<?> clazz);
 	public String getTableName(Class<?> clazz);
 
+	public String getFieldName(AccessibleObject ao);
 	public String getColumnName(AccessibleObject ao);
 }

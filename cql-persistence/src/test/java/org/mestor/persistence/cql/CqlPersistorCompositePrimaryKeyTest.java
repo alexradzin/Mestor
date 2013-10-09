@@ -29,6 +29,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.context.Persistor;
+import org.mestor.entities.Country;
+import org.mestor.entities.Passport;
+import org.mestor.entities.Person;
+import org.mestor.entities.Person.Gender;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.jpa.conversion.EnumNameConverter;
@@ -36,10 +40,6 @@ import org.mestor.metadata.jpa.conversion.SerializableConverter;
 import org.mestor.metadata.jpa.conversion.ValueAttributeConverter;
 import org.mestor.reflection.CompositePropertyAccessor;
 import org.mestor.reflection.PropertyAccessor;
-import org.mestor.testEntities.Country;
-import org.mestor.testEntities.Passport;
-import org.mestor.testEntities.Person;
-import org.mestor.testEntities.Person.Gender;
 
 /**
  * JPA provides 2 ways to create a composite primary key.<br/>

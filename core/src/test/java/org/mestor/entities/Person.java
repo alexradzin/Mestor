@@ -1,4 +1,4 @@
-package org.mestor.testEntities;
+package org.mestor.entities;
 
 import static com.google.common.base.Objects.equal;
 

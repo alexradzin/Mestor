@@ -46,9 +46,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.context.Persistor;
+import org.mestor.entities.Person;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
-import org.mestor.testEntities.Person;
 
 @RunWith(CassandraAwareTestRunner.class)
 public class CqlPersistorBasicCrudTest {

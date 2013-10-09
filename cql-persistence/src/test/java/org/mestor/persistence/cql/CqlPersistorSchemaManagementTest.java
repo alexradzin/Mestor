@@ -45,11 +45,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.context.Persistor;
+import org.mestor.entities.Person;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
-import org.mestor.testEntities.Person;
 
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
@@ -322,7 +322,7 @@ public class CqlPersistorSchemaManagementTest {
 			nameField.setColumn("first_name");
 			
 			EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, tableName, pk, pk, nameField);
-			emd.setIndexes(Collections.singletonList(new IndexMetadata<Person>(Person.class, "name_index", nameField)));
+			emd.addAllIndexes(Collections.singletonList(new IndexMetadata<Person>(Person.class, "name_index", nameField)));
 			
 			// now create table
 			helper.testEditTable(emd, null, true);
@@ -551,7 +551,7 @@ public class CqlPersistorSchemaManagementTest {
 			emd.addField(ageField);
 			
 			
-			emd.setIndexes(Arrays.asList(
+			emd.addAllIndexes(Arrays.asList(
 					new IndexMetadata<Person>(Person.class, "name_index", nameField),
 					new IndexMetadata<Person>(Person.class, "age_index", ageField)
 			));
@@ -565,7 +565,7 @@ public class CqlPersistorSchemaManagementTest {
 			lastNameField.setColumn("last_name");
 			emd.addField(lastNameField);
 			
-			emd.setIndexes(Arrays.asList(
+			emd.addAllIndexes(Arrays.asList(
 					new IndexMetadata<Person>(Person.class, "name_index", nameField),
 					new IndexMetadata<Person>(Person.class, "last_name_index", lastNameField),
 					new IndexMetadata<Person>(Person.class, "age_index", ageField)

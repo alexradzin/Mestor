@@ -17,33 +17,65 @@
 
 package org.mestor.metadata.jpa.conversion;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 import javax.persistence.AttributeConverter;
 
-import org.mestor.context.EntityContext;
-import org.mestor.metadata.FieldMetadata;
-
-public class PrimaryKeyConverter<E, K> extends IndexedFieldConverter<E, K> implements AttributeConverter<E, K> {
-
-	/**
-	 * This constructor is needed to simplify generic access to functionality of this
-	 * converter. The convention is that converter can be either stateless and implement 
-	 * default constructor or be dependent on the entity type and context. 
-	 * @param clazz
-	 * @param context
-	 */
-	public PrimaryKeyConverter(Class<E> clazz, EntityContext context) {
-		super(clazz, null, context);
+public class ToStringConverter<T> implements AttributeConverter<T, String> {
+	private final Class<T> clazz;
+	private final Method factoryMethod;
+	private final Constructor<T> constructor;
+	
+	public ToStringConverter(final Class<T> clazz) {
+		this.clazz = clazz;
+		this.factoryMethod = findFactoryMethod("valueOf", "fromString");
+		if (factoryMethod == null) {
+			try {
+				constructor = clazz.getConstructor(String.class);
+			} catch (NoSuchMethodException | SecurityException e) {
+				throw new IllegalArgumentException("Class " + clazz + 
+						" does not have neigher suitable factory method nore constructor " + 
+						clazz.getSimpleName() + "(String)");
+			}
+		} else {
+			constructor = null;
+		}
 	}
 	
+	@Override
+	public String convertToDatabaseColumn(final T attribute) {
+		return attribute == null ? null : attribute.toString();
+	}
 
 	@Override
-	protected E fetchExistingEntity(K primaryKey) {
-		return persistor.fetch(getEntityMetadata().getEntityType(), primaryKey);
+	public T convertToEntityAttribute(final String dbData) {
+		try {
+			if (factoryMethod != null) {
+				@SuppressWarnings("unchecked")
+				T result = (T)factoryMethod.invoke(null, dbData);
+				return result;
+			}
+			return constructor.newInstance();
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalArgumentException(e);
+		}
 	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	protected FieldMetadata<E, K, ?> getFieldMetadata() {
-		return 	(FieldMetadata<E, K, ?>)getEntityMetadata().getPrimaryKey();
+
+
+	private Method findFactoryMethod(final String ... names) {
+		for (String name : names) {
+			Method m;
+			try {
+				m = clazz.getMethod(name, String.class);
+				if (Modifier.isStatic(m.getModifiers()) && clazz.isAssignableFrom(m.getReturnType())) {
+					return m;
+				}
+			} catch (NoSuchMethodException | SecurityException e) {
+				continue;
+			}
+		}
+		return null;
 	}
 }

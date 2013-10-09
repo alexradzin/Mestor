@@ -21,11 +21,11 @@ import static org.mockito.Mockito.doReturn;
 
 import java.util.Arrays;
 
+import org.mestor.entities.Employee;
+import org.mestor.entities.Person;
+import org.mestor.entities.Student;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
-import org.mestor.testEntities.Employee;
-import org.mestor.testEntities.Person;
-import org.mestor.testEntities.Student;
 
 import com.google.common.collect.ObjectArrays;
 
@@ -36,23 +36,19 @@ public class CqlPersistorSeparateTablesInheritenceTest extends CqlPersistorInher
 
 	@Override
 	protected void createTables() {
-		final String discriminatorName = createDiscriminatorName(PEOPLE_TABLE);
-		
-		EntityMetadata<Person> personMeta = createEntityMetadata(Person.class, schemaName, PEOPLE_TABLE, prefix("people_", getPersonFields()), createDiscriminator(Person.class, discriminatorName));
+		EntityMetadata<Person> personMeta = createEntityMetadata(Person.class, schemaName, PEOPLE_TABLE, prefix("people_", getPersonFields())/*, createDiscriminator(Person.class, discriminatorName)*/);
 		
 		
 		EntityMetadata<Student> studentMeta = createEntityMetadata(Student.class, schemaName, STUDENTS_TABLE, 
-				ObjectArrays.concat(prefix("student_", getStudentFields()), prefix("people_", getPersonFields()), FieldMetadata.class), 
-				createDiscriminator(Student.class, null));
+				ObjectArrays.concat(prefix("student_", getStudentFields()), prefix("people_", getPersonFields()), FieldMetadata.class));
 		
 		EntityMetadata<Employee> employeeMeta = createEntityMetadata(Employee.class, schemaName, EMPLOYEES_TABLE, 
-				ObjectArrays.concat(prefix("employee_", getEmployeeFields()), prefix("people_", getPersonFields()), FieldMetadata.class), 
-				createDiscriminator(Employee.class, null));
+				ObjectArrays.concat(prefix("employee_", getEmployeeFields()), prefix("people_", getPersonFields()), FieldMetadata.class));
 		
 		doReturn(Arrays.asList(personMeta, studentMeta, employeeMeta)).when(helper.ctx).getEntityMetadata();
 		
 		
-		helper.testEditTable(personMeta, null, true, discriminatorName);
+		helper.testEditTable(personMeta, null, true);
 		helper.testEditTable(studentMeta, null, true, "people_id");
 		helper.testEditTable(employeeMeta, null, true, "people_id");
 	}
