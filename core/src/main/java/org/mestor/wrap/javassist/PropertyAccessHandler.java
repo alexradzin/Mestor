@@ -76,7 +76,6 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 
 	@Override
 	public Object invoke(Object self, Method thisMethod, Method proceed, Object[] args) throws Throwable {
-		System.out.println("invoke: " + thisMethod);
 		if (MethodAccessor.isGetter(thisMethod)) {
 			final Object result;
 			final FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, getterFetcher);
@@ -100,10 +99,7 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 			final FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, setterFetcher);
 			changedFields.add(fmd.getName());
 			thisMethod.invoke(instance, args);
-			System.out.println(thisMethod.getName() + ", dirtyEntityManager=" + dirtyEntityManager);
 			if (dirtyEntityManager != null) {
-				System.out.println("    addDirtyEntity");
-				System.out.println("    entity idendtity: " + System.identityHashCode(instance));
 				dirtyEntityManager.addDirtyEntity(instance, fmd);
 			}
 			return null; // setter does not return value

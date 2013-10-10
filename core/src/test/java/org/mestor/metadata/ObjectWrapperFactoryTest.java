@@ -42,7 +42,6 @@ import org.mestor.context.DirtyEntityManager;
 import org.mestor.context.EntityContext;
 import org.mestor.entities.Person;
 import org.mestor.entities.Person.Gender;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
 import org.mestor.util.BeanFieldMatcher;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
@@ -190,7 +189,6 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
 		doReturn(dirtyEntityManager).when(ctx).getDirtyEntityManager();
 		
 		Person person = new Person(30, "name", "surname", Gender.MALE);
-		System.out.println("person idendtity: " + System.identityHashCode(person));
 		Person personProxy = createWrapperFactory(Person.class).wrap(person);
 		scenario.apply(personProxy);
 		

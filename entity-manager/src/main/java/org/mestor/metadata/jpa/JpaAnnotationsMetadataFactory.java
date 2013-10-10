@@ -59,6 +59,7 @@ import javax.persistence.Table;
 import javax.persistence.Transient;
 
 import org.mestor.context.EntityContext;
+import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.DummyValueConverter;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
@@ -72,14 +73,14 @@ import org.mestor.metadata.jpa.conversion.SerializableConverter;
 import org.mestor.metadata.jpa.conversion.ValueAttributeConverter;
 import org.mestor.reflection.Access;
 import org.mestor.reflection.CompositePropertyAccessor;
-import org.mestor.reflection.DiscriminatorValueAccess;
 import org.mestor.reflection.FieldAccessor;
 import org.mestor.reflection.MethodAccessor;
 import org.mestor.reflection.PropertyAccessor;
-import org.mockito.internal.util.Primitives;
+import org.mestor.reflection.jpa.DiscriminatorValueAccess;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.primitives.Primitives;
 
 @DiscriminatorColumn
 @Inheritance
@@ -730,7 +731,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		//TODO: add support of other types of Cassandra.
 		//The problem is that this layer "does not know" Cassandra. 
 		//Probably add such method to persistor or add mechanism that registers default converters. 
-		if(type.isPrimitive() || String.class.equals(type) || Primitives.isPrimitiveWrapper(type)) {
+		if(type.isPrimitive() || String.class.equals(type) || Primitives.isWrapperType(type)) {
 			return Collections.<AttributeConverter<?, ?>>singletonList(new DummyAttributeConverter<>());
 		}
 		

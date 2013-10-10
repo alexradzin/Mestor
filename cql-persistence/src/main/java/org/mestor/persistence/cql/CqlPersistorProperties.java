@@ -194,9 +194,4 @@ class CqlPersistorProperties<P> {
 	String property() {
 		return property;
 	}
-	
-	
-	public static void main(String[] args) {
-		System.out.println(toJson("replication = {'class':'LocalStrategy', 'replication_factor':1}"));
-	}
 }

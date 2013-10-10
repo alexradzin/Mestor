@@ -26,29 +26,6 @@
 			<version>${reflections.version}</version>
 		</dependency>
 
-<!-- 
-		<dependency>
-			<groupId>javax.persistence</groupId>
-			<artifactId>persistence-api</artifactId>
-			<version>1.0.2</version>
-			<scope>provided</scope>
-		</dependency>
- -->            
- 		<!--
- 		This is a reference to the most updated JPA API. 
- 		The groupId might confuse because it refers to org.eclipse. 
- 		This however seems to be right reference according to the official 
- 		"Java EE 7 Maven Coordinates" document from Oracle:
- 		https://wikis.oracle.com/display/GlassFish/Java+EE+7+Maven+Coordinates 
- 		 -->
-		<dependency>
-			<groupId>org.eclipse.persistence</groupId>
-			<artifactId>javax.persistence</artifactId>
-			<version>2.1.0</version>
-			<scope>provided</scope>
-		</dependency>             
-            
-            
             
 		<dependency>
 			<groupId>javax.validation</groupId>

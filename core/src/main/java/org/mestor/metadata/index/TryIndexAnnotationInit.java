@@ -24,6 +24,12 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 
+/**
+ * @deprecated This class should be removed or transformed into unit test
+ * @author alexr
+ *
+ */
+@Deprecated
 public class TryIndexAnnotationInit {
 
 	/**

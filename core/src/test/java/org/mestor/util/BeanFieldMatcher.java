@@ -20,8 +20,8 @@ package org.mestor.util;
 import java.util.Arrays;
 
 import org.hamcrest.CustomMatcher;
+import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.EntityMetadata;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
 
 import com.google.common.base.Objects;
 

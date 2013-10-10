@@ -21,9 +21,9 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
-import org.mestor.metadata.jpa.BeanMetadataFactory;
 
 public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
 	private final Class<P> compositeType; 

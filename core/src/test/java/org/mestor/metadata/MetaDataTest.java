@@ -59,7 +59,6 @@ public class MetaDataTest {
 		surnameField.setNullable(false);
 		
 		//for primary key tests
-		System.out.println("b "+nameField.getColumn());
 		emd.setPrimaryKey(nameField);
 		
 		
@@ -149,7 +148,6 @@ public class MetaDataTest {
 	}
 	
 	private <E, F, C> void assertFieldMetadata(FieldMetadata<E, F, C> fmd, String fieldName, String columnName, boolean key, boolean lazy, boolean nullable) {
-		System.out.println("55 "+fmd+"   "+fieldName);
 		assertEquals(fieldName, fmd.getName());
 		assertEquals(columnName, fmd.getColumn());
 		assertEquals(key, fmd.isKey());

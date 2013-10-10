@@ -60,6 +60,18 @@
   			<scope>test</scope>
 		</dependency>           
 
+		<!-- 
+		This depedency is for tests only because CQL layer contains tests that use some
+		classes that depend on JPA, for example converters. 
+		 -->
+		<dependency>
+			<groupId>org.mestor</groupId>
+			<artifactId>mestor-entity-manager</artifactId>
+			<version>0.1-SNAPSHOT</version>
+  			<scope>test</scope>
+		</dependency>
+
+
 	</dependencies>
 
 </project>

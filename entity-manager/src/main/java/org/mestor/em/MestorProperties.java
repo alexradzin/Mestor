@@ -20,8 +20,6 @@ package org.mestor.em;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -189,18 +187,5 @@ public enum MestorProperties {
 		} catch (ClassNotFoundException e) {
 			throw new IllegalStateException("Cannot load persistor implementation " + className, e);
 		}
-	}
-	
-	
-	public static void main(String[] args) {
-		Map<Object, Object> map = new HashMap<Object, Object>();
-		map.put("prefix", "aaaa");
-		map.put("port", 1234);
-		String s = MestorProperties.PREFIX.value(map);
-		
-		System.out.println(s);
-		
-		
-		System.out.println(Arrays.toString(System.getProperty("java.class.path").split(File.pathSeparator)).replace(", ", "\n"));
 	}
 }

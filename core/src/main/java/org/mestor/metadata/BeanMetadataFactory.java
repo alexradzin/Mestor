@@ -15,7 +15,7 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata.jpa;
+package org.mestor.metadata;
 
 import static org.mestor.reflection.ClassAccessor.invoke;
 
@@ -32,15 +32,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.metadata.FieldMetadata;
-import org.mestor.metadata.IndexMetadata;
-import org.mestor.metadata.MetadataFactory;
 import org.mestor.metadata.index.IndexAnnotation;
 import org.mestor.metadata.index.IndexAnnotationContainer;
 import org.mestor.metadata.index.IndexAnnotations;
@@ -49,6 +47,7 @@ import org.mestor.reflection.FieldAccessor;
 import org.mestor.reflection.MethodAccessor;
 
 public class BeanMetadataFactory implements MetadataFactory {
+	private final static Pattern methodNamePattern = Pattern.compile("(set|get|is)");
 	private final IndexAnnotations indexAnnotations;
 	private final Map<Class<? extends Annotation>, IndexAnnotation> indexDefs = new HashMap<>();
 	private final Map<Class<? extends Annotation>, IndexAnnotationContainer> indexContainerDefs = new HashMap<>();
@@ -235,7 +234,21 @@ public class BeanMetadataFactory implements MetadataFactory {
 	
 	
 	protected String getFieldName(AccessibleObject ao) {
-		return StandardNamingStrategy.LOWER_CAMEL_CASE.getFieldName(ao);
+		if (ao instanceof Field) {
+			return ((Field) ao).getName();
+		}
+		
+		if (ao instanceof Method) {
+			String methodName = ((Method) ao).getName();
+			Matcher m = methodNamePattern.matcher(methodName);
+			if (!m.find()) {
+				throw new IllegalArgumentException("Method " + ao + " is neither getter nor setter: ");
+			}
+			String name = m.replaceFirst("");
+			return name.substring(0, 1).toLowerCase() + name.substring(1);
+		}
+		
+		throw new IllegalArgumentException("Given accessible object is neither field nor method: " + ao);
 	}
 	
 	@Override

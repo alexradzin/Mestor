@@ -138,9 +138,7 @@ public class CqlPersistorBasicCrudTest {
 			assertEquals("Pooh", winnie2.getLastName());
 			assertTrue(winnie2 instanceof ProxyObject);
 			
-			System.out.println("changing the last name.................");
 			winnie2.setLastName("The Pooh");
-			System.out.println("last name has been changed");
 			persistor.store(winnie2);
 			Person winnie3 = persistor.fetch(Person.class, 1);
 			assertEquals("The Pooh", winnie3.getLastName());

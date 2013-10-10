@@ -15,7 +15,7 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.reflection;
+package org.mestor.reflection.jpa;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -24,6 +24,8 @@ import javax.persistence.DiscriminatorColumn;
 import javax.persistence.DiscriminatorType;
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
+
+import org.mestor.reflection.Access;
 
 @DiscriminatorColumn
 public class DiscriminatorValueAccess<T, D> implements Access<T, D, AccessibleObject> {
