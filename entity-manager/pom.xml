@@ -52,6 +52,15 @@
 			<scope>provided</scope>
 		</dependency>             
 
+		<!--  Test only dependencies -->
+     
+		<dependency>
+			<groupId>org.mestor</groupId>
+			<artifactId>mestor-core</artifactId>
+			<version>0.1-SNAPSHOT</version>
+			<type>test-jar</type>
+  			<scope>test</scope>
+		</dependency>
 
 		
 	</dependencies>

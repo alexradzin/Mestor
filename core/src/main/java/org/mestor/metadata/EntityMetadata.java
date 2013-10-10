@@ -178,6 +178,13 @@ public class EntityMetadata<E> {
 	}
 	
 	
+	public void addAllFields(Collection<FieldMetadata<E, ?, ?>> fmetas) {
+		for(FieldMetadata<E, ?, ?> fmeta : fmetas) {
+			addField(fmeta);
+		}
+	}
+	
+	
 	@SuppressWarnings("unchecked")
 	public <F, C> FieldMetadata<E, F, C> getFieldByGetter(Method getter) {
 		return (FieldMetadata<E, F, C>)getter2field.get(getter);

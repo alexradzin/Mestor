@@ -109,7 +109,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 		
 		
 		for (Method m : clazz.getMethods()) {
-			if(!(MethodAccessor.isGetter(m) || MethodAccessor.isGetter(m))) {
+			if(!(MethodAccessor.isGetter(m) || MethodAccessor.isSetter(m))) {
 				continue;
 			}
 			

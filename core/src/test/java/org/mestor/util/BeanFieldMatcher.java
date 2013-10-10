@@ -15,12 +15,53 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.util;
 
-import org.mestor.metadata.FieldMetadata;
+import java.util.Arrays;
 
-public interface DirtyEntityManager {
-	<E> void addDirtyEntity(E entity, FieldMetadata<E, Object, Object> fmd);
-	<E> void removeDirtyEntity(E entity);
-	<E> Iterable<E> getDirtyEntities();
+import org.hamcrest.CustomMatcher;
+import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.jpa.BeanMetadataFactory;
+
+import com.google.common.base.Objects;
+
+public class BeanFieldMatcher<T> extends CustomMatcher<T> {
+	private final Class<T> clazz; 
+	private final String[] fields;
+	private final Object[] values;
+	private final EntityMetadata<T> emd;
+	
+
+	public BeanFieldMatcher(Class<T> clazz, String field, Object value) {
+		this(clazz, new String[] {field}, new Object[] {value});
+	}
+	
+	
+	public BeanFieldMatcher(Class<T> clazz, String[] fields, Object[] values) {
+		super(createDescription(clazz, fields));
+		this.clazz = clazz;
+		this.fields = fields;
+		this.values = values;
+		emd = new BeanMetadataFactory().create(clazz);
+	}
+	
+	private static String createDescription(Class<?> clazz, String ... fields) {
+		return clazz.getName() + "@" + Arrays.toString(fields);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean matches(Object item) {
+		return item == null ? false : clazz.isAssignableFrom(item.getClass()) ? matchesImpl((T)item) : false;
+	}
+
+	public boolean matchesImpl(T instance) {
+		for (int i = 0; i < fields.length; i++) {
+			Object actual = emd.getFieldByName(fields[i]).getAccessor().getValue(instance);
+			if (!Objects.equal(values[i], actual)) {
+				return false;
+			}
+		}
+		return true;
+	}
 }

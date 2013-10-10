@@ -76,16 +76,11 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 
 	@Override
 	public Object invoke(Object self, Method thisMethod, Method proceed, Object[] args) throws Throwable {
-		
+		System.out.println("invoke: " + thisMethod);
 		if (MethodAccessor.isGetter(thisMethod)) {
 			final Object result;
-			//FieldMetadata<T, Object, Object> fmd = metadata.getFieldByGetter(thisMethod);
-			
-			
-			FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, getterFetcher);
-			
-			
-			String fieldName = fmd.getName();
+			final FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, getterFetcher);
+			final String fieldName = fmd.getName();
 			
 			if ((lazy || fmd.isLazy()) && !retreivedFields.contains(fieldName)) {
 				// retrieve that property from DB
@@ -96,19 +91,21 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 				retreivedFields.add(fieldName);
 			} else {
 				result = thisMethod.invoke(instance, args);
-				if (dirtyEntityManager != null) {
-					dirtyEntityManager.addDirtyEntity(instance);
-				}
 			} 
 			return result;
 		} 
 		
 		if (MethodAccessor.isSetter(thisMethod)) {
 			thisMethod.invoke(instance, args);
-//			FieldMetadata<T, ?, ?> fmd = metadata.getFieldBySetter(thisMethod);
-			FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, setterFetcher);
+			final FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, setterFetcher);
 			changedFields.add(fmd.getName());
 			thisMethod.invoke(instance, args);
+			System.out.println(thisMethod.getName() + ", dirtyEntityManager=" + dirtyEntityManager);
+			if (dirtyEntityManager != null) {
+				System.out.println("    addDirtyEntity");
+				System.out.println("    entity idendtity: " + System.identityHashCode(instance));
+				dirtyEntityManager.addDirtyEntity(instance, fmd);
+			}
 			return null; // setter does not return value
 		}
 		

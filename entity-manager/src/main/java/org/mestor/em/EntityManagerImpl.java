@@ -208,7 +208,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public EntityTransaction getTransaction() {
-		return EntityTransactionImpl.getTransaction(persistor);
+		return EntityTransactionImpl.getTransaction(this);
 	}
 
 	@Override

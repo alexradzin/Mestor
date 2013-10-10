@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mestor.entities.Person;
 
-public class MetaDataTests {
+public class MetaDataTest {
 	private boolean testDefTableName = false;
 	private EntityMetadata<Person> emd;
 	private final String TABLE_NAME = "PeopleTable";

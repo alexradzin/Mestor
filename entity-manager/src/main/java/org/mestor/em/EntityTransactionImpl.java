@@ -17,31 +17,40 @@
 
 package org.mestor.em;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.TreeMap;
 
 import javax.persistence.EntityTransaction;
 import javax.persistence.RollbackException;
 
 import org.mestor.context.DirtyEntityManager;
+import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
+import org.mestor.metadata.EntityComparator;
+import org.mestor.metadata.FieldMetadata;
+import org.mestor.reflection.ClassAccessor;
+import org.mestor.reflection.PropertyAccessor;
 
 
 public class EntityTransactionImpl implements EntityTransaction, DirtyEntityManager {
     private boolean active = false;
     private boolean rollbackOnly = false;
     
+    private final EntityContext context;
     private final Persistor persistor;
     
     private final static ThreadLocal<EntityTransaction> entityTransactions = new ThreadLocal<EntityTransaction>();
-    private Set<Object> dirtyEntities = new HashSet<Object>();
+    
+
+    private final Map<Object, Object> dirtyEntities;
     
 
 
-    public static EntityTransaction getTransaction(Persistor persistor) {
+    public static EntityTransaction getTransaction(EntityContext context) {
     	EntityTransaction transaction = entityTransactions.get();
     	if(transaction == null) {
-    		transaction = new EntityTransactionImpl(persistor);    		
+    		transaction = new EntityTransactionImpl(context);    		
     		entityTransactions.set(transaction);
     	}
     	return transaction;
@@ -53,9 +62,13 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
     	return (DirtyEntityManager)entityTransactions.get();
     }
     
-    
-    private EntityTransactionImpl(Persistor persistor) {
-    	this.persistor = persistor;
+    // package protected access for tests
+    EntityTransactionImpl(EntityContext context) {
+    	this.context = context;
+    	this.persistor = context.getPersistor();
+    	
+    	Comparator<Object> comparator= new EntityComparator<>(context);
+    	dirtyEntities = new TreeMap<>(comparator);
     }
 
 
@@ -100,7 +113,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 	public void rollback() {
 		checkIsActive();
 		try {
-			getTransaction(persistor).rollback();
+			getTransaction(context).rollback();
 		} finally {
 			this.active = false;
 			this.rollbackOnly = false;
@@ -147,10 +160,19 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 
 
 	@Override
-	public <E> void addDirtyEntity(E entity) {
-		dirtyEntities.add(entity);
+	public <E> void addDirtyEntity(E entity, FieldMetadata<E, Object, Object> fmd) {
+		@SuppressWarnings("unchecked")
+		E existingEntity = (E) dirtyEntities.get(entity);
+		if (existingEntity != null) {
+			PropertyAccessor<E, Object> accessor = fmd.getAccessor();
+			accessor.setValue(existingEntity, accessor.getValue(entity));
+		} else {
+			Class<E> clazz = fmd.getClassType();
+			E newEntity = ClassAccessor.newInstance(clazz);
+			context.getEntityMetadata(clazz).copy(entity, newEntity);
+			dirtyEntities.put(newEntity, newEntity);
+		}
 	}
-
 
 
 	@Override
@@ -163,7 +185,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 	@SuppressWarnings("unchecked")
 	@Override
 	public <E> Iterable<E> getDirtyEntities() {
-		return (Iterable<E>)dirtyEntities;
+		return (Iterable<E>)dirtyEntities.values();
 	}
 	
 }
