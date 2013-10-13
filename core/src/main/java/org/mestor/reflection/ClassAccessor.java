@@ -21,13 +21,18 @@ import java.lang.reflect.Method;
 
 public class ClassAccessor {
 	
-	@SuppressWarnings("unchecked")
+	
 	public static <T> Class<T> forName(String className) {
 		try {
-			return (Class<T>)Class.forName(className);
+			return forNameThrowsChecked(className);
 		} catch (ClassNotFoundException e) {
 			throw new IllegalArgumentException(className, e);
 		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T> Class<T> forNameThrowsChecked(String className) throws ClassNotFoundException{
+		return (Class<T>)Class.forName(className);
 	}
 
 	public static <T> T newInstance(Class<T> clazz) {

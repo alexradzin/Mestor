@@ -28,12 +28,14 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.mestor.context.EntityContext;
 import org.mestor.entities.Country;
@@ -47,6 +49,7 @@ import org.mestor.entities.annotated.StreetAddress;
 import org.mestor.entities.annotated.User;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.metadata.IndexMetadata;
 import org.mockito.Mockito;
 
 /**
@@ -86,6 +89,23 @@ public class MetadataFactoryTest {
 				new Class[] {String.class, Class.class, Serializable.class}, 
 				new String[] {"name", "type", "value"}, 
 				new Class[] {String.class, String.class, ByteBuffer.class});
+	}
+	
+	@Test
+	public void testPersonIndexes() {
+		Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(Person.class);
+
+		@SuppressWarnings("unchecked")
+		EntityMetadata<Person> md = (EntityMetadata<Person>) entityClasses.get(Person.class);
+		Collection<IndexMetadata<Person>> indexes = md.getIndexes();
+		Map<String, String[]> expected = new HashMap<String, String[]>() {
+			{
+				this.put("name", new String[] { "name" });
+				this.put("age", new String[] { "age" });
+				this.put("full_name", new String[] { "name", "lastName" });
+			}
+		};
+		assertEnttityMetadataIndexes(indexes, expected);
 	}
 
 	
@@ -185,6 +205,16 @@ public class MetadataFactoryTest {
 			assertEquals("Wrong type of " + names[i], types[i], fieldsArray[i].getType());
 			assertEquals("Wrong column name of " + names[i], columns[i], fieldsArray[i].getColumn());
 			assertEquals("Wrong column type of " + names[i], columnTypes[i], fieldsArray[i].getColumnType());
+		}
+	}
+	
+	private <E> void assertEnttityMetadataIndexes(Collection<IndexMetadata<E>> indexes, Map<String, String[]> namesToFieldNamesMap) {
+		assertEquals("wrong indexe count", namesToFieldNamesMap.size(), indexes.size()); 
+		
+		for(IndexMetadata<E> index : indexes) {
+			assertTrue("extra index found", namesToFieldNamesMap.containsKey(index.getName()));
+			String[] fieldNames = namesToFieldNamesMap.remove(index.getName());
+			Assert.assertArrayEquals("field names don't match", fieldNames, index.getFieldNames());
 		}
 	}
 

@@ -6,14 +6,17 @@ import java.util.List;
 
 import javax.persistence.Convert;
 import javax.persistence.Entity;
+import javax.persistence.Index;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
+import javax.persistence.Table;
 
 import org.mestor.metadata.jpa.conversion.EnumNameConverter;
 
 import com.google.common.base.Objects;
 
 @Entity
+@Table(indexes={@Index(name="name", columnList="name"), @Index(name="age", columnList="age"),@Index(name="full_name", columnList="name,last_name")})
 public class Person extends AbstractEntity {
 	private String name;
 	private String lastName;

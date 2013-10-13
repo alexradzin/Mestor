@@ -19,6 +19,7 @@ package org.mestor.metadata;
 
 import static org.mestor.reflection.ClassAccessor.invoke;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -45,8 +46,13 @@ import org.mestor.metadata.index.IndexAnnotations;
 import org.mestor.reflection.ClassAccessor;
 import org.mestor.reflection.FieldAccessor;
 import org.mestor.reflection.MethodAccessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BeanMetadataFactory implements MetadataFactory {
+	
+	private final static Logger logger = LoggerFactory.getLogger(BeanMetadataFactory.class);
+	
 	private final static Pattern methodNamePattern = Pattern.compile("(set|get|is)");
 	private final IndexAnnotations indexAnnotations;
 	private final Map<Class<? extends Annotation>, IndexAnnotation> indexDefs = new HashMap<>();
@@ -56,35 +62,44 @@ public class BeanMetadataFactory implements MetadataFactory {
 	public BeanMetadataFactory() {
 		String indexAnnotationPackage = IndexAnnotations.class.getPackage().getName();
 		//TODO make this configurable
-		String indexAnnotationConfigPath = indexAnnotationPackage.replace('.', '/') + "/" +  "index-annotations.xml";
-		InputStream indexConfig = getClass().getResourceAsStream(indexAnnotationConfigPath);
-		if(indexConfig == null) {
-			indexAnnotations = null;
-			return;
-		}
-		
-		try {
-			JAXBContext jaxbContext = JAXBContext.newInstance(indexAnnotationPackage);
-			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-			indexAnnotations = (IndexAnnotations)jaxbUnmarshaller.unmarshal(indexConfig);
-		} catch (JAXBException e) {
-			throw new IllegalArgumentException(e);
+		String indexAnnotationConfigPath = "/" + indexAnnotationPackage.replace('.', '/') + "/" +  "index-annotations.xml";
+		try{
+			try(InputStream indexConfig = getClass().getResourceAsStream(indexAnnotationConfigPath)){
+				if(indexConfig == null) {
+					indexAnnotations = null;
+					return;
+				}
+				
+				try {
+					JAXBContext jaxbContext = JAXBContext.newInstance(indexAnnotationPackage);
+					Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+					indexAnnotations = (IndexAnnotations)jaxbUnmarshaller.unmarshal(indexConfig);
+				} catch (JAXBException e) {
+					throw new IllegalArgumentException(e);
+				}
+			}
+		}catch(IOException e){
+			throw new RuntimeException(e);
 		}
 		
 		for (Object def : indexAnnotations.getIndexDefs()) {
 			// although usage of instanceof is ugly I use it here because it is easier at the moment.
-			if (def instanceof IndexAnnotation) {
-				IndexAnnotation ia = (IndexAnnotation)def;
-				indexDefs.put(ClassAccessor.<Annotation>forName(ia.getClassName()), ia);
-			} else if (def instanceof IndexAnnotationContainer) {
-				IndexAnnotationContainer iac = (IndexAnnotationContainer)def;
-				indexContainerDefs.put(ClassAccessor.<Annotation>forName(iac.getClassName()), iac);
-			} else {
-				throw new UnsupportedOperationException("Index configuration " + def.getClass() + " is unsupported");
+			try{
+				if (def instanceof IndexAnnotation) {
+					IndexAnnotation ia = (IndexAnnotation)def;
+					indexDefs.put(ClassAccessor.<Annotation>forNameThrowsChecked(ia.getClassName()), ia);
+				} else if (def instanceof IndexAnnotationContainer) {
+					IndexAnnotationContainer iac = (IndexAnnotationContainer)def;
+					indexContainerDefs.put(ClassAccessor.<Annotation>forNameThrowsChecked(iac.getClassName()), iac);
+				} else {
+					throw new UnsupportedOperationException("Index configuration " + def.getClass() + " is unsupported");
+				}
+			}catch(ClassNotFoundException e){
+				//xml defines all known annotation classes - not necessarily the will be on classpath
+				//ignore
+				logger.debug("parsing index-annotations.xml", e);
 			}
 		}
-		
-		
 	}
 	
 	
@@ -181,25 +196,32 @@ public class BeanMetadataFactory implements MetadataFactory {
 		}
 		
 		String name = invoke(annotationType, indexDef.getName(), null, String.class, a, null);
-		String[] indexedFieldNames = invoke(annotationType, indexDef.getColumnNames(), null, String[].class, a, null);
+		final Object indexFieldNames = invoke(annotationType, indexDef.getColumnNames(), null, Object.class, a, null);
+		String[] indexedFieldNamesArray = null;
+		if(indexFieldNames.getClass().isArray()){
+			indexedFieldNamesArray = (String[])indexFieldNames;
+		}else if(indexFieldNames instanceof String){
+			String tempIndexFieldNames = (String)indexFieldNames;
+			indexedFieldNamesArray = tempIndexFieldNames.split(",");
+		}
 		
 		if (fieldName != null) {
 			if (name == null || "".equals(name)) {
 				name = fieldName;
 			}
-			if (indexedFieldNames == null || indexedFieldNames.length == 0) {
-				indexedFieldNames = new String[] {name};
+			if (indexedFieldNamesArray == null || indexedFieldNamesArray.length == 0) {
+				indexedFieldNamesArray = new String[] {name};
 			}
 			
 			IndexMetadata<T> existingIndex = indexes.get(name);
 			if (existingIndex != null) {
 				Collection<String> allNames = new LinkedHashSet<String>(Arrays.asList(existingIndex.getFieldNames()));
-				allNames.addAll(Arrays.asList(indexedFieldNames));
+				allNames.addAll(Arrays.asList(indexedFieldNamesArray));
 				IndexMetadata<T> updatedIndex = create(entityMetadata, name, allNames.toArray(new String[0]));
 				indexes.put(name, updatedIndex);
 			}
 		}
-		indexes.put(name, create(entityMetadata, name, indexedFieldNames));
+		indexes.put(name, create(entityMetadata, name, indexedFieldNamesArray));
 	}
 	
 	
@@ -210,7 +232,8 @@ public class BeanMetadataFactory implements MetadataFactory {
 			return;
 		}
 		
-		Class<?> indexAnnotationClass = ClassAccessor.forName(invoke(annotationType, indexContainerDef.getIndexAnnotationClassName(), null, String.class, a, null));
+		Class<?> indexAnnotationClass = ClassAccessor.forName(indexContainerDef.getIndexAnnotationClassName());
+				//invoke(annotationType, indexContainerDef.getIndexAnnotationClassName(), null, String.class, a, null));
 		
 		Object indexAnnotations = invoke(annotationType, indexContainerDef.getCollection(), null, Array.newInstance(indexAnnotationClass, 0).getClass(), a, null);
 		int n = Array.getLength(indexAnnotations);

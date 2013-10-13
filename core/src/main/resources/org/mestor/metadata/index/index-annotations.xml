@@ -52,4 +52,18 @@
             <target>TYPE</target>
         </targets>
     </index-container>
+    <index>
+        <class>javax.persistence.Index</class>
+        <name>name</name>
+        <column-names>columnList</column-names>
+        <targets></targets>
+    </index>
+    <index-container>
+        <class>javax.persistence.Table</class>
+        <index-class>javax.persistence.Index</index-class>
+        <collection>indexes</collection>
+        <targets>
+            <target>TYPE</target>
+        </targets>
+    </index-container>
 </index-annotations>
