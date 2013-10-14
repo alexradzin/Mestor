@@ -39,17 +39,17 @@ public class IndexMetadata<T> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] fieldNames) {
+	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] columnNames) {
 		this.type = entityMetadata.getEntityType();
 		this.name = name;
 		
 		
-		fields = new FieldMetadata[fieldNames.length];
+		fields = new FieldMetadata[columnNames.length];
 		
-		for (int i = 0; i < fieldNames.length; i++) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(fieldNames[i]);
+		for (int i = 0; i < columnNames.length; i++) {
+			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(columnNames[i]);
 			if (fmd == null) {
-				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + fieldNames[i]);
+				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + columnNames[i]);
 			}
 			fields[i] = fmd;
 		}
@@ -77,6 +77,17 @@ public class IndexMetadata<T> {
 		String[] names = new String[fields.length];
 		for (int i = 0; i < fields.length; i++) {
 			names[i] = fields[i].getName();
+		}
+		return names;
+	}
+	
+	public String[] getColumnNames() {
+		if (fields == null) {
+			return null;
+		}
+		String[] names = new String[fields.length];
+		for (int i = 0; i < fields.length; i++) {
+			names[i] = fields[i].getColumn();
 		}
 		return names;
 	}

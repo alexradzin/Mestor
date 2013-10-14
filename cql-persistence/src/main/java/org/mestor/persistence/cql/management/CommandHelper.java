@@ -62,7 +62,7 @@ public class CommandHelper {
 				// empty loop body. This loop is looking for the direct subclass of AbstractType,
 				// so the logic is coded into the loop header
 			}
-			@SuppressWarnings("null") // if type is null here NullPointerException will be thrown. 
+			// if type is null here NullPointerException will be thrown. 
 			Type abstractType = type.getGenericSuperclass(); 
 			
 			Class<?> clazz = (Class<?>)((ParameterizedType)abstractType).getActualTypeArguments()[0];

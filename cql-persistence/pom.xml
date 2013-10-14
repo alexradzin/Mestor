@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>org.mestor</groupId>
 			<artifactId>mestor-core</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<version>${project.parent.version}</version>
 		</dependency>
 
 		<dependency>
@@ -44,11 +44,10 @@
 		</dependency>
 
 		<!--  Test only dependencies -->
-     
 		<dependency>
 			<groupId>org.mestor</groupId>
 			<artifactId>mestor-core</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<version>${project.parent.version}</version>
 			<type>test-jar</type>
   			<scope>test</scope>
 		</dependency>
@@ -67,7 +66,7 @@
 		<dependency>
 			<groupId>org.mestor</groupId>
 			<artifactId>mestor-entity-manager</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<version>${project.parent.version}</version>
   			<scope>test</scope>
 		</dependency>
 

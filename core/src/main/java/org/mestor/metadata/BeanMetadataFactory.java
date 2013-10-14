@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -40,6 +41,7 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
+import org.mestor.metadata.exceptions.DuplicateIndexName;
 import org.mestor.metadata.index.IndexAnnotation;
 import org.mestor.metadata.index.IndexAnnotationContainer;
 import org.mestor.metadata.index.IndexAnnotations;
@@ -54,26 +56,59 @@ public class BeanMetadataFactory implements MetadataFactory {
 	private final static Logger logger = LoggerFactory.getLogger(BeanMetadataFactory.class);
 	
 	private final static Pattern methodNamePattern = Pattern.compile("(set|get|is)");
-	private final IndexAnnotations indexAnnotations;
-	private final Map<Class<? extends Annotation>, IndexAnnotation> indexDefs = new HashMap<>();
-	private final Map<Class<? extends Annotation>, IndexAnnotationContainer> indexContainerDefs = new HashMap<>();
+	private final Map<Class<? extends Annotation>, IndexAnnotation> indexDefs;
+	private final Map<Class<? extends Annotation>, IndexAnnotationContainer> indexContainerDefs;
 	private String schema;
 	
 	public BeanMetadataFactory() {
-		String indexAnnotationPackage = IndexAnnotations.class.getPackage().getName();
-		//TODO make this configurable
-		String indexAnnotationConfigPath = "/" + indexAnnotationPackage.replace('.', '/') + "/" +  "index-annotations.xml";
+		final String indexAnnotationPackage = IndexAnnotations.class.getPackage().getName();
+		
+		final IndexAnnotations indexAnnotations = laodIndexAnnotationsXml(indexAnnotationPackage);
+		
+		final Map<Class<? extends Annotation>, IndexAnnotation> indexDefsTemp = new HashMap<>();
+		final Map<Class<? extends Annotation>, IndexAnnotationContainer> indexContainerDefsTemp = new HashMap<>();
+		
+		if(indexAnnotations != null) {
+			for (Object def : indexAnnotations.getIndexDefs()) {
+				// although usage of instanceof is ugly I use it here because it is easier at the moment.
+				try{
+					if (def instanceof IndexAnnotation) {
+						IndexAnnotation ia = (IndexAnnotation)def;
+						indexDefsTemp.put(ClassAccessor.<Annotation>forNameThrowsChecked(ia.getClassName()), ia);
+					} else if (def instanceof IndexAnnotationContainer) {
+						IndexAnnotationContainer iac = (IndexAnnotationContainer)def;
+						indexContainerDefsTemp.put(ClassAccessor.<Annotation>forNameThrowsChecked(iac.getClassName()), iac);
+					} else {
+						throw new UnsupportedOperationException("Index configuration " + def.getClass() + " is unsupported");
+					}
+				}catch(ClassNotFoundException e){
+					//xml defines all known annotation classes - not necessarily the will be on classpath
+					//ignore
+					logger.debug("parsing index-annotations.xml", e);
+				}
+			}
+		}
+		
+		indexDefs = Collections.unmodifiableMap(indexDefsTemp);
+		indexContainerDefs = Collections.unmodifiableMap(indexContainerDefsTemp);
+	}
+
+
+
+	private IndexAnnotations laodIndexAnnotationsXml(final String indexAnnotationPackage) {
+		
+		final String indexAnnotationConfigPath = getIndexAnnotationsXmlLocation(indexAnnotationPackage);
+
 		try{
 			try(InputStream indexConfig = getClass().getResourceAsStream(indexAnnotationConfigPath)){
 				if(indexConfig == null) {
-					indexAnnotations = null;
-					return;
+					return null;
 				}
 				
 				try {
 					JAXBContext jaxbContext = JAXBContext.newInstance(indexAnnotationPackage);
 					Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-					indexAnnotations = (IndexAnnotations)jaxbUnmarshaller.unmarshal(indexConfig);
+					return (IndexAnnotations)jaxbUnmarshaller.unmarshal(indexConfig);
 				} catch (JAXBException e) {
 					throw new IllegalArgumentException(e);
 				}
@@ -81,25 +116,13 @@ public class BeanMetadataFactory implements MetadataFactory {
 		}catch(IOException e){
 			throw new RuntimeException(e);
 		}
-		
-		for (Object def : indexAnnotations.getIndexDefs()) {
-			// although usage of instanceof is ugly I use it here because it is easier at the moment.
-			try{
-				if (def instanceof IndexAnnotation) {
-					IndexAnnotation ia = (IndexAnnotation)def;
-					indexDefs.put(ClassAccessor.<Annotation>forNameThrowsChecked(ia.getClassName()), ia);
-				} else if (def instanceof IndexAnnotationContainer) {
-					IndexAnnotationContainer iac = (IndexAnnotationContainer)def;
-					indexContainerDefs.put(ClassAccessor.<Annotation>forNameThrowsChecked(iac.getClassName()), iac);
-				} else {
-					throw new UnsupportedOperationException("Index configuration " + def.getClass() + " is unsupported");
-				}
-			}catch(ClassNotFoundException e){
-				//xml defines all known annotation classes - not necessarily the will be on classpath
-				//ignore
-				logger.debug("parsing index-annotations.xml", e);
-			}
-		}
+	}
+
+
+
+	private String getIndexAnnotationsXmlLocation(final String indexAnnotationPackage) {
+		//TODO make this configurable
+		return "/" + indexAnnotationPackage.replace('.', '/') + "/" +  "index-annotations.xml";
 	}
 	
 	
@@ -164,7 +187,6 @@ public class BeanMetadataFactory implements MetadataFactory {
 		findIndexes(entityMetadata, entityType, null, indexes);
 		
 		// process field and method level index annotations
-		
 		for (FieldMetadata<T, Object, Object> fmeta : entityMetadata.getFields()) {
 			findIndexes(entityMetadata, fmeta.getAccessor().getField(), fmeta.getName(), indexes);
 			findIndexes(entityMetadata, fmeta.getAccessor().getGetter(), fmeta.getName(), indexes);
@@ -195,33 +217,79 @@ public class BeanMetadataFactory implements MetadataFactory {
 			return;
 		}
 		
-		String name = invoke(annotationType, indexDef.getName(), null, String.class, a, null);
-		final Object indexFieldNames = invoke(annotationType, indexDef.getColumnNames(), null, Object.class, a, null);
-		String[] indexedFieldNamesArray = null;
-		if(indexFieldNames.getClass().isArray()){
-			indexedFieldNamesArray = (String[])indexFieldNames;
-		}else if(indexFieldNames instanceof String){
-			String tempIndexFieldNames = (String)indexFieldNames;
-			indexedFieldNamesArray = tempIndexFieldNames.split(",");
-		}
+		String indexName = invoke(annotationType, indexDef.getName(), null, String.class, a, null);
+		final String[] indexedColumnNames;
 		
 		if (fieldName != null) {
-			if (name == null || "".equals(name)) {
-				name = fieldName;
-			}
-			if (indexedFieldNamesArray == null || indexedFieldNamesArray.length == 0) {
-				indexedFieldNamesArray = new String[] {name};
+			FieldMetadata<T, Object, Object> field = entityMetadata.getFieldByName(fieldName);
+			if(field == null) {
+				throw new IllegalArgumentException("Field not found");
 			}
 			
-			IndexMetadata<T> existingIndex = indexes.get(name);
-			if (existingIndex != null) {
-				Collection<String> allNames = new LinkedHashSet<String>(Arrays.asList(existingIndex.getFieldNames()));
-				allNames.addAll(Arrays.asList(indexedFieldNamesArray));
-				IndexMetadata<T> updatedIndex = create(entityMetadata, name, allNames.toArray(new String[0]));
-				indexes.put(name, updatedIndex);
+			final String columnName = field.getColumn();
+			
+			if (indexName == null || "".equals(indexName)) {
+				indexName = columnName;
+			}
+			
+			indexedColumnNames = getIndexedColumnsForFieldIndex(indexes.get(indexName), columnName);
+		} else {
+			if(indexes.containsKey(indexName)){
+				throw new DuplicateIndexName(entityMetadata.getEntityType(), indexName);
+			}
+			final Object indexColumnNamesFromAnnotation = invoke(annotationType, indexDef.getColumnNames(), null, Object.class, a, null);
+			indexedColumnNames = getIndexedColumnNames(fieldName, indexColumnNamesFromAnnotation);
+		}
+		
+		if(indexName == null){
+			throw new NullPointerException("Index name is null");
+		}
+
+		indexes.put(indexName, create(entityMetadata, indexName, indexedColumnNames));
+	}
+
+
+
+	private <T> String[] getIndexedColumnsForFieldIndex(IndexMetadata<T> existingIndex, final String columnName) {
+		final String[] indexedColumnNames;
+		if (existingIndex != null) {
+			indexedColumnNames = addAndRemoveDuplicates(existingIndex.getColumnNames(), columnName);
+		} else {
+			indexedColumnNames = new String[] {columnName};
+		}
+		return indexedColumnNames;
+	}
+
+
+
+	private <T> String[] addAndRemoveDuplicates(String[] columnNames, final String columnName) {		
+		Collection<String> allNames = new LinkedHashSet<String>(Arrays.asList(columnNames));
+		if(columnName != null) {
+			allNames.add(columnName);
+		}
+		return allNames.toArray(new String[0]);
+	}
+	
+	private <T> String[] removeDuplicates(String[] columnNames) {
+		return addAndRemoveDuplicates(columnNames, null);
+	}
+
+	private String[] getIndexedColumnNames(String fieldName, final Object indexColumnNames) {
+		
+		String[] indexedColumnNames = null;
+		
+		if (indexColumnNames.getClass().isArray()) {
+			indexedColumnNames = (String[]) indexColumnNames;
+		} else if (indexColumnNames instanceof String) {
+			final String tempIndexFieldNames = (String) indexColumnNames;
+			indexedColumnNames = tempIndexFieldNames.split(",");
+		} else {
+			if (fieldName == null) {
+				throw new IllegalArgumentException("Don't know column name");
 			}
 		}
-		indexes.put(name, create(entityMetadata, name, indexedFieldNamesArray));
+
+		return removeDuplicates(indexedColumnNames);
 	}
 	
 	

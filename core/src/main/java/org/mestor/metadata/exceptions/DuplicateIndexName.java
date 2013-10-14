@@ -14,59 +14,24 @@
 /*                                                                                                    */
 /*                                                                                                    */
 /******************************************************************************************************/
+package org.mestor.metadata.exceptions;
 
-package org.mestor.metadata.index;
-
-import java.lang.annotation.ElementType;
-
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
-import javax.xml.bind.annotation.XmlType;
-
-@XmlType(name = "index-container")
-@XmlAccessorType(XmlAccessType.FIELD)
-public class IndexAnnotationContainer {
-	@XmlElement(name = "class")
-	private String className;
+public final class DuplicateIndexName extends IllegalArgumentException {
+	private final String indexName;
+	private final Class<?> entityClass;
 	
-	@XmlElement
-	private String collection = "value";
-	
-	@XmlElement(name = "index-class")
-	private String indexAnnotationClassName;
-	
-	@XmlElement(name = "target")
-	@XmlElementWrapper(name = "targets")
-	private ElementType[] targets = new ElementType[] {ElementType.TYPE};
-	
-	
-	public String getClassName() {
-		return className;
-	}
-	public void setClassName(String className) {
-		this.className = className;
-	}
-	public String getCollection() {
-		return collection;
-	}
-	public void setCollection(String collection) {
-		this.collection = collection;
-	}
-	public String getIndexAnnotationClassName() {
-		return indexAnnotationClassName;
-	}
-	public void setIndexAnnotationClassName(String indexAnnotationClassName) {
-		this.indexAnnotationClassName = indexAnnotationClassName;
-	}
-	public ElementType[] getTargets() {
-		return targets;
-	}
-	public void setTargets(ElementType ... targets) {
-		this.targets = targets;
+	public DuplicateIndexName(Class<?> entityClass, String indexName){
+		super("Duplicate indexes for class: " + entityClass.getName() + " (" + indexName + ")");
+		this.indexName = indexName;
+		this.entityClass = entityClass;
 	}
 	
+	public String getIndexName() {
+		return indexName;
+	}
 	
+	public Class<?> getEntityClass() {
+		return entityClass;
+	}
 	
 }

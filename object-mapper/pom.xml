@@ -21,7 +21,7 @@
 		<dependency>
 			<groupId>org.mestor</groupId>
 			<artifactId>mestor-core</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<version>${project.parent.version}</version>
 		</dependency>
      
 		<dependency>

@@ -66,6 +66,8 @@
     <module>object-mapper</module>
     <module>entity-manager</module>
     <module>cql-persistence</module>
+    <module>interoperability</module>
+    <module>integration</module>
   </modules>
 
 

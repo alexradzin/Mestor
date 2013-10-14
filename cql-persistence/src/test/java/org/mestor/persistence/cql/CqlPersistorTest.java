@@ -31,6 +31,8 @@ import org.mockito.Mockito;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 
 public class CqlPersistorTest {
+	
+	@SuppressWarnings("unused")
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateNullContext() throws IOException {
 		new CqlPersistor(null);
@@ -82,7 +84,8 @@ public class CqlPersistorTest {
 	private void createAndConnect(Map<String, Object> props) throws IOException {
 		EntityContext ctx = Mockito.mock(EntityContext.class);
 		doReturn(props).when(ctx).getProperties();
-		new CqlPersistor(ctx);
+		@SuppressWarnings("unused")
+		CqlPersistor cqlPersistor = new CqlPersistor(ctx);
 	}
 	
 }

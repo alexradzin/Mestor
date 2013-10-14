@@ -8,16 +8,9 @@
 		<version>0.1-SNAPSHOT</version>
 	</parent>
 
-	<artifactId>mestor-entity-manager</artifactId>
-	<name>mestor-entity-manager</name>
 
-
-	<properties>
-		<validation.version>1.1.0.Final</validation.version>
-		<persistence.version>1.0.2</persistence.version>
-		<slf4j.version>1.6.1</slf4j.version>
-	</properties>
-
+	<artifactId>mestor-integration</artifactId>
+	<name>mestor-integration</name>
 
 	<dependencies>
 		<dependency>
@@ -26,27 +19,25 @@
 			<version>${project.parent.version}</version>
 		</dependency>
 
-
-
 		<dependency>
-			<groupId>javax.validation</groupId>
-			<artifactId>validation-api</artifactId>
-			<version>${validation.version}</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>jul-to-slf4j</artifactId>
-			<version>${slf4j.version}</version>
+			<groupId>org.mestor</groupId>
+			<artifactId>mestor-entity-manager</artifactId>
+			<version>${project.parent.version}</version>
 		</dependency>
 		
 		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>jcl-over-slf4j</artifactId>
-			<version>${slf4j.version}</version>
+			<groupId>org.mestor</groupId>
+			<artifactId>mestor-interoperability</artifactId>
+			<version>${project.parent.version}</version>
 		</dependency>
-
+		
+		<dependency>
+			<groupId>org.mestor</groupId>
+			<artifactId>mestor-cql-persistence</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+		
+		<!-- JPA -->
 		<dependency>
 			<groupId>org.eclipse.persistence</groupId>
 			<artifactId>javax.persistence</artifactId>
@@ -57,30 +48,11 @@
 		<!-- Test only dependencies -->
 		<dependency>
 			<groupId>org.mestor</groupId>
-			<artifactId>mestor-core</artifactId>
+			<artifactId>mestor-entity-manager</artifactId>
 			<version>${project.parent.version}</version>
 			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
-
-
 	</dependencies>
-	
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.2</version>
-				<executions>
-					<execution>
-						<goals>
-							<goal>test-jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
 
 </project>

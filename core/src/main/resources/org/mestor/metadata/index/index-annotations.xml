@@ -13,6 +13,7 @@
     <index-container>
         <class>org.eclipse.persistence.annotations.Indexes</class>
         <index-class>org.eclipse.persistence.annotations.Index</index-class>
+        <!-- <collection>value</collection> -->
         <targets>
             <target>TYPE</target>
         </targets>
