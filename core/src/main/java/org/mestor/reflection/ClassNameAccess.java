@@ -19,6 +19,7 @@ package org.mestor.reflection;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Modifier;
 
 /**
  * Implementation of {@link Access} that transforms instance to its class name. 
@@ -58,6 +59,26 @@ public class ClassNameAccess <T> implements Access<T, String, AccessibleObject> 
 	@Override
 	public Annotation[] getDeclaredAnnotations() {
 		return null;
+	}
+
+	@Override
+	public Class<?> getDeclaringClass() {
+		return null;
+	}
+
+	@Override
+	public String getName() {
+		return "$classname";
+	}
+
+	@Override
+	public int getModifiers() {
+		return Modifier.PUBLIC;
+	}
+
+	@Override
+	public boolean isSynthetic() {
+		return true;
 	}
 
 

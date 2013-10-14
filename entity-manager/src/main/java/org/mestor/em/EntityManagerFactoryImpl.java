@@ -17,6 +17,8 @@
 
 package org.mestor.em;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -24,6 +26,7 @@ import javax.persistence.Cache;
 import javax.persistence.EntityGraph;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceException;
 import javax.persistence.PersistenceUnitUtil;
 import javax.persistence.Query;
 import javax.persistence.SynchronizationType;
@@ -31,6 +34,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.metamodel.Metamodel;
 import javax.persistence.spi.PersistenceUnitInfo;
 
+import org.mestor.persistence.metamodel.MetamodelImpl;
 import org.mestor.util.CollectionUtils;
 
 import com.google.common.base.Predicate;
@@ -39,28 +43,41 @@ import com.google.common.collect.Maps;
 
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	private boolean open = true;
-	
-	
+
+	private final String prefix = MestorProperties.PREFIX.key();
+	private final Pattern prefixPattern = Pattern.compile("^" + prefix + "\\.");
+	private final Predicate<CharSequence> predicate = Predicates.contains(prefixPattern);
+
+	private final MetamodelImpl metamodel;
+
+
 	private final PersistenceUnitInfo info;
 	private final Map<String, String> map;
-	
-	
-	public EntityManagerFactoryImpl(PersistenceUnitInfo info, Map<String, String> map) {
+	private final Map<String, Object> properties = new HashMap<>();
+
+
+	public EntityManagerFactoryImpl(final PersistenceUnitInfo info, final Map<String, String> map) {
 		this.info = info;
 		this.map = map;
+
+		properties.putAll(CollectionUtils.merge(
+				Maps.filterKeys(System.getenv(), predicate),
+				Maps.filterKeys(Maps.fromProperties(System.getProperties()), predicate),
+				this.map));
+
+		metamodel = new MetamodelImpl(info, this, properties);
+
 	}
 
 	@Override
 	public EntityManager createEntityManager() {
 		checkOpen();
-		return createEntityManager(map);
+		return createEntityManager(properties);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public EntityManager createEntityManager(@SuppressWarnings("rawtypes") Map map) {
-		checkOpen();
-		return new EntityManagerImpl(info, map);
+	public EntityManager createEntityManager(@SuppressWarnings("rawtypes") final Map map) {
+		return createEntityManager(SynchronizationType.UNSYNCHRONIZED, Collections.emptyMap());
 	}
 
 	@Override
@@ -73,7 +90,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 		return open;
 	}
 
-	
+
 	private void checkOpen() {
 		if(!open) {
 			throw new IllegalStateException("Entity manager is closed");
@@ -81,15 +98,15 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	}
 
 	@Override
-	public EntityManager createEntityManager(SynchronizationType synchronizationType) {
-		// TODO Auto-generated method stub
-		return null;
+	public EntityManager createEntityManager(final SynchronizationType synchronizationType) {
+		return createEntityManager(SynchronizationType.UNSYNCHRONIZED, Collections.emptyMap());
 	}
 
+	@SuppressWarnings({ "unchecked"})
 	@Override
-	public EntityManager createEntityManager(SynchronizationType synchronizationType, @SuppressWarnings("rawtypes") Map map) {
-		// TODO Auto-generated method stub
-		return null;
+	public EntityManager createEntityManager(final SynchronizationType synchronizationType, @SuppressWarnings("rawtypes") final Map map) {
+		checkOpen();
+		return new EntityManagerImpl(info, this, CollectionUtils.merge(properties, map), metamodel.getEntityClasses());
 	}
 
 	@Override
@@ -106,8 +123,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
 	@Override
 	public Map<String, Object> getProperties() {
-		// TODO Auto-generated method stub
-		return null;
+		return properties;
 	}
 
 	@Override
@@ -123,21 +139,27 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	}
 
 	@Override
-	public void addNamedQuery(String name, Query query) {
+	public void addNamedQuery(final String name, final Query query) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
-	public <T> T unwrap(Class<T> cls) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> T unwrap(final Class<T> cls) {
+        if (cls.isAssignableFrom(this.getClass())) {
+            // unwraps any proxy to EntityManagerFactory
+        	@SuppressWarnings("unchecked")
+			final
+			T unwrapped = (T) this;
+            return unwrapped;
+        }
+
+        throw new PersistenceException("Could not unwrap entity manager factory to: " + cls);
 	}
 
 	@Override
-	public <T> void addNamedEntityGraph(String graphName, EntityGraph<T> entityGraph) {
-		// TODO Auto-generated method stub
-		
+	public <T> void addNamedEntityGraph(final String graphName, final EntityGraph<T> entityGraph) {
+		throw new UnsupportedOperationException("EntityGraphs are not supported right now");
 	}
 
 }

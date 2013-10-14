@@ -15,12 +15,47 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.persistence.query;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
+import javax.persistence.Parameter;
+
+public class ParameterImpl<T> implements Parameter<T> {
+	private final String name;
+	private final Integer position;
+	private final Class<T> type;
+
+
+	public ParameterImpl(String name, Class<T> type) {
+		this(name, null, type);
+	}
+	
+	public ParameterImpl(int position, Class<T> type) {
+		this(null, position, type);
+	}
+	
+	public ParameterImpl(String name, int position, Class<T> type) {
+		this(name, new Integer(position), type);
+	}
+	
+	private ParameterImpl(String name, Integer position, Class<T> type) {
+		this.name = name;
+		this.position = position;
+		this.type = type;
+	}
+	
+	@Override
+	public String getName() {
+		return name;
+	}
+
+	@Override
+	public Integer getPosition() {
+		return position;
+	}
+
+	@Override
+	public Class<T> getParameterType() {
+		return type;
+	}
+
 }

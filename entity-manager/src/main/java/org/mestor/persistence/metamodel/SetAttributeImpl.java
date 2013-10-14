@@ -15,12 +15,23 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.persistence.metamodel;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
+import java.util.Set;
+
+import javax.persistence.metamodel.ManagedType;
+import javax.persistence.metamodel.SetAttribute;
+
+import org.mestor.metadata.FieldMetadata;
+
+public class SetAttributeImpl<T, E> extends PluralAttributeImpl<T, Set<E>, E> implements SetAttribute<T, E> {
+	public SetAttributeImpl(ManagedType<T> managedType, FieldMetadata<T, Set<E>, ?> fmd) {
+		super(managedType, fmd);
+	}
+
+	@Override
+	public CollectionType getCollectionType() {
+		return CollectionType.SET;
+	}
+
 }

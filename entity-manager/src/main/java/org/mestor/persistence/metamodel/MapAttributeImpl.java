@@ -15,12 +15,51 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.persistence.metamodel;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
+import java.util.Iterator;
+import java.util.Map;
+
+import javax.persistence.metamodel.ManagedType;
+import javax.persistence.metamodel.MapAttribute;
+import javax.persistence.metamodel.Type;
+
+import org.mestor.metadata.FieldMetadata;
+
+public class MapAttributeImpl<T, K, V> extends PluralAttributeImpl<T, Map<K, V>, V> implements MapAttribute<T, K, V> {
+	private Class<K> keyClass;
+	private Type<K> keyType;
+
+	protected MapAttributeImpl(ManagedType<T> managedType, FieldMetadata<T, Map<K, V>, ?> fmd) {
+		super(managedType, fmd);
+	}
+	
+	@Override
+	@SuppressWarnings("unchecked")
+	protected void initElementType() {
+		Iterator<Class<?>> types = fmd.getGenericTypes().iterator();
+		
+		keyClass = (Class<K>)types.next();
+		keyType = new TypeImpl<K>(keyClass);
+		
+		elementClass = (Class<V>)types.next();
+		elementType = new TypeImpl<V>(elementClass);
+	}
+	
+
+	@Override
+	public Class<K> getKeyJavaType() {
+		return keyClass;
+	}
+
+	@Override
+	public Type<K> getKeyType() {
+		return keyType;
+	}
+
+	@Override
+	public CollectionType getCollectionType() {
+		return CollectionType.MAP;
+	}
+
 }

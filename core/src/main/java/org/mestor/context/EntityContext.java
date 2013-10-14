@@ -27,6 +27,7 @@ public interface EntityContext {
 	public Collection<EntityMetadata<?>> getEntityMetadata();
 	public Collection<Class<?>> getEntityClasses();
 	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
+	public String getNamedQuery(String name);
 	public Persistor getPersistor();
 	public DirtyEntityManager getDirtyEntityManager();
 	public Collection<Class<?>> getNativeTypes();

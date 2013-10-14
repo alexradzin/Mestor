@@ -47,4 +47,24 @@ public class FieldAccess<T, P> extends AbstractAccess<T, P, Field> {
 			throw new IllegalStateException(e);
 		}
 	}
+
+	@Override
+	public Class<?> getDeclaringClass() {
+		return accessibleObjects[0].getDeclaringClass();
+	}
+
+	@Override
+	public String getName() {
+		return accessibleObjects[0].getName();
+	}
+
+	@Override
+	public int getModifiers() {
+		return accessibleObjects[0].getModifiers();
+	}
+
+	@Override
+	public boolean isSynthetic() {
+		return accessibleObjects[0].isSynthetic();
+	}
 }

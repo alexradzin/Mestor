@@ -19,8 +19,9 @@ package org.mestor.reflection;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Member;
 
-public interface Access<T, P, A extends AccessibleObject> extends AnnotatedElement {
+public interface Access<T, P, A extends AccessibleObject> extends AnnotatedElement, Member {
 	public abstract P get(T instance);
 	public abstract void set(T instance, P parameter);
 }

@@ -17,6 +17,8 @@
 
 package org.mestor.wrap.javassist;
 
+import java.util.regex.Pattern;
+
 import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyFactory;
 import javassist.util.proxy.ProxyObject;
@@ -29,6 +31,7 @@ import org.mestor.wrap.ObjectWrapperFactory;
 
 public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T> {
 	private final EntityContext context;
+	private final static Pattern proxyClassNamePattern = Pattern.compile("^(.*?)_$$_javassist_.*$");
 	
 	
 	public JavassistObjectWrapperFactory(EntityContext context) {
@@ -86,6 +89,15 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		Class<? extends T> c = f.createClass();
 		return c;
 		
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Class<T> getRealType(Class<? extends T> wrappedType) {
+		if (!proxyClassNamePattern.matcher(wrappedType.getName()).find()) {
+			throw new IllegalArgumentException(wrappedType + " is not wrapped");
+		}
+		return (Class<T>)wrappedType.getSuperclass();
 	}
 	
 }

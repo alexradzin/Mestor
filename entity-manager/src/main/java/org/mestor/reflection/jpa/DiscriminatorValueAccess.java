@@ -19,6 +19,7 @@ package org.mestor.reflection.jpa;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Modifier;
 
 import javax.persistence.DiscriminatorColumn;
 import javax.persistence.DiscriminatorType;
@@ -101,6 +102,30 @@ public class DiscriminatorValueAccess<T, D> implements Access<T, D, AccessibleOb
 		}
 		
 		throw new IllegalStateException("Cannot locate DiscriminatorColumn for class " + type);
+	}
+
+
+	@Override
+	public Class<?> getDeclaringClass() {
+		return clazz;
+	}
+
+
+	@Override
+	public String getName() {
+		return clazz.getName();
+	}
+
+
+	@Override
+	public int getModifiers() {
+		return Modifier.PUBLIC;
+	}
+
+
+	@Override
+	public boolean isSynthetic() {
+		return true;
 	}
 
 }

@@ -31,6 +31,8 @@ import org.mestor.reflection.PropertyAccessor;
 public class EntityMetadata<E> {
 	private Class<E> entityType;
 	private String entityName;
+	private EntityMetadata<? super E> supertype;
+
 	private FieldMetadata<E, Object, Object> primaryKey;
 	private FieldMetadata<E, Object, Object> discrimintor;
 	private FieldMetadata<E, Object, Object> joiner;
@@ -48,7 +50,7 @@ public class EntityMetadata<E> {
 	private final Map<Method, FieldMetadata<E, ?, ?>> getter2field = new HashMap<>();
 	private final Map<Method, FieldMetadata<E, ?, ?>> setter2field = new HashMap<>();
 
-	
+	private Map<String, String> namedQueries = new HashMap<>();
 	
 	public EntityMetadata(final Class<E> entityClass) {
 		this.entityType = entityClass;
@@ -77,6 +79,14 @@ public class EntityMetadata<E> {
 
 	public void setEntityName(final String entityName) {
 		this.entityName = entityName;
+	}
+
+	public EntityMetadata<? super E> getSupertype() {
+		return supertype;
+	}
+
+	public void setSupertype(EntityMetadata<? super E> supertype) {
+		this.supertype = supertype;
 	}
 
 
@@ -248,5 +258,15 @@ public class EntityMetadata<E> {
 			pa.setValue(to, value);
 		}
 	}
+
+	public Map<String, String> getNamedQueries() {
+		return Collections.unmodifiableMap(namedQueries);
+	}
 	
+	public void addNamedQuery(String name, String ql) {
+		if (namedQueries.containsKey(name)) {
+			throw new IllegalArgumentException("Duplicate named query " + name + " in class " + entityType);
+		}
+		namedQueries.put(name, ql);
+	}
 }

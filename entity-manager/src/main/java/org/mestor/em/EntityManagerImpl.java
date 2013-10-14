@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import javax.persistence.EntityGraph;
@@ -40,9 +41,11 @@ import javax.persistence.EntityNotFoundException;
 import javax.persistence.EntityTransaction;
 import javax.persistence.FlushModeType;
 import javax.persistence.LockModeType;
+import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import javax.persistence.StoredProcedureQuery;
 import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CommonAbstractCriteria;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaDelete;
 import javax.persistence.criteria.CriteriaQuery;
@@ -69,24 +72,28 @@ import com.google.common.primitives.Primitives;
 //TODO use setProperty() (introduced in JPA 2.0) method for initialization
 public class EntityManagerImpl implements EntityManager, EntityContext {
 	private final PersistenceUnitInfo info;
+	private final EntityManagerFactory entityManagerFactory;
 	private final Map<String, Object> properties;
 	private final Map<Class<?>, EntityMetadata<?>> entityClasses;
+	private final Map<String, String> namedQueries = new HashMap<>();
 	private boolean open = false;
-	
+
 	private FlushModeType flushMode;
-	
-	private final Persistor persistor; 
-	
-	
-	public EntityManagerImpl(final PersistenceUnitInfo info, final Map<String, Object> properties, final Class<?>... classes) {
+
+	private final Persistor persistor;
+
+
+	public EntityManagerImpl(final PersistenceUnitInfo info, final EntityManagerFactory entityManagerFactory, final Map<String, Object> properties, final Map<Class<?>, EntityMetadata<?>> entityClasses) {
 		this.info = info;
+		this.entityManagerFactory = entityManagerFactory;
 		this.properties = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(properties));
-		
+
 		final Map<String, Object> allParams = getAllParameters(info, properties);
-		
+
+		this.entityClasses = entityClasses == null ? new HashMap<Class<?>, EntityMetadata<?>>() : new HashMap<Class<?>, EntityMetadata<?>>(entityClasses);
+		open = true;
 		persistor = createPersistor(info, properties, allParams);
-		
-		this.entityClasses = new HashMap<>();
+
 		fillEntityClasses(info, properties, allParams);
 		open = true;
 		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
@@ -110,14 +117,15 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		return null;
 	}
 
+
 	@Override
-	public Query createNativeQuery(final String sqlString) {
+	public Query createNativeQuery(final String cqlString) {
 		checkOpen();
-		return null;
+		return createNativeQuery(cqlString, Object[].class);
 	}
 
 	@Override
-	public Query createNativeQuery(final String sqlString, @SuppressWarnings("rawtypes") final Class resultClass) {
+	public Query createNativeQuery(final String cqlString, @SuppressWarnings("rawtypes") final Class resultClass) {
 		checkOpen();
 		return null;
 	}
@@ -151,7 +159,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	public <T> T find(final Class<T> entityClass, final Object primaryKey) {
 		checkOpen();
 		checkEntityClass(entityClass);
-		checkPrimaryKey(entityClass, primaryKey);		
+		checkPrimaryKey(entityClass, primaryKey);
 
 		return persistor.fetch(entityClass, primaryKey);
 	}
@@ -165,32 +173,32 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		checkOpen();
 		checkEntityClass(entityClass);
 		checkPrimaryKey(entityClass, primaryKey);
-		
+
 		final boolean exists =  persistor.exists(entityClass, primaryKey);
 		if (exists) {
 			return getObjectWrapperFactory(entityClass).makeLazy(entityClass, primaryKey);
 		}
-		
+
 		throw new EntityNotFoundException("Entity " + entityClass + " identified by primary key " + primaryKey + " does not exist");
 	}
-	
-	
-	
+
+
+
 	@Override
 	public boolean contains(final Object entity) {
 		checkOpen();
-		
+
 		final Class<?> entityClass = entity.getClass();
 		checkEntityClass(entityClass);
-		
+
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		final
 		Object primaryKey = new EntityMetadata(entityClass).getPrimaryKey().getAccessor().getValue(entity);
 		return persistor.exists(entityClass, primaryKey);
 	}
-	
-	
-	
+
+
+
 
 	@Override
 	public void flush() {
@@ -239,7 +247,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			throw new IllegalArgumentException(entity + " is not an entity or is removed entity");
 		}
 		persist(entity);
-		
+
 		return entity; //TODO should it be wrapped here?
 	}
 
@@ -251,9 +259,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public void refresh(final Object entity) {
-		doRefresh(entity);
+		refresh(entity, LockModeType.NONE, null);
 	}
-	
+
 
 	private <E> void doRefresh(final E entity) {
 		@SuppressWarnings("unchecked")
@@ -263,9 +271,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		final E existing = find(entity);
 		emd.copy(existing, entity);
 	}
-	
-	
-	
+
+
+
 	private <E> E find(final E entity) {
 		@SuppressWarnings("unchecked")
 		final
@@ -291,27 +299,27 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			throw new IllegalStateException("Entity manager is closed");
 		}
 	}
-	
+
 	private <T> void checkEntityClass(final Class<T> entityClass) {
 		@SuppressWarnings("unchecked")
 		final
 		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
-		
+
 		if (emeta == null) {
 			throw new IllegalArgumentException("Class " + entityClass + " is not a registered entity");
 		}
 	}
-	
+
 	public <T> void checkPrimaryKey(final Class<T> entityClass, final Object primaryKey) {
 		@SuppressWarnings("unchecked")
 		final
 		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
-		
+
 		final FieldMetadata<?, ?, ?> pkMeta = emeta.getPrimaryKey();
 		if (pkMeta == null) {
 			throw new IllegalStateException("Unable to retrieve entity " + entityClass + " using primary key because it does not have primary key");
 		}
-		
+
 		final Class<?> pkType = pkMeta.getColumnType();//emeta.getEntityType();
 		if (primaryKey == null) {
 			if (!pkMeta.isNullable()) {
@@ -323,32 +331,37 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			}
 		}
 	}
-	
+
 	private boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
 		if(declaredType.isAssignableFrom(actualType)){
 			return true;
 		}
 		return declaredType.isPrimitive() && declaredType.equals(Primitives.unwrap(actualType));
 	}
-	
-	
-	
-	
+
+
+	private void checkLockMode(final LockModeType lockMode) {
+		if (!LockModeType.NONE.equals(lockMode)) {
+			throw new IllegalArgumentException("Lock mode " + lockMode + " is unsupported");
+		}
+	}
+
+
 
 	private void fillEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
 		ClassLoader cl = info.getClassLoader();
 		final List<URL> jarFiles = info.getJarFileUrls();
 		final String puName = info.getPersistenceUnitName();
 		//URL puRoot = info.getPersistenceUnitRootUrl();
-		
-		final List<String> packages = MANAGED_CLASS_PACKAGE.value(allParams); 
-		
+
+		final List<String> packages = MANAGED_CLASS_PACKAGE.value(allParams);
+
 		final boolean excludeUnlistedClasses = info.excludeUnlistedClasses();
-		
+
 		if (cl == null) {
 			cl = Thread.currentThread().getContextClassLoader();
 		}
-		
+
 		final ClassScanner cs;
 		if (excludeUnlistedClasses) {
 			final List<String> mgmtClassNames = info.getManagedClassNames();
@@ -360,34 +373,43 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		} else {
 			cs = new JpaAnnotatedClassScanner(cl, jarFiles, packages);
 		}
-		
+
 		final MetadataFactory mdf;
 		try {
 			final Class<MetadataFactory> mdfClass = METADATA_FACTORY_CLASS.value(allParams);
-			//TODO: add support of different naming strategies for tables, entities, fields, columns, indexes etc. 
+			//TODO: add support of different naming strategies for tables, entities, fields, columns, indexes etc.
 			final NamingStrategy namingStrategy = NAMING_STRATEGY.value(allParams);
 			mdf = mdfClass.newInstance();
 			mdf.setSchema(puName);
-			
+
 			setProperty(mdf, NamingStrategy.class, namingStrategy);
 			setProperty(mdf, EntityContext.class, this);
 		} catch (final ReflectiveOperationException e) {
 			throw new IllegalArgumentException(e);
 		}
-		
-		
+
+
 		for (final Class<?> c : cs.scan()) {
 			final EntityMetadata<?> md = mdf.create(c);
 			if (md == null) {
 				throw new IllegalArgumentException("Class " + c + " is not a JPA entity");
 			}
 			entityClasses.put(c, md);
+
+			for (final Entry<String, String> query : md.getNamedQueries().entrySet()) {
+				final String name = query.getKey();
+				final String ql = query.getValue();
+				if (namedQueries.containsKey(name)) {
+					throw new IllegalArgumentException("Duplicate named query " + name);
+				}
+				namedQueries.put(name, ql);
+			}
 		}
-		
+
 		mdf.update(entityClasses);
 	}
 
-	
+
 	private <M extends MetadataFactory, P> void setProperty(final M mdf, final Class<P> parameterType, final P parameterValue) {
 		@SuppressWarnings("unchecked")
 		final
@@ -403,28 +425,28 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			final String namingStrategyField = parameterFields.iterator().next();
 			mdfemd.getFieldByName(namingStrategyField).getAccessor().setValue(mdf, parameterValue);
 		}
-		
-		// property of give type is unsupported. Ignore it. 
+
+		// property of give type is unsupported. Ignore it.
 	}
-	
-	
+
+
 	private Persistor createPersistor(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
-		
+
 		final Map<Object, Object> map = new HashMap<>();
 		map.putAll(info.getProperties());
 		map.putAll(properties);
-		
-		
+
+
 		final Class<Persistor> clazz = PERSISTOR_CLASS.value(allParams);
-		
+
 		if (clazz == null) {
 			throw new IllegalArgumentException("No persistor class configured");
 		}
-		
+
 		if (!Persistor.class.isAssignableFrom(clazz)) {
 			throw new IllegalArgumentException(clazz + " must implement "  + Persistor.class + "interface to be a persistor");
 		}
-		
+
 		Constructor<Persistor> c = null;
 		try {
 			try {
@@ -437,7 +459,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 					return c.newInstance();
 				} catch (NoSuchMethodException | SecurityException e1) {
 					throw new IllegalArgumentException(
-							clazz + " must provide either constructor that accepts " + Map.class + 
+							clazz + " must provide either constructor that accepts " + Map.class +
 							" argument or default constructor to be a " + Persistor.class);
 				}
 			}
@@ -445,7 +467,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			throw new IllegalStateException("Cannot create persistor " + clazz, e);
 		}
 	}
-	
+
 	private Map<String, Object> getAllParameters(final PersistenceUnitInfo info, final Map<String, Object> properties) {
 		final Map<String, Object> all = new HashMap<>();
 		if (info != null && info.getProperties() != null) {
@@ -470,22 +492,22 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	// Implementation of EntityContext
-	
+
 	@Override
 	public Map<String, Object> getProperties() {
 		return getAllParameters(info, properties);
 	}
-	
+
 	@Override
 	public Collection<EntityMetadata<?>> getEntityMetadata() {
 		return entityClasses.values();
 	}
-	
+
 	@Override
 	public Collection<Class<?>> getEntityClasses() {
 		return entityClasses.keySet();
 	}
-	
+
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> EntityMetadata<T> getEntityMetadata(final Class<T> clazz) {
@@ -502,69 +524,114 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		return EntityTransactionImpl.getDirtyEntityManager();
 	}
 
+//	@Override
+//	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> properties) {
+//		// TODO Auto-generated method stub
+//		return null;
+//	}
+//
+//	@Override
+//	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode) {
+//		// TODO Auto-generated method stub
+//		return null;
+//	}
+//
+//	@Override
+//	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode, final Map<String, Object> properties) {
+//		// TODO Auto-generated method stub
+//		return null;
+//	}
+//
+//	@Override
+//	public void lock(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
+//		// TODO Auto-generated method stub
+//
+//	}
+//
+//	@Override
+//	public void refresh(final Object entity, final Map<String, Object> properties) {
+//		// TODO Auto-generated method stub
+//
+//	}
+//
+//	@Override
+//	public void refresh(final Object entity, final LockModeType lockMode) {
+//		// TODO Auto-generated method stub
+//
+//	}
+
 	@Override
-	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> properties) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> props) {
+		return find(entityClass, primaryKey, LockModeType.NONE, props);
 	}
 
 	@Override
 	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode) {
-		// TODO Auto-generated method stub
-		return null;
+		return find(entityClass, primaryKey, LockModeType.NONE, null);
 	}
 
 	@Override
-	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode, final Map<String, Object> properties) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode, final Map<String, Object> props) {
+		checkLockMode(lockMode);
+		checkOpen();
+		checkEntityClass(entityClass);
+		checkPrimaryKey(entityClass, primaryKey);
+
+		return persistor.fetch(entityClass, primaryKey);
 	}
 
 	@Override
 	public void lock(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
-		// TODO Auto-generated method stub
-		
+		checkLockMode(lockMode);
+		// do nothing right now. Anyway we don't support locking
 	}
 
 	@Override
-	public void refresh(final Object entity, final Map<String, Object> properties) {
-		// TODO Auto-generated method stub
-		
+	public void refresh(final Object entity, final Map<String, Object> props) {
+		refresh(entity, LockModeType.NONE, props);
 	}
 
 	@Override
 	public void refresh(final Object entity, final LockModeType lockMode) {
-		// TODO Auto-generated method stub
-		
+		refresh(entity, lockMode, null);
 	}
 
 	@Override
-	public void refresh(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
-		// TODO Auto-generated method stub
-		
+	public void refresh(final Object entity, final LockModeType lockMode, final Map<String, Object> props) {
+		checkLockMode(lockMode);
+		doRefresh(entity);
 	}
 
 	@Override
 	public void detach(final Object entity) {
 		// TODO Auto-generated method stub
-		
+		throw new UnsupportedOperationException("Detach entity is not implemented yet");
 	}
 
 	@Override
 	public LockModeType getLockMode(final Object entity) {
-		// TODO Auto-generated method stub
 		return LockModeType.NONE;
 	}
 
+//	@Override
+//	public void setProperty(final String propertyName, final Object value) {
+//		// TODO Auto-generated method stub
+//
+//	}
+
+//	@Override
+//	public <T> TypedQuery<T> createQuery(final CriteriaQuery<T> criteriaQuery) {
+//
+//	}
+
 	@Override
-	public void setProperty(final String propertyName, final Object value) {
-		// TODO Auto-generated method stub
-		
+	public void setProperty(final String name, final Object value) {
+		properties.put(name, value);
 	}
 
 	@Override
 	public <T> TypedQuery<T> createQuery(final CriteriaQuery<T> criteriaQuery) {
-		// TODO Auto-generated method stub
+		checkOpen();
 		return null;
 	}
 
@@ -580,98 +647,129 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		return null;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> TypedQuery<T> createQuery(final String qlString, final Class<T> resultClass) {
-		// TODO Auto-generated method stub
-		return null;
+		final CommonAbstractCriteria criteria = createCriteria(qlString, resultClass);
+
+
+		if(criteria instanceof CriteriaQuery) {
+			return createQuery((CriteriaQuery<T>)criteria);
+		}
+
+		if(criteria instanceof CriteriaDelete) {
+			return (TypedQuery<T>)createQuery((CriteriaDelete<T>)criteria);
+		}
+
+		if(criteria instanceof CriteriaUpdate) {
+			return (TypedQuery<T>)createQuery((CriteriaUpdate<T>)criteria);
+		}
+
+		throw new IllegalArgumentException("Unsupported query type " + criteria);
 	}
 
 	@Override
 	public <T> TypedQuery<T> createNamedQuery(final String name, final Class<T> resultClass) {
-		// TODO Auto-generated method stub
-		return null;
+		checkOpen();
+		return createQuery(getNamedQuery(name), resultClass);
+
 	}
 
 	@Override
 	public StoredProcedureQuery createNamedStoredProcedureQuery(final String name) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Stored procedures are not suppported");
 	}
 
 	@Override
 	public StoredProcedureQuery createStoredProcedureQuery(final String procedureName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Stored procedures are not suppported");
 	}
 
 	@Override
 	public StoredProcedureQuery createStoredProcedureQuery(final String procedureName, @SuppressWarnings("rawtypes") final Class... resultClasses) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Stored procedures are not suppported");
 	}
 
 	@Override
 	public StoredProcedureQuery createStoredProcedureQuery(final String procedureName, final String... resultSetMappings) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Stored procedures are not suppported");
 	}
 
 	@Override
 	public boolean isJoinedToTransaction() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public <T> T unwrap(final Class<T> cls) {
-		// TODO Auto-generated method stub
-		return null;
+        if (cls.isAssignableFrom(this.getClass())) {
+            // unwraps any proxy to Query, JPAQuery or EJBQueryImpl
+        	@SuppressWarnings("unchecked")
+			final
+			T unwrapped = (T) this;
+            return unwrapped;
+        }
+
+        throw new PersistenceException("Could not unwrap entity manager to: " + cls);
 	}
 
 	@Override
 	public EntityManagerFactory getEntityManagerFactory() {
-		// TODO Auto-generated method stub
-		return null;
+		return entityManagerFactory;
 	}
 
 	@Override
 	public CriteriaBuilder getCriteriaBuilder() {
-		// TODO Auto-generated method stub
-		return null;
+		checkOpen();
+		return entityManagerFactory.getCriteriaBuilder();
 	}
 
 	@Override
 	public Metamodel getMetamodel() {
-		// TODO Auto-generated method stub
-		return null;
+		checkOpen();
+		return entityManagerFactory.getMetamodel();
 	}
 
-	@Override
-	public <T> EntityGraph<T> createEntityGraph(final Class<T> rootType) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
-	@Override
-	public EntityGraph<?> createEntityGraph(final String graphName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
-	@Override
-	public EntityGraph<?> getEntityGraph(final String graphName) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <T> List<EntityGraph<? super T>> getEntityGraphs(final Class<T> entityClass) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
 	@Override
 	public Collection<Class<?>> getNativeTypes() {
 		return persistor.getNativeTypes();
 	}
+
+	@Override
+	public <T> EntityGraph<T> createEntityGraph(final Class<T> rootType) {
+		throw new UnsupportedOperationException("EntityGraphs are not supported right now");
+	}
+
+	@Override
+	public EntityGraph<?> createEntityGraph(final String graphName) {
+		throw new UnsupportedOperationException("EntityGraphs are not supported right now");
+	}
+
+	@Override
+	public EntityGraph<?> getEntityGraph(final String graphName) {
+		throw new UnsupportedOperationException("EntityGraphs are not supported right now");
+	}
+
+	@Override
+	public <T> List<EntityGraph<? super T>> getEntityGraphs(final Class<T> entityClass) {
+		throw new UnsupportedOperationException("EntityGraphs are not supported right now");
+	}
+
+
+	//TODO: implement this!!!
+	private <T> CommonAbstractCriteria createCriteria(final String qlString, final Class<T> resultClass) {
+		return null;
+	}
+
+
+
+
+	@Override
+	public String getNamedQuery(final String name) {
+		return namedQueries.get(name);
+	}
+
 }

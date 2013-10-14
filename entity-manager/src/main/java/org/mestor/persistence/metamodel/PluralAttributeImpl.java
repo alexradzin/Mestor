@@ -15,12 +15,49 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.persistence.metamodel;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
+import javax.persistence.metamodel.ManagedType;
+import javax.persistence.metamodel.PluralAttribute;
+import javax.persistence.metamodel.Type;
+
+import org.mestor.metadata.FieldMetadata;
+
+abstract class PluralAttributeImpl<T, C, E> extends AttributeImpl<T, C> implements PluralAttribute<T, C, E> {
+	protected Class<E> elementClass;
+	protected Type<E> elementType;
+	
+	
+	protected PluralAttributeImpl(ManagedType<T> managedType, FieldMetadata<T, C, ?> fmd) {
+		super(managedType, fmd);
+		initElementType();
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected void initElementType() {
+		elementClass = (Class<E>)fmd.getGenericTypes().iterator().next();
+		elementType = new TypeImpl<E>(elementClass);
+	}
+
+	@Override
+	public BindableType getBindableType() {
+		return BindableType.PLURAL_ATTRIBUTE;
+	}
+
+	@Override
+	public Class<E> getBindableJavaType() {
+		return elementClass;
+	}
+
+	@Override
+	public CollectionType getCollectionType() {
+		return CollectionType.COLLECTION;
+	}
+
+	@Override
+	public Type<E> getElementType() {
+		return elementType;
+	}
+
+
 }

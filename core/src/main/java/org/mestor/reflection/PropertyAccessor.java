@@ -21,6 +21,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -28,7 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class PropertyAccessor<T, P> implements AnnotatedElement {
+public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	private final Class<T> type;
 	private final Class<P> propertyType;
 	private final String name;
@@ -212,6 +213,30 @@ public class PropertyAccessor<T, P> implements AnnotatedElement {
 			genericType = getterType;
 		}
 		return genericType;
+	}
+
+
+
+	@Override
+	public Class<?> getDeclaringClass() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+
+	@Override
+	public int getModifiers() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+
+
+	@Override
+	public boolean isSynthetic() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 	
 }

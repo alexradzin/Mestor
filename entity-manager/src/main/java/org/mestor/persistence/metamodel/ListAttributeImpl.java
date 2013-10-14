@@ -15,12 +15,25 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.persistence.metamodel;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
+import java.util.List;
+
+import javax.persistence.metamodel.ListAttribute;
+import javax.persistence.metamodel.ManagedType;
+
+import org.mestor.metadata.FieldMetadata;
+
+public class ListAttributeImpl<T, E> extends PluralAttributeImpl<T, List<E>, E> implements ListAttribute<T, E> {
+
+	protected ListAttributeImpl(ManagedType<T> managedType, FieldMetadata<T, List<E>, ?> fmd) {
+		super(managedType, fmd);
+	}
+	
+	
+	@Override
+	public CollectionType getCollectionType() {
+		return CollectionType.LIST;
+	}
+
 }

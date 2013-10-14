@@ -15,12 +15,35 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.persistence.metamodel;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
+import java.util.Arrays;
+
+import javax.persistence.metamodel.Type;
+
+import com.google.common.collect.Lists;
+
+class TypeImpl<T> implements Type<T> {
+	private final Class<T> clazz;
+	private final PersistenceType persistenceType;
+	
+	TypeImpl(Class<T> clazz) {
+		this.clazz = clazz;
+		this.persistenceType = Utils.getAnnotatedCategory(
+				Utils.typeAnnotations, 
+				clazz, 
+				Lists.reverse(Arrays.asList(PersistenceType.values())).toArray(new PersistenceType[0]), 
+				PersistenceType.BASIC);
+	}
+
+	@Override
+	public PersistenceType getPersistenceType() {
+		return persistenceType;
+	}
+
+	@Override
+	public Class<T> getJavaType() {
+		return clazz;
+	}
+
 }
