@@ -114,6 +114,9 @@ public class MetadataFactoryTestUtils {
 	}
 
 	static< T> void testIndexes(Class<T> clazz, Map<String, String[]> expected) {
+		if(clazz == null) {
+			return;
+		}
 		Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(clazz);
 		@SuppressWarnings("unchecked")
 		EntityMetadata<T> md = (EntityMetadata<T>) entityClasses.get(clazz);

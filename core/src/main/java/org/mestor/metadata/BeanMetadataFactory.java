@@ -221,7 +221,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 		final String[] indexedColumnNames;
 		
 		if (fieldName != null) {
-			FieldMetadata<T, Object, Object> field = entityMetadata.getFieldByName(fieldName);
+			FieldMetadata<T, Object, Object> field = entityMetadata.getFieldByName(fieldName.trim());
 			if(field == null) {
 				throw new IllegalArgumentException("Field not found");
 			}
@@ -238,7 +238,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 				throw new DuplicateIndexName(entityMetadata.getEntityType(), indexName);
 			}
 			final Object indexColumnNamesFromAnnotation = invoke(annotationType, indexDef.getColumnNames(), null, Object.class, a, null);
-			indexedColumnNames = getIndexedColumnNames(fieldName, indexColumnNamesFromAnnotation);
+			indexedColumnNames = getIndexedColumnNames(indexColumnNamesFromAnnotation);
 		}
 		
 		if(indexName == null){
@@ -270,11 +270,16 @@ public class BeanMetadataFactory implements MetadataFactory {
 		return allNames.toArray(new String[0]);
 	}
 	
-	private <T> String[] removeDuplicates(String[] columnNames) {
-		return addAndRemoveDuplicates(columnNames, null);
+	private <T> String[] trimAndRemoveDuplicates(String[] columnNames) {
+		String [] trimmedColumnNames = new String[columnNames.length];
+		for (int i = 0; i < columnNames.length; i++) {
+			String cn = columnNames[i];
+			trimmedColumnNames[i] = cn.trim();
+		}
+		return addAndRemoveDuplicates(trimmedColumnNames, null);
 	}
 
-	private String[] getIndexedColumnNames(String fieldName, final Object indexColumnNames) {
+	private String[] getIndexedColumnNames(final Object indexColumnNames) {
 		
 		String[] indexedColumnNames = null;
 		
@@ -284,12 +289,10 @@ public class BeanMetadataFactory implements MetadataFactory {
 			final String tempIndexFieldNames = (String) indexColumnNames;
 			indexedColumnNames = tempIndexFieldNames.split(",");
 		} else {
-			if (fieldName == null) {
-				throw new IllegalArgumentException("Don't know column name");
-			}
+			throw new IllegalArgumentException("Don't know column name");
 		}
 
-		return removeDuplicates(indexedColumnNames);
+		return trimAndRemoveDuplicates(indexedColumnNames);
 	}
 	
 	

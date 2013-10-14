@@ -16,34 +16,23 @@
 /******************************************************************************************************/
 package org.mestor.metadata.jpa;
 
-import org.mestor.entities.index_test.AutoNamedFieldLevelIndex;
-import org.mestor.entities.index_test.AutoNamedMethodLevelIndex;
 import org.mestor.entities.index_test.DuplicateIndexName;
-import org.mestor.entities.index_test.IndexColumnCollisionFieldLevel;
-import org.mestor.entities.index_test.IndexColumnCollisionMethodLevel;
-import org.mestor.entities.index_test.OneColumnFieldLevelIndex;
 import org.mestor.entities.index_test.OneColumnIndex;
-import org.mestor.entities.index_test.OneColumnMethodLevelIndex;
 import org.mestor.entities.index_test.SameColumnTwiceInIndex;
-import org.mestor.entities.index_test.ThreeGoodFieldLevelIndexes;
 import org.mestor.entities.index_test.ThreeGoodIndexes;
-import org.mestor.entities.index_test.ThreeGoodMethodLevelIndex;
-import org.mestor.entities.index_test.TwoColumnFieldLevelIndex;
 import org.mestor.entities.index_test.TwoColumnIndex;
-import org.mestor.entities.index_test.TwoColumnMethodLevelIndex;
 
-public class EclipseLinkIndexesTest extends IndexTestBase {
-
+public class JpaIndexTest extends IndexTestBase {
 	@Override
 	protected Class<?> getOneColumnIndexClass() {
 		return OneColumnIndex.class;
 	}
-	
+
 	@Override
 	protected Class<?> getTwoColumnIndexClass() {
 		return TwoColumnIndex.class;
 	}
-	
+
 	@Override
 	protected Class<?> getThreeGoodIndexesClass() {
 		return ThreeGoodIndexes.class;
@@ -53,59 +42,9 @@ public class EclipseLinkIndexesTest extends IndexTestBase {
 	protected Class<?> getDuplicateIndexNameClass() {
 		return DuplicateIndexName.class;
 	}
-	
+
 	@Override
 	protected Class<?> getSameColumnTwiceInIndexClass() {
 		return SameColumnTwiceInIndex.class;
-	}
-
-	@Override
-	protected Class<?> getOneColumnFieldLevelIndexClass() {
-		return OneColumnFieldLevelIndex.class;
-	}
-
-	@Override
-	protected Class<?> getTwoColumnFieldLevelIndexClass() {
-		return TwoColumnFieldLevelIndex.class;
-	}
-
-	@Override
-	protected Class<?> getThreeGoodFieldLevelIndexesClass() {
-		return ThreeGoodFieldLevelIndexes.class;
-	}
-	
-	@Override
-	protected Class<?> getFieldLevelIndexColumnCollisionClass() {
-		return IndexColumnCollisionFieldLevel.class;
-	}
-	
-	@Override
-	protected Class<?> getAutoNamedFieldLevelIndexClass() {
-		return AutoNamedFieldLevelIndex.class;
-	}
-	
-	@Override
-	protected Class<?> getOneColumnMethodLevelIndexClass() {
-		return OneColumnMethodLevelIndex.class;
-	}
-
-	@Override
-	protected Class<AutoNamedMethodLevelIndex> getAutoNamedMethodLevelIndexClass() {
-		return AutoNamedMethodLevelIndex.class;
-	}
-
-	@Override
-	protected Class<?> getTwoColumnMethodLevelIndexClass() {
-		return TwoColumnMethodLevelIndex.class;
-	}
-
-	@Override
-	protected Class<?> getMethodLevelIndexColumnCollisionClass() {
-		return IndexColumnCollisionMethodLevel.class;
-	}
-	
-	@Override
-	protected Class<?> getThreeGoodMethodLevelIndexesClass() {
-		return ThreeGoodMethodLevelIndex.class;
 	}
 }
