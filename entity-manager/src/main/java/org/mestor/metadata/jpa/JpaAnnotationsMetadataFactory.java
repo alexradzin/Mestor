@@ -86,11 +86,11 @@ import com.google.common.primitives.Primitives;
 @Inheritance
 public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	private final Map<NamableItem, NamingStrategy> namingStrategies = new EnumMap<NamableItem, NamingStrategy>(NamableItem.class) {{
-		for(NamableItem i : NamableItem.values()) {
+		for(final NamableItem i : NamableItem.values()) {
 			put(i, StandardNamingStrategy.LOWER_CASE_UNDERSCORE);
 		}
 	}};
-	private EntityContext context;
+	private EntityContext entityContext;
 
 	public JpaAnnotationsMetadataFactory(final Map<NamableItem, NamingStrategy> namingStrategies) {
 		this();
@@ -100,12 +100,12 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	public JpaAnnotationsMetadataFactory() {
 	}
 
-	public void setNamingStrategy(NamableItem item, NamingStrategy namingStrategy) {
+	public void setNamingStrategy(final NamableItem item, final NamingStrategy namingStrategy) {
 		this.namingStrategies.put(item, namingStrategy);
 	}
 	
-	public void setEntityContext(EntityContext context) {
-		this.context = context;
+	public void setEntityContext(final EntityContext context) {
+		this.entityContext = context;
 	}
 
 	@Override
@@ -115,34 +115,36 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			return null;
 		}
 		
-		EntityMetadata<T> emeta = getOrCreate(clazz);
+		final EntityMetadata<T> emeta = new EntityMetadata<T>(clazz);
 		
 		// discover entity name
 		emeta.setEntityName(extractName(entity, namingStrategies.get(NamableItem.ENTITY).getEntityName(clazz)));
 		
-		Table table = clazz.getAnnotation(Table.class);
+		final Table table = clazz.getAnnotation(Table.class);
 		emeta.setTableName(extractName(new Object[] {table, entity}, namingStrategies.get(NamableItem.TABLE).getTableName(clazz)));
+		String schema = null;
 		if (table != null) {
-			String schema = table.schema();
-			if (Strings.isNullOrEmpty(schema)) {
-				schema = this.getSchema();
-			}
-			
-			emeta.setSchemaName(schema); 
+			schema = table.schema();
 		}
+		if (Strings.isNullOrEmpty(schema)) {
+			schema = this.getSchema();
+		}
+		
+		emeta.setSchemaName(schema);
 
 		// name to metadata
-		Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
+		final Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
 		
-		for (Field f : FieldAccessor.getFields(clazz)) {
+		for (final Field f : FieldAccessor.getFields(clazz)) {
 			if (isTransient(f)) {
 				continue;
 			}
 			
 			@SuppressWarnings("unchecked")
+			final
 			Class<Object> type = (Class<Object>)f.getType();
 			final String name = getFieldName(f);
-			FieldMetadata<T, Object, Object> fmeta = create(clazz, type, name);
+			final FieldMetadata<T, Object, Object> fmeta = create(clazz, type, name);
 			
 			fmeta.setField(f);
 			initMeta(fmeta, f, name, clazz, type);
@@ -151,12 +153,12 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			
 		}
 		
-		for (Method m : clazz.getMethods()) {
+		for (final Method m : clazz.getMethods()) {
 			if(!MethodAccessor.isGetter(m)) {
 				continue;
 			}
 
-			String fieldName = getFieldName(m);
+			final String fieldName = getFieldName(m);
 			FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
 			
 			
@@ -169,6 +171,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			
 			if (fmeta == null) {
 				@SuppressWarnings("unchecked")
+				final
 				Class<Object> type = (Class<Object>)m.getReturnType();
 				fmeta = create(clazz, type, fieldName);
 				initMeta(fmeta, m, fieldName, clazz, type);
@@ -176,12 +179,12 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			fmeta.setGetter(m);
 		}
 		
-		for (Method m : clazz.getMethods()) {
+		for (final Method m : clazz.getMethods()) {
 			if(!MethodAccessor.isSetter(m)) {
 				continue;
 			}
-			String fieldName = getFieldName(m);
-			FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
+			final String fieldName = getFieldName(m);
+			final FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
 			
 			if (fmeta == null) {
 				continue;
@@ -190,11 +193,11 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 		
-		Collection<String> primaryKeyFields = new ArrayList<>();
-		Collection<PropertyAccessor<T, ? extends Object>> primaryKeyAccessors = new ArrayList<>();
+		final Collection<String> primaryKeyFields = new ArrayList<>();
+		final Collection<PropertyAccessor<T, ? extends Object>> primaryKeyAccessors = new ArrayList<>();
 		
-		for (Entry<String, FieldMetadata<T, Object, Object>> entry : fields.entrySet()) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmeta = entry.getValue();
+		for (final Entry<String, FieldMetadata<T, Object, Object>> entry : fields.entrySet()) {
+			final FieldMetadata<T, ? extends Object, ? extends Object> fmeta = entry.getValue();
 					
 			if (fmeta.isKey()) {
 				primaryKeyFields.add(entry.getKey());
@@ -208,7 +211,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 		
-		for (FieldMetadata<T, ?, ?> fmd : fields.values()) {
+		for (final FieldMetadata<T, ?, ?> fmd : fields.values()) {
 			emeta.addField(fmd);
 		}
 
@@ -222,14 +225,17 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			}
 			
 			@SuppressWarnings("unchecked")
+			final
 			Class<Object> idClazz = idClass.value();
 			
-			String name = Joiner.on("_").join(primaryKeyFields);
+			final String name = Joiner.on("_").join(primaryKeyFields);
 			
 			@SuppressWarnings("unchecked")
+			final
 			FieldMetadata<T, Object, Object> keyMetadata = new FieldMetadata<>(clazz, idClass.value(), name);
 			
 			@SuppressWarnings("unchecked")
+			final
 			PropertyAccessor<T, Object>[] primaryKeyAccessorsArr = primaryKeyAccessors.toArray(new PropertyAccessor[primaryKeyAccessors.size()]); 
 			keyMetadata.setAccessor(new CompositePropertyAccessor<T, Object>(clazz, idClazz, name, primaryKeyAccessorsArr));
 			
@@ -243,10 +249,10 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 
 	
-	private <T, F, C> void setCollectionConverter(FieldMetadata<T, F, C> fmd) {
-		AttributeConverter<F, C> converter = fmd.isKey() ?  
-				new PrimaryKeyConverter<F, C>(fmd.getType(), context) :
-				new IndexedFieldConverter<F, C>(fmd.getType(), fmd.getName(), context);
+	private <T, F, C> void setCollectionConverter(final FieldMetadata<T, F, C> fmd) {
+		final AttributeConverter<F, C> converter = fmd.isKey() ?  
+				new PrimaryKeyConverter<F, C>(fmd.getType(), entityContext) :
+				new IndexedFieldConverter<F, C>(fmd.getType(), fmd.getName(), entityContext);
 		
 		fmd.setConverter(
 				new DummyValueConverter<F, C>(),
@@ -261,14 +267,14 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	 * @param fmd
 	 * @return
 	 */
-	private <T, P, C> void parseCollectionElementType(Map<Class<?>, EntityMetadata<?>> metadata, EntityMetadata<T> emd, FieldMetadata<T, P, C> fmd) {
-		Class<?> collectionType = fmd.getType();
+	private <T, P, C> void parseCollectionElementType(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<T> emd, final FieldMetadata<T, P, C> fmd) {
+		final Class<?> collectionType = fmd.getType();
 		if (!Collection.class.isAssignableFrom(collectionType)) {
 			return;
 		}
 
 		
-		Type collectionGenericType = fmd.getAccessor().getGenericType();
+		final Type collectionGenericType = fmd.getAccessor().getGenericType();
 		Type discoveredType = null;
 		if (collectionGenericType instanceof ParameterizedType) {
 			discoveredType = ((ParameterizedType)collectionGenericType).getActualTypeArguments()[0];
@@ -278,9 +284,9 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		Type explicitType = null;
 		String mappedBy = "";
 		
-		OneToMany oneToMany = fmd.getAccessor().getAnnotation(OneToMany.class);
-		ManyToMany manyToMany = fmd.getAccessor().getAnnotation(ManyToMany.class);
-		ElementCollection elementCollection = fmd.getAccessor().getAnnotation(ElementCollection.class);
+		final OneToMany oneToMany = fmd.getAccessor().getAnnotation(OneToMany.class);
+		final ManyToMany manyToMany = fmd.getAccessor().getAnnotation(ManyToMany.class);
+		final ElementCollection elementCollection = fmd.getAccessor().getAnnotation(ElementCollection.class);
 		
 		if (!(oneToMany != null ^ manyToMany != null ^ elementCollection != null)) {
 			throw new IllegalArgumentException("Only one of OneToMany, ManyToMany, ElementCollection can be used for one field (" + fmd.getName() + ")");
@@ -309,6 +315,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		
 		if (!"".equals(mappedBy)) {
 			@SuppressWarnings("unchecked")
+			final
 			EntityMetadata<Object> ref = (EntityMetadata<Object>)metadata.get(explicitType);
 			ref.addIndex(ref.getFieldByName(mappedBy)); 
 		}
@@ -319,26 +326,27 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 		
 		
-		Class<?> elementType = castTypeToClass(discoveredType);
+		final Class<?> elementType = castTypeToClass(discoveredType);
 		fmd.setGenericTypes(elementType);
 		
 		
 		AttributeConverter<P, C> converter = null;
 		
 		if (oneToMany != null || manyToMany != null) {
-			FieldMetadata<T, ?, ?> filterField = getCollectionElementBackReferenceField(metadata, emd, fmd);
+			final FieldMetadata<T, ?, ?> filterField = getCollectionElementBackReferenceField(metadata, emd, fmd);
 			setCollectionConverter(filterField);
 			
 			converter = fmd.isKey() ?  
-					new PrimaryKeyConverter<P, C>(fmd.getType(), context) :
-					new IndexedFieldConverter<P, C>(fmd.getType(), fmd.getName(), context);
+					new PrimaryKeyConverter<P, C>(fmd.getType(), entityContext) :
+					new IndexedFieldConverter<P, C>(fmd.getType(), fmd.getName(), entityContext);
 			
 		}
 
 		if (elementCollection != null) {
-			List<AttributeConverter<?, ?>> converters = findConverters(fmd);
+			final List<AttributeConverter<?, ?>> converters = findConverters(fmd);
 			if (converters != null && !converters.isEmpty()) {
 				@SuppressWarnings("unchecked")
+				final
 				AttributeConverter<P, C> castConv = (AttributeConverter<P, C>)converters.get(0);
 				converter = castConv;
 			}
@@ -351,33 +359,33 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 
 	//TOOD: add support of all attributes of ManyToOne
-	private <T, P> void parseCollectionElementBackReference(Map<Class<?>, EntityMetadata<?>> metadata, FieldMetadata<T, P, Object> fmd) {
-		ManyToOne manyToOne = fmd.getAccessor().getAnnotation(ManyToOne.class);
+	private <T, P> void parseCollectionElementBackReference(final Map<Class<?>, EntityMetadata<?>> metadata, final FieldMetadata<T, P, Object> fmd) {
+		final ManyToOne manyToOne = fmd.getAccessor().getAnnotation(ManyToOne.class);
 		if (manyToOne == null) {
 			return;
 		}
 		
 		Class<P> fieldType = fmd.getType();
 		
-		Class<?> type = manyToOne.targetEntity(); 
+		final Class<?> type = manyToOne.targetEntity(); 
 		if (!void.class.equals(type)) {
 			fieldType = castTypeToClass(type);
 		}
 		
 		// TODO: do the same for OneToMany and ManyToMany
 
-		fmd.setConverter(new ValueAttributeConverter<P, Object>(new PrimaryKeyConverter<P, Object>(fieldType, context)));
-		FieldMetadata<P, Object, Object> secondSidePK = context.getEntityMetadata(fieldType).getPrimaryKey();
+		fmd.setConverter(new ValueAttributeConverter<P, Object>(new PrimaryKeyConverter<P, Object>(fieldType, entityContext)));
+		final FieldMetadata<P, Object, Object> secondSidePK = entityContext.getEntityMetadata(fieldType).getPrimaryKey();
 		
 		
-		String columnName = fmd.getColumn() + "_" + secondSidePK.getColumn();
+		final String columnName = fmd.getColumn() + "_" + secondSidePK.getColumn();
 		fmd.setColumn(columnName);
 		fmd.setColumnType(secondSidePK.getColumnType());
 	}
 	
 
-	private <T, P> FieldMetadata<T, Object, Object> getCollectionElementBackReferenceField(Map<Class<?>, EntityMetadata<?>> metadata, EntityMetadata<T> emd, FieldMetadata<T, P, ?> fmd) {
-		JoinColumn joinColumn = fmd.getAccessor().getAnnotation(JoinColumn.class);
+	private <T, P> FieldMetadata<T, Object, Object> getCollectionElementBackReferenceField(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<T> emd, final FieldMetadata<T, P, ?> fmd) {
+		final JoinColumn joinColumn = fmd.getAccessor().getAnnotation(JoinColumn.class);
 		String column = "";
 		if (joinColumn != null) {
 			column = joinColumn.name();
@@ -391,39 +399,30 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	
 	
 	@SuppressWarnings("unchecked")
-	private <C> Class<C> castTypeToClass(Type type) {
+	private <C> Class<C> castTypeToClass(final Type type) {
 		return (Class<C>)type;
 	}
 
-	private <T> EntityMetadata<T> getOrCreate(final Class<T> clazz) {
-		EntityMetadata<T> meta = context.getEntityMetadata(clazz);
-		if (meta == null) {
-			meta = new EntityMetadata<T>(clazz); 
-		}
-		return meta;
-	}
-
-	
-	private String extractName(Object nameHolder, String defaultValue) {
+	private String extractName(final Object nameHolder, final String defaultValue) {
 		try {
-			String name = nameHolder == null ? null : (String)nameHolder.getClass().getMethod("name").invoke(nameHolder);
+			final String name = nameHolder == null ? null : (String)nameHolder.getClass().getMethod("name").invoke(nameHolder);
 			return extractParameter(name, defaultValue);
-		} catch (ReflectiveOperationException e) {
+		} catch (final ReflectiveOperationException e) {
 			throw new IllegalArgumentException(nameHolder.getClass() + " does not provide method name()");
 		}
 	}
 	
-	private String extractName(Object[] nameHolders, String defaultValue) {
+	private String extractName(final Object[] nameHolders, final String defaultValue) {
 			if (nameHolders == null || nameHolders.length == 0) {
 				return defaultValue;
 			}
-			for (Object nameHolder : nameHolders) {
+			for (final Object nameHolder : nameHolders) {
 				try {
-					String name = nameHolder == null ? null : (String)nameHolder.getClass().getMethod("name").invoke(nameHolder);
+					final String name = nameHolder == null ? null : (String)nameHolder.getClass().getMethod("name").invoke(nameHolder);
 					if(!Strings.isNullOrEmpty(name)) {
 						return name;
 					}
-				} catch (ReflectiveOperationException e) {
+				} catch (final ReflectiveOperationException e) {
 					throw new IllegalArgumentException(nameHolder.getClass() + " does not provide method name()");
 				}
 			}
@@ -432,18 +431,18 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	
 	
 	
-	private String extractParameter(String value, String defaultValue) {
+	private String extractParameter(final String value, final String defaultValue) {
 		return Strings.isNullOrEmpty(value) ? defaultValue : value;
 	}
 	
 
 	
 	
-	private <T, F, C> void initMeta(FieldMetadata<T, F, C> fmeta, AccessibleObject ao, String memberName, Class<T> clazz, Class<F> memberType) {
+	private <T, F, C> void initMeta(final FieldMetadata<T, F, C> fmeta, final AccessibleObject ao, final String memberName, final Class<T> clazz, final Class<F> memberType) {
 		fmeta.setColumn(extractName(ao.getAnnotation(Column.class), namingStrategies.get(NamableItem.COLUMN).getColumnName(ao)));
 		fmeta.setKey(ao.getAnnotation(Id.class) != null);
 		
-		boolean nullable = ao.getAnnotation(Nullable.class) != null;
+		final boolean nullable = ao.getAnnotation(Nullable.class) != null;
 		
 		if (nullable && memberType.isPrimitive()) {
 			throw new IllegalArgumentException("Primitive field " + memberName + " cannot be nullable");
@@ -452,14 +451,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		fmeta.setNullable(nullable || !memberType.isPrimitive());
 		
 		
-		List<AttributeConverter<?, ?>> converters = findConverters(fmeta); 
+		final List<AttributeConverter<?, ?>> converters = findConverters(fmeta); 
 		
 		if(converters != null && !converters.isEmpty()) {
 			@SuppressWarnings("unchecked")
+			final
 			AttributeConverter<F, C> converter = (AttributeConverter<F, C>)converters.remove(0);  
 			fmeta.setConverter(new ValueAttributeConverter<>(converter), wrapConverters(converters).toArray(new ValueAttributeConverter[0]));
 			
-			Class<C> columnType = getColumnType(converter);
+			final Class<C> columnType = getColumnType(converter);
 			if (columnType != null) {
 				fmeta.setColumnType(columnType);
 			}
@@ -467,16 +467,18 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			if (!converters.isEmpty()) {
 				fmeta.setColumnGenericTypes(getColumnGenericTypes(converters));
 			}
+		} else {
+			//fill generics
 		}
 	}
 	
-	private <F, C> Collection<ValueAttributeConverter<?,?>> wrapConverters(List<AttributeConverter<?, ?>> attributeConverters) {
+	private <F, C> Collection<ValueAttributeConverter<?,?>> wrapConverters(final List<AttributeConverter<?, ?>> attributeConverters) {
 		if (attributeConverters == null || attributeConverters.isEmpty()) {
 			return Collections.emptyList();
 		}
 		
-		Collection<ValueAttributeConverter<?,?>> valueConverters = new ArrayList<>();
-		for (AttributeConverter<?, ?> ac : attributeConverters) {
+		final Collection<ValueAttributeConverter<?,?>> valueConverters = new ArrayList<>();
+		for (final AttributeConverter<?, ?> ac : attributeConverters) {
 			valueConverters.add(new ValueAttributeConverter<>(ac));
 		}
 		
@@ -484,18 +486,19 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 	
 	
-	private <C> Class<C> getColumnType(AttributeConverter<?, C> converter) {
-		for (Type iface : converter.getClass().getGenericInterfaces()) {
+	private <C> Class<C> getColumnType(final AttributeConverter<?, C> converter) {
+		for (final Type iface : converter.getClass().getGenericInterfaces()) {
 			if (!(iface instanceof ParameterizedType)) {
 				continue;
 			}
-			ParameterizedType piface = (ParameterizedType)iface;
+			final ParameterizedType piface = (ParameterizedType)iface;
 			if (!AttributeConverter.class.equals(piface.getRawType())) {
 				continue;
 			}
-			Type typeArgument = piface.getActualTypeArguments()[1];
+			final Type typeArgument = piface.getActualTypeArguments()[1];
 			if (typeArgument instanceof Class) {
 				@SuppressWarnings("unchecked")
+				final
 				Class<C> columnType = (Class<C>)piface.getActualTypeArguments()[1];
 				return columnType;
 			}
@@ -505,10 +508,10 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 	
 	
-	private Collection<Class<?>> getColumnGenericTypes(Collection<AttributeConverter<?, ?>> converters) {
-		Collection<Class<?>> types = new ArrayList<>();
+	private Collection<Class<?>> getColumnGenericTypes(final Collection<AttributeConverter<?, ?>> converters) {
+		final Collection<Class<?>> types = new ArrayList<>();
 		
-		for (AttributeConverter<?, ?> converter : converters) {
+		for (final AttributeConverter<?, ?> converter : converters) {
 			types.add(getColumnType(converter));
 		}
 		
@@ -516,15 +519,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 	
 	
-	private boolean isTransient(AccessibleObject ao) {
-		int mod = ((Member)ao).getModifiers();
-		Transient tr = ao.getAnnotation(Transient.class);
+	private boolean isTransient(final AccessibleObject ao) {
+		final int mod = ((Member)ao).getModifiers();
+		final Transient tr = ao.getAnnotation(Transient.class);
 		return Modifier.isTransient(mod) || tr != null;
 	}
 	
 	@Override
-	public void update(Map<Class<?>, EntityMetadata<?>> metadata) {
-		for (EntityMetadata<?> emd : metadata.values()) {
+	public void update(final Map<Class<?>, EntityMetadata<?>> metadata) {
+		for (final EntityMetadata<?> emd : metadata.values()) {
 			updateInheritance(metadata, emd);
 			updateRelationships(metadata, emd);
 		}
@@ -570,28 +573,28 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	// 1. sub class if joined table.
 	
 
-	private <E> void updateInheritance(Map<Class<?>, EntityMetadata<?>> metadata, EntityMetadata<E> emd) {
-		Class<E> clazz = emd.getEntityType();
-		Inheritance inheritance = getInheritance(clazz);
-		InheritanceType inheritenceType = inheritance.strategy();
+	private <E> void updateInheritance(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<E> emd) {
+		final Class<E> clazz = emd.getEntityType();
+		final Inheritance inheritance = getInheritance(clazz);
+		final InheritanceType inheritenceType = inheritance.strategy();
 
 		if (InheritanceType.TABLE_PER_CLASS.equals(inheritenceType) && Modifier.isAbstract(clazz.getModifiers())) {
 			emd.setTableName(null); // abstract base classes in TABLE_PER_CLASS hierarchy do not need their table.  
 		}
 		
 		
-		DiscriminatorValue discriminatorValue = clazz.getAnnotation(DiscriminatorValue.class);
+		final DiscriminatorValue discriminatorValue = clazz.getAnnotation(DiscriminatorValue.class);
 		if (discriminatorValue == null) {
 			return;
 		}
-		String discriminatorValueValue = discriminatorValue.value();
-		DiscriminatorColumn discriminatorColumn = getDiscriminatorColumn(clazz);
-		DiscriminatorType dtype = discriminatorColumn.discriminatorType();
+		final String discriminatorValueValue = discriminatorValue.value();
+		final DiscriminatorColumn discriminatorColumn = getDiscriminatorColumn(clazz);
+		final DiscriminatorType dtype = discriminatorColumn.discriminatorType();
 		
 		String dname = discriminatorColumn.name();
 		
 		//TODO: check whether this condition is enough to recognize sub class.
-		boolean isSubClass = clazz.getAnnotation(Inheritance.class) == null;
+		final boolean isSubClass = clazz.getAnnotation(Inheritance.class) == null;
 		
 		
 		if (InheritanceType.SINGLE_TABLE.equals(inheritenceType) && isSubClass) { 
@@ -599,8 +602,9 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 		
 		
-		Access<E, Object, AccessibleObject> discriminatorAccess = new DiscriminatorValueAccess<E, Object>(clazz);
+		final Access<E, Object, AccessibleObject> discriminatorAccess = new DiscriminatorValueAccess<E, Object>(clazz);
 		@SuppressWarnings({ "rawtypes", "unchecked" })
+		final
 		FieldMetadata<E, Object, Object> discriminator = new FieldMetadata(clazz, getDiscriminatorType(dtype), dname);
 		discriminator.setAccessor(new PropertyAccessor<E, Object>(clazz, Object.class, dname, 
 				null, null, null, // field, getter, setter 
@@ -612,18 +616,18 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		emd.addField(discriminator);
 		
 		if (InheritanceType.JOINED.equals(inheritenceType) && isSubClass) {
-			FieldMetadata<E, Object, Object> joiner = createJoiner(metadata, clazz);
+			final FieldMetadata<E, Object, Object> joiner = createJoiner(metadata, clazz);
 			emd.addField(joiner);
 		}
 	}
 	
 	
 	
-	private DiscriminatorColumn getDiscriminatorColumn(Class<?> type) {
-		Class<?>[] classes = new Class[] {type, type.getSuperclass(), getClass()};
+	private DiscriminatorColumn getDiscriminatorColumn(final Class<?> type) {
+		final Class<?>[] classes = new Class[] {type, type.getSuperclass(), getClass()};
 		
-		for (Class<?> clazz : classes) {
-			DiscriminatorColumn discriminatorColumn = clazz.getAnnotation(DiscriminatorColumn.class);
+		for (final Class<?> clazz : classes) {
+			final DiscriminatorColumn discriminatorColumn = clazz.getAnnotation(DiscriminatorColumn.class);
 			if (discriminatorColumn != null) {
 				return discriminatorColumn;
 			}
@@ -632,9 +636,9 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		throw new IllegalStateException("Cannot locate DiscriminatorColumn for class " + type);
 	}
 	
-	private Inheritance getInheritance(Class<?> type) {
+	private Inheritance getInheritance(final Class<?> type) {
 		for (Class<?> c = type; !Object.class.equals(c); c = c.getSuperclass()) {
-			Inheritance inheritance = c.getAnnotation(Inheritance.class);
+			final Inheritance inheritance = c.getAnnotation(Inheritance.class);
 			if (inheritance != null) {
 				return inheritance;
 			}
@@ -643,7 +647,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		
 	}
 	
-	private Class<?> getDiscriminatorType(DiscriminatorType dtype) {
+	private Class<?> getDiscriminatorType(final DiscriminatorType dtype) {
 		switch (dtype) {
 			case CHAR: 
 				return char.class;
@@ -655,14 +659,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 	}
 	
-	private <E> FieldMetadata<E, Object, Object> createJoiner(Map<Class<?>, EntityMetadata<?>> metadata, Class<E> clazz) {
-		Class<?> parent = clazz.getSuperclass();
+	private <E> FieldMetadata<E, Object, Object> createJoiner(final Map<Class<?>, EntityMetadata<?>> metadata, final Class<E> clazz) {
+		final Class<?> parent = clazz.getSuperclass();
 		@SuppressWarnings("unchecked")
+		final
 		EntityMetadata<E> parentMeta = (EntityMetadata<E>)metadata.get(parent);
-		FieldMetadata<E, Object, ?> parentPk = parentMeta.getPrimaryKey();
-		String column = parentMeta.getTableName().toLowerCase() + "_" + parentPk.getName();
+		final FieldMetadata<E, Object, ?> parentPk = parentMeta.getPrimaryKey();
+		final String column = parentMeta.getTableName().toLowerCase() + "_" + parentPk.getName();
 		
-		FieldMetadata<E, Object, Object> joiner = new FieldMetadata<>(clazz, parentPk.getType(), column);
+		final FieldMetadata<E, Object, Object> joiner = new FieldMetadata<>(clazz, parentPk.getType(), column);
 		joiner.setColumn(column);
 		joiner.setJoiner(true);
 		
@@ -670,20 +675,21 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 
 	
-	private <E> void updateRelationships(Map<Class<?>, EntityMetadata<?>> metadata, EntityMetadata<E> emd) {
+	private <E> void updateRelationships(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<E> emd) {
 		// references to collections.
-		for (FieldMetadata<E, Object, Object> fmd : emd.getFields()) {
+		for (final FieldMetadata<E, Object, Object> fmd : emd.getFields()) {
 			parseCollectionElementType(metadata, emd, fmd);
 			parseCollectionElementBackReference(metadata, fmd);
 		}
 	}
 
 
-	private <E, F, C> List<AttributeConverter<?, ?>> findConverters(FieldMetadata<E, F, C> fmeta) {
-		Convert convert = fmeta.getAccessor().getAnnotation(Convert.class);
+	private <E, F, C> List<AttributeConverter<?, ?>> findConverters(final FieldMetadata<E, F, C> fmeta) {
+		final Convert convert = fmeta.getAccessor().getAnnotation(Convert.class);
 		List<AttributeConverter<?, ?>> converters;
 		if(convert != null) {
 			@SuppressWarnings("unchecked")
+			final
 			Class<AttributeConverter<F, C>> converterClass = convert.converter();
 			converters = Collections.<AttributeConverter<?, ?>>singletonList((createConverterInstance(converterClass, fmeta.getType())));
 		} else {
@@ -698,15 +704,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	
 	//TODO: add support of default converters and not-default constructors of converters
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private <E, F, C> List<AttributeConverter<?, ?>> findConverters(FieldMetadata<E, F, C> fmeta, Class<F> type) {
-		Convert convert = fmeta.getAccessor().getAnnotation(Convert.class);
+	private <E, F, C> List<AttributeConverter<?, ?>> findConverters(final FieldMetadata<E, F, C> fmeta, final Class<F> type) {
+		final Convert convert = fmeta.getAccessor().getAnnotation(Convert.class);
 		if(convert != null) {
-			Class<AttributeConverter<F, C>> converterClass = convert.converter();
+			final Class<AttributeConverter<F, C>> converterClass = convert.converter();
 			return Collections.<AttributeConverter<?, ?>>singletonList(createConverterInstance(converterClass, fmeta.getType()));
 		}
 		if (type.isEnum()) {
-			Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>)type;
-			Enumerated enumerated = fmeta.getAccessor().getAnnotation(Enumerated.class);
+			final Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>)type;
+			final Enumerated enumerated = fmeta.getAccessor().getAnnotation(Enumerated.class);
 			
 			EnumType enumType = EnumType.ORDINAL;
 			if (enumerated != null) {
@@ -741,7 +747,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		
 		
 		if (fmeta.getAccessor().getAnnotation(Embedded.class) != null && type.getAnnotation(Embeddable.class) != null) {
-			return Collections.<AttributeConverter<?, ?>>singletonList(new BeanConverter<>(type, context));		
+			return Collections.<AttributeConverter<?, ?>>singletonList(new BeanConverter<>(type, entityContext));		
 		}
 
 		//TODO: throw exception?
@@ -750,14 +756,14 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 
 	
-	private <F, C> AttributeConverter<F, C> createConverterInstance(Class<AttributeConverter<F, C>> converterClass, Class<?> type) {
+	private <F, C> AttributeConverter<F, C> createConverterInstance(final Class<AttributeConverter<F, C>> converterClass, final Class<?> type) {
 		try {
 			try {
 				return converterClass.getConstructor().newInstance();
 			} catch (NoSuchMethodException | SecurityException e) {
 				return converterClass.getConstructor(Class.class).newInstance(type);
 			}
-		} catch (ReflectiveOperationException e1) {
+		} catch (final ReflectiveOperationException e1) {
 			throw new IllegalArgumentException(e1);
 		}
 		

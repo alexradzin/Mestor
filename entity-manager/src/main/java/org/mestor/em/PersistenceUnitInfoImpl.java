@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -47,7 +46,7 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 	
 	private PersistenceUnit persistenceUnit;
 	
-	PersistenceUnitInfoImpl(String name, Map<? ,?> params) {
+	PersistenceUnitInfoImpl(final String name, final Map<? ,?> params) {
 		this.name = name;
 		this.params = params;
 		parsePersistenceXml(name);
@@ -82,7 +81,7 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 
 	@Override
 	public List<String> getMappingFileNames() {
-		List<String> mappings = MestorProperties.MAPPING_FILE_NAMES.value(params);
+		final List<String> mappings = MestorProperties.MAPPING_FILE_NAMES.value(params);
 		if (mappings != null) {
 			return mappings;
 		}
@@ -92,12 +91,12 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 	
 	@Override
 	public List<URL> getJarFileUrls() {
-		Collection<URL> urls = MestorProperties.JAR_URLS.value(params);
+		final Collection<URL> urls = MestorProperties.JAR_URLS.value(params);
 		if (urls != null) {
 			return urls instanceof List ? (List<URL>)urls : new ArrayList<URL>(urls);
 		}
 		
-		Collection<URL> persistenceXmlJarUrls = CollectionUtils.nullableTransform(
+		final Collection<URL> persistenceXmlJarUrls = CollectionUtils.nullableTransform(
 				persistenceUnit.getJarFile(), 
 				new FromStringFunction<URL>(URL.class));
 		
@@ -115,12 +114,12 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 
 	@Override
 	public List<String> getManagedClassNames() {
-		List<String> classNames = MestorProperties.MANAGED_CLASS_NAMES.value(params);
+		final List<String> classNames = MestorProperties.MANAGED_CLASS_NAMES.value(params);
 		if (classNames != null) {
 			return classNames;
 		}
 		
-		return Collections.emptyList();
+		return persistenceUnit.getClazz();
 	}
 
 	@Override
@@ -128,17 +127,17 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 		if (MestorProperties.MANAGED_CLASS_NAMES.value(params) != null) {
 			return true;
 		}
+		
 		if (persistenceUnit == null) {
 			return false;
 		}
 		
-		Boolean explicitExcludeUnlistedClasses =  persistenceUnit.isExcludeUnlistedClasses();
+		final Boolean explicitExcludeUnlistedClasses =  persistenceUnit.isExcludeUnlistedClasses();
 		if (explicitExcludeUnlistedClasses != null) {
 			return explicitExcludeUnlistedClasses;
 		}
 		
-		
-		if(persistenceUnit.getJarFile() == null && persistenceUnit.getMappingFile() == null && persistenceUnit.getClazz() != null) {
+		if(persistenceUnit.getJarFile().isEmpty() && persistenceUnit.getMappingFile().isEmpty() && !persistenceUnit.getClazz().isEmpty()) {
 			return true;
 		}
 		
@@ -147,11 +146,11 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 
 	@Override
 	public Properties getProperties() {
-		Properties properties = new Properties();
+		final Properties properties = new Properties();
 		if (persistenceUnit != null) {
-			Persistence.PersistenceUnit.Properties props = persistenceUnit.getProperties();
+			final Persistence.PersistenceUnit.Properties props = persistenceUnit.getProperties();
 			if (props != null) {
-				for (Persistence.PersistenceUnit.Properties.Property prop : props.getProperty()) {
+				for (final Persistence.PersistenceUnit.Properties.Property prop : props.getProperty()) {
 					properties.setProperty(prop.getName(), prop.getValue());				
 				}
 			}
@@ -170,7 +169,7 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 	}
 
 	@Override
-	public void addTransformer(ClassTransformer transformer) {
+	public void addTransformer(final ClassTransformer transformer) {
 		//
 	}
 
@@ -182,20 +181,20 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 		};
 	}
 	
-	private void parsePersistenceXml(String name) {
-		String persistenceXmlResource = MestorProperties.PERSISTENCE_XML.value(params);
-		InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(persistenceXmlResource);
+	private void parsePersistenceXml(final String name) {
+		final String persistenceXmlResource = MestorProperties.PERSISTENCE_XML.value(params);
+		final InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(persistenceXmlResource);
 		if (in == null) {
 			return;
 		}
 		
 		try {
-			JAXBContext jaxbContext = JAXBContext.newInstance(Persistence.class.getPackage().getName());
-			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-			Persistence persistence = (Persistence) jaxbUnmarshaller.unmarshal(in);
+			final JAXBContext jaxbContext = JAXBContext.newInstance(Persistence.class.getPackage().getName());
+			final Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+			final Persistence persistence = (Persistence) jaxbUnmarshaller.unmarshal(in);
 			
 			// find current persistence unit
-			for (PersistenceUnit pu : persistence.getPersistenceUnit()) {
+			for (final PersistenceUnit pu : persistence.getPersistenceUnit()) {
 				if (name.equals(pu.getName())) {
 					persistenceUnit = pu;
 					break;
@@ -204,7 +203,7 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 			
 			
 			
-		} catch (JAXBException e) {
+		} catch (final JAXBException e) {
 			throw new IllegalStateException("Parsing of persistence.xml located at " + persistenceXmlResource + " failed ", e);
 		}
 	}

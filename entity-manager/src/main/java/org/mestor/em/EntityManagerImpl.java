@@ -53,6 +53,7 @@ import javax.persistence.spi.PersistenceUnitInfo;
 import org.mestor.context.DirtyEntityManager;
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
+import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.ClassNameClassScanner;
 import org.mestor.metadata.ClassScanner;
 import org.mestor.metadata.EntityMetadata;
@@ -83,7 +84,8 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		
 		final Map<String, Object> allParams = getAllParameters(info, properties);
 		
-		this.entityClasses = getEntityClasses(info, properties, allParams);
+		this.entityClasses = new HashMap<>();
+		fillEntityClasses(info, properties, allParams);
 		open = true;
 		persistor = createPersistor(info, properties, allParams);
 		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
@@ -309,7 +311,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			throw new IllegalStateException("Unable to retrieve entity " + entityClass + " using primary key because it does not have primary key");
 		}
 		
-		final Class<?> pkType = emeta.getEntityType();
+		final Class<?> pkType = pkMeta.getColumnType();//emeta.getEntityType();
 		if (primaryKey == null) {
 			if (!pkMeta.isNullable()) {
 				throw new IllegalArgumentException("Unable to retrieve entity " + entityClass + " using null primary key because it is not nullable");
@@ -332,7 +334,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	
 	
 
-	private Map<Class<?>, EntityMetadata<?>> getEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
+	private void fillEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
 		ClassLoader cl = info.getClassLoader();
 		final List<URL> jarFiles = info.getJarFileUrls();
 		final String puName = info.getPersistenceUnitName();
@@ -340,9 +342,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		
 		final List<String> packages = MANAGED_CLASS_PACKAGE.value(allParams); 
 		
-		final List<String> mgmtClassNames = info.getManagedClassNames();
 		final boolean excludeUnlistedClasses = info.excludeUnlistedClasses();
-		
 		
 		if (cl == null) {
 			cl = Thread.currentThread().getContextClassLoader();
@@ -350,7 +350,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		
 		final ClassScanner cs;
 		if (excludeUnlistedClasses) {
+			final List<String> mgmtClassNames = info.getManagedClassNames();
 			if (mgmtClassNames == null) {
+				//FIXME: never happens
 				throw new IllegalArgumentException("Explicit entity class list is required but not found");
 			}
 			cs = new ClassNameClassScanner(cl, mgmtClassNames);
@@ -373,17 +375,15 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 		
 		
-		final Map<Class<?>, EntityMetadata<?>> class2metadata = new HashMap<>();
 		for (final Class<?> c : cs.scan()) {
 			final EntityMetadata<?> md = mdf.create(c);
 			if (md == null) {
 				throw new IllegalArgumentException("Class " + c + " is not a JPA entity");
 			}
-			class2metadata.put(c, md);
+			entityClasses.put(c, md);
 		}
-		mdf.update(class2metadata);
 		
-		return class2metadata;
+		mdf.update(entityClasses);
 	}
 
 	
@@ -391,7 +391,8 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		@SuppressWarnings("unchecked")
 		final
 		Class<M> mdfClass = (Class<M>)mdf.getClass();
-		final EntityMetadata<M> mdfemd = new EntityMetadata<>(mdfClass);
+		final MetadataFactory bmf = new BeanMetadataFactory();
+		final EntityMetadata<M> mdfemd = bmf.create(mdfClass);
 		final Collection<String> parameterFields = mdfemd.getFieldNamesByType(parameterType);
 		final int n = parameterFields.size();
 		if (n > 1) {
@@ -399,7 +400,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 		if(n == 1) {
 			final String namingStrategyField = parameterFields.iterator().next();
-			mdfemd.getField(namingStrategyField).getAccessor().setValue(mdf, parameterValue);
+			mdfemd.getFieldByName(namingStrategyField).getAccessor().setValue(mdf, parameterValue);
 		}
 		
 		// property of give type is unsupported. Ignore it. 

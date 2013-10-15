@@ -40,10 +40,6 @@ import com.google.common.collect.Maps;
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	private boolean open = true;
 	
-	private final String prefix = MestorProperties.PREFIX.key();
-	private final Pattern prefixPattern = Pattern.compile("^" + prefix + "\\.");
-	private final Predicate<CharSequence> predicate = Predicates.contains(prefixPattern);
-	
 	
 	private final PersistenceUnitInfo info;
 	private final Map<String, String> map;
@@ -57,11 +53,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	@Override
 	public EntityManager createEntityManager() {
 		checkOpen();
-		return createEntityManager(
-				CollectionUtils.merge(
-						Maps.filterKeys(System.getenv(), predicate), 
-						Maps.filterKeys(Maps.fromProperties(System.getProperties()), predicate), 
-						map));
+		return createEntityManager(map);
 	}
 
 	@SuppressWarnings("unchecked")

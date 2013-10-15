@@ -38,19 +38,19 @@ public class EntityMetadata<E> {
 	private String tableName;
 	private String schemaName;
 	
-	private Collection<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
-	private Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
-	private Map<String, FieldMetadata<E, ?, ?>> fieldNames = new LinkedHashMap<>();
-	private Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<>();
-	private Map<String, Class<?>[]> columnTypes = new LinkedHashMap<>();
-	private Collection<IndexMetadata<E>> indexes = new ArrayList<>();
+	private final Collection<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
+	private final Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
+	private final Map<String, FieldMetadata<E, ?, ?>> fieldNames = new LinkedHashMap<>();
+	private final Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<>();
+	private final Map<String, Class<?>[]> columnTypes = new LinkedHashMap<>();
+	private final Collection<IndexMetadata<E>> indexes = new ArrayList<>();
 	
-	private Map<Method, FieldMetadata<E, ?, ?>> getter2field = new HashMap<>();
-	private Map<Method, FieldMetadata<E, ?, ?>> setter2field = new HashMap<>();
+	private final Map<Method, FieldMetadata<E, ?, ?>> getter2field = new HashMap<>();
+	private final Map<Method, FieldMetadata<E, ?, ?>> setter2field = new HashMap<>();
 
 	
 	
-	public EntityMetadata(Class<E> entityClass) {
+	public EntityMetadata(final Class<E> entityClass) {
 		this.entityType = entityClass;
 	}
 
@@ -64,7 +64,7 @@ public class EntityMetadata<E> {
 	}
 
 
-	public void setEntityType(Class<E> entityType) {
+	public void setEntityType(final Class<E> entityType) {
 		this.entityType = entityType;
 	}
 
@@ -75,13 +75,13 @@ public class EntityMetadata<E> {
 		return entityName;
 	}
 
-	public void setEntityName(String entityName) {
+	public void setEntityName(final String entityName) {
 		this.entityName = entityName;
 	}
 
 
 	@SuppressWarnings("unchecked")
-	public <F,C> void setPrimaryKey(FieldMetadata<E, F, C> primaryKey) {
+	public <F,C> void setPrimaryKey(final FieldMetadata<E, F, C> primaryKey) {
 		this.primaryKey = (FieldMetadata<E, Object, Object>)primaryKey;
 	}
 
@@ -102,7 +102,7 @@ public class EntityMetadata<E> {
 	}
 
 
-	public void setTableName(String tableName) {
+	public void setTableName(final String tableName) {
 		this.tableName = tableName;
 	}
 
@@ -112,7 +112,7 @@ public class EntityMetadata<E> {
 	}
 
 
-	public void setSchemaName(String schemaName) {
+	public void setSchemaName(final String schemaName) {
 		this.schemaName = schemaName;
 	}
 	
@@ -122,7 +122,7 @@ public class EntityMetadata<E> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <C> Class<C>[] getFieldTypes(String columnName) {
+	public <C> Class<C>[] getFieldTypes(final String columnName) {
 		return (Class<C>[])fieldTypes.get(columnName);
 	}
 
@@ -135,11 +135,11 @@ public class EntityMetadata<E> {
 	 * @return array of {@link Class} objects that identify the column type
 	 */
 	@SuppressWarnings("unchecked")
-	public <C> Class<C>[] getColumnTypes(String columnName) {
+	public <C> Class<C>[] getColumnTypes(final String columnName) {
 		return (Class<C>[])columnTypes.get(columnName);
 	}
 
-	public <F, C> void addField(FieldMetadata<E, F, C> fmeta) {
+	public <F, C> void addField(final FieldMetadata<E, F, C> fmeta) {
 		final PropertyAccessor<E, F> accessor = fmeta.getAccessor();
 		final Method getter = accessor.getGetter();
 		if (getter != null) {
@@ -151,22 +151,23 @@ public class EntityMetadata<E> {
 		}
 		
 		final String column = fmeta.getColumn();
-		
-		List<Class<?>> types = new ArrayList<>();
-		types.add(fmeta.getType());
-		types.addAll(fmeta.getGenericTypes());
-		fieldTypes.put(column, types.toArray(new Class[0]));
-		
-		List<Class<?>> cTypes = new ArrayList<>();
-		cTypes.add(fmeta.getColumnType());
-		cTypes.addAll(fmeta.getColumnGenericTypes());
-		columnTypes.put(column, cTypes.toArray(new Class[0]));
-		
-		fieldColumns.put(column, fmeta);
+		if(column != null){
+			final List<Class<?>> types = new ArrayList<>();
+			types.add(fmeta.getType());
+			types.addAll(fmeta.getGenericTypes());
+			fieldTypes.put(column, types.toArray(new Class[0]));
+			
+			final List<Class<?>> cTypes = new ArrayList<>();
+			cTypes.add(fmeta.getColumnType());
+			cTypes.addAll(fmeta.getColumnGenericTypes());
+			columnTypes.put(column, cTypes.toArray(new Class[0]));
+			
+			fieldColumns.put(column, fmeta);
+		}
 		fieldNames.put(fmeta.getName(), fmeta);
 		
 		@SuppressWarnings("unchecked")
-		FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
+		final FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
 		fields.add(fmd);
 		
 		if (fmd.isDiscriminator()) {
@@ -178,28 +179,28 @@ public class EntityMetadata<E> {
 	}
 	
 	
-	public void addAllFields(Collection<FieldMetadata<E, ?, ?>> fmetas) {
-		for(FieldMetadata<E, ?, ?> fmeta : fmetas) {
+	public void addAllFields(final Collection<FieldMetadata<E, ?, ?>> fmetas) {
+		for(final FieldMetadata<E, ?, ?> fmeta : fmetas) {
 			addField(fmeta);
 		}
 	}
 	
 	
 	@SuppressWarnings("unchecked")
-	public <F, C> FieldMetadata<E, F, C> getFieldByGetter(Method getter) {
+	public <F, C> FieldMetadata<E, F, C> getFieldByGetter(final Method getter) {
 		return (FieldMetadata<E, F, C>)getter2field.get(getter);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <F, C> FieldMetadata<E, F, C> getFieldBySetter(Method setter) {
+	public <F, C> FieldMetadata<E, F, C> getFieldBySetter(final Method setter) {
 		return (FieldMetadata<E, F, C>)setter2field.get(setter);
 	}
 
 
-	public Collection<String> getFieldNamesByType(Class<?> type) {
-		Collection<String> fieldNames = new ArrayList<>();
-		for(FieldMetadata<E, ? extends Object, ? extends Object> fmd : fields) {
-			if(type.isAssignableFrom(fmd.getClassType())) {
+	public Collection<String> getFieldNamesByType(final Class<?> type) {
+		final Collection<String> fieldNames = new ArrayList<>();
+		for(final FieldMetadata<E, ? extends Object, ? extends Object> fmd : fields) {
+			if(type.isAssignableFrom(fmd.getType())) {
 				fieldNames.add(fmd.getName());
 			}
 		}
@@ -209,12 +210,12 @@ public class EntityMetadata<E> {
 	
 	
 	@SuppressWarnings("unchecked")
-	public <F, C> FieldMetadata<E, F, C> getField(String column) {
+	public <F, C> FieldMetadata<E, F, C> getField(final String column) {
 		return (FieldMetadata<E, F, C>)this.fieldColumns.get(column);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <F, C> FieldMetadata<E, F, C> getFieldByName(String name) {
+	public <F, C> FieldMetadata<E, F, C> getFieldByName(final String name) {
 		return (FieldMetadata<E, F, C>)this.fieldNames.get(name);
 	}
 
@@ -222,27 +223,28 @@ public class EntityMetadata<E> {
 		return Collections.unmodifiableCollection(indexes);
 	}
 
-	public void addAllIndexes(Collection<IndexMetadata<E>> indexes) {
-		for(IndexMetadata<E> index : indexes) {
+	public void addAllIndexes(final Collection<IndexMetadata<E>> indexes) {
+		for(final IndexMetadata<E> index : indexes) {
 			addIndex(index);
 		}
 	}
 	
-	public void addIndex(IndexMetadata<E> index) {
+	public void addIndex(final IndexMetadata<E> index) {
 		this.indexes.add(index);
 	}
 	
 	
-	public <F, C> void addIndex(FieldMetadata<E, F, C> fmd) {
-		String indexName = getTableName() + "_" + fmd.getColumn() + "_index";
+	public <F, C> void addIndex(final FieldMetadata<E, F, C> fmd) {
+		final String indexName = getTableName() + "_" + fmd.getColumn() + "_index";
 		addIndex(new IndexMetadata<>(fmd.getClassType(), indexName, fmd));
 	}
 
-	public void copy(E from, E to) {
-		for (FieldMetadata<E, ? extends Object, ? extends Object> fmd : getFields()) {
+	public void copy(final E from, final E to) {
+		for (final FieldMetadata<E, ? extends Object, ? extends Object> fmd : getFields()) {
 			@SuppressWarnings("unchecked")
+			final
 			PropertyAccessor<E, Object> pa = (PropertyAccessor<E, Object>)fmd.getAccessor();
-			Object value = fmd.getAccessor().getValue(from);
+			final Object value = fmd.getAccessor().getValue(from);
 			pa.setValue(to, value);
 		}
 	}

@@ -32,28 +32,28 @@ import org.reflections.util.FilterBuilder.Include;
 public class JpaAnnotatedClassScanner implements ClassScanner {
 	private final Reflections reflections;
 
-	public JpaAnnotatedClassScanner(Collection<String> packages) {
+	public JpaAnnotatedClassScanner(final Collection<String> packages) {
 		this(null, packages);
 	}
 	
 	
-	public JpaAnnotatedClassScanner(Collection<URL> resources, Collection<String> packages) {
+	public JpaAnnotatedClassScanner(final Collection<URL> resources, final Collection<String> packages) {
 		this(Thread.currentThread().getContextClassLoader(), resources, packages);
 	}
 	
-	public JpaAnnotatedClassScanner(ClassLoader classLoader, Collection<URL> resources, Collection<String> packages) {
+	public JpaAnnotatedClassScanner(final ClassLoader classLoader, final Collection<URL> resources, final Collection<String> packages) {
 		this(new ClassLoader[] {classLoader}, resources, packages);
 	}
 	
 	
-	public JpaAnnotatedClassScanner(ClassLoader[] classLoaders, Collection<URL> resources, Collection<String> packages) {
+	public JpaAnnotatedClassScanner(final ClassLoader[] classLoaders, final Collection<URL> resources, final Collection<String> packages) {
 		this(Entity.class, classLoaders, resources, packages);
 	}
 
-	public JpaAnnotatedClassScanner(Class<? extends Annotation> anno, ClassLoader[] classLoaders, Collection<URL> resources, Collection<String> packages) {
-		ConfigurationBuilder cb = new ConfigurationBuilder();
+	public JpaAnnotatedClassScanner(final Class<? extends Annotation> anno, final ClassLoader[] classLoaders, final Collection<URL> resources, final Collection<String> packages) {
+		final ConfigurationBuilder cb = new ConfigurationBuilder();
 		
-		for (ClassLoader cl : classLoaders) {
+		for (final ClassLoader cl : classLoaders) {
 			cb.addClassLoader(cl);
 		}
 		
@@ -61,8 +61,8 @@ public class JpaAnnotatedClassScanner implements ClassScanner {
 			cb.addUrls(resources);
 		}
 		
-		FilterBuilder fb = new FilterBuilder();
-		for (String p : packages) {
+		final FilterBuilder fb = new FilterBuilder();
+		for (final String p : packages) {
 			fb.add(new Include(p + "."));
 		}
 		cb.filterInputsBy(fb);

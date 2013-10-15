@@ -84,7 +84,7 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 
 public class CqlPersistor implements Persistor {
-	private EntityContext context;
+	private final EntityContext context;
 	private Cluster cluster;
 	private Session session;
 
@@ -93,7 +93,7 @@ public class CqlPersistor implements Persistor {
 
 	private final Function<Query, Void> sessionHandler = new Function<Query, Void>() {
 		@Override
-		public Void apply(Query query) {
+		public Void apply(final Query query) {
 			session.execute(query);
 			return null;
 		}
@@ -114,44 +114,45 @@ public class CqlPersistor implements Persistor {
 	
 	
 	@SuppressWarnings({ "cast", "unchecked" })
-	public CqlPersistor(EntityContext context) throws IOException {
+	public CqlPersistor(final EntityContext context) throws IOException {
 		if (context == null) {
 			throw new IllegalArgumentException(
 					EntityContext.class.getSimpleName() + " cannot be null");
 		}
 		this.context = context;
 
-		Map<String, Object> properties = context.getProperties();
+		final Map<String, Object> properties = context.getProperties();
 		// set defaults
-		Integer port = CqlPersistorProperties.CASSANDRA_PORT.getValue(properties);
-		String[] hosts = CqlPersistorProperties.CASSANDRA_HOSTS.getValue(properties);
+		final Integer port = CqlPersistorProperties.CASSANDRA_PORT.getValue(properties);
+		final String[] hosts = CqlPersistorProperties.CASSANDRA_HOSTS.getValue(properties);
 
-		Cluster.Builder clusterBuilder = Cluster.builder();
+		final Cluster.Builder clusterBuilder = Cluster.builder();
 		if (port != null) {
 			clusterBuilder.withPort(port);
 		}
 		connect(clusterBuilder,
 				hosts,
-				(Map<String, Object>) CqlPersistorProperties.CASSANDRA_KEYSPACE_PROPERTIES
+				CqlPersistorProperties.CASSANDRA_KEYSPACE_PROPERTIES
 						.getValue(properties));
 	}
 
-	private void connect(Cluster.Builder clusterBuilder, String[] hosts,
-			Map<String, Object> keyspaceProperties) throws IOException {
+	private void connect(final Cluster.Builder clusterBuilder, final String[] hosts,
+			final Map<String, Object> keyspaceProperties) throws IOException {
 		try {
 			cluster = clusterBuilder.addContactPoints(hosts).build();
 			session = cluster.connect();
 			defaultKeyspaceProperties = keyspaceProperties;
-		} catch (NoHostAvailableException e) {
+		} catch (final NoHostAvailableException e) {
 			throw new IOException(e);
 		}
 	}
 
 	
 	@Override
-	public <E> void store(E entity) {
-		for (EntityMetadata<?> emd : getDownUpHierarchy(context.getEntityMetadata(getEntityClass(entity))).values()) {
+	public <E> void store(final E entity) {
+		for (final EntityMetadata<?> emd : getDownUpHierarchy(context.getEntityMetadata(getEntityClass(entity))).values()) {
 			@SuppressWarnings("unchecked")
+			final
 			EntityMetadata<E> meta = (EntityMetadata<E>)emd;
 			storeImpl(meta, entity);
 			if (meta.getJoiner() == null) {
@@ -161,42 +162,42 @@ public class CqlPersistor implements Persistor {
 	}
 	
 	
-	private <E> void storeImpl(EntityMetadata<E> emd, E entity) {
-		String table = emd.getTableName();
-		String keyspace = emd.getSchemaName();
+	private <E> void storeImpl(final EntityMetadata<E> emd, final E entity) {
+		final String table = emd.getTableName();
+		final String keyspace = emd.getSchemaName();
 
-		Insert insert = insertInto(quote(keyspace), quote(table));
+		final Insert insert = insertInto(quote(keyspace), quote(table));
 		
 		
 		Collection<FieldMetadata<E, Object, Object>> allFields = emd.getFields();
 		
-		FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
+		final FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
 		if (pkmd != null) {
-			String pkColumn = pkmd.getColumn();
+			final String pkColumn = pkmd.getColumn();
 			if (emd.getField(pkColumn) == null) {
 				allFields = new ArrayList<>(allFields);
 				allFields.add(pkmd);
 			}
 		}
 		
-		for (FieldMetadata<E, Object, ?> fmd : allFields) {
+		for (final FieldMetadata<E, Object, ?> fmd : allFields) {
 			String name = fmd.getColumn();
 			if (name == null) {
 				if(fmd.isDiscriminator()) {
 					// find column name in parent class
 					for (Class<?> clazz = emd.getEntityType().getSuperclass(); !Object.class.equals(clazz); clazz = clazz.getSuperclass()) {
-						EntityMetadata<?> meta = context.getEntityMetadata(clazz);
+						final EntityMetadata<?> meta = context.getEntityMetadata(clazz);
 						if (meta == null) {
 							continue;
 						}
 						if (!table.equals(meta.getTableName())) {
 							break;
 						}
-						FieldMetadata<?, ?, ?> discriminator = meta.getDiscrimintor();
+						final FieldMetadata<?, ?, ?> discriminator = meta.getDiscrimintor();
 						if (discriminator == null) {
 							continue;
 						}
-						String discriminatorColumn = discriminator.getColumn();
+						final String discriminatorColumn = discriminator.getColumn();
 						if (discriminatorColumn != null) {
 							name = discriminatorColumn;
 							break;
@@ -212,9 +213,9 @@ public class CqlPersistor implements Persistor {
 				// This is a typical case of entities inheritance with single or joined table.
 				continue;
 			}
-			Object value = convertValue(fmd, transformValue(fmd.getAccessor().getValue(entity)), new PushmiPullyuConverter() {
+			final Object value = convertValue(fmd, transformValue(fmd.getAccessor().getValue(entity)), new PushmiPullyuConverter() {
 				@Override
-				public Object convert(ValueConverter<Object, Object> conveter, Object v) {
+				public Object convert(final ValueConverter<Object, Object> conveter, final Object v) {
 					return conveter.toColumn(v);
 				}
 			});
@@ -238,14 +239,14 @@ public class CqlPersistor implements Persistor {
 	 * @param leafMeta
 	 * @return table name to entity metadata map of hierarchy
 	 */
-	private <E> Map<String, EntityMetadata<?>> getDownUpHierarchy(EntityMetadata<E> leafMeta) {
-		Map<String, EntityMetadata<?>> table2emd = new LinkedHashMap<>();
+	private <E> Map<String, EntityMetadata<?>> getDownUpHierarchy(final EntityMetadata<E> leafMeta) {
+		final Map<String, EntityMetadata<?>> table2emd = new LinkedHashMap<>();
 		for (Class<?> clazz = leafMeta.getEntityType(); clazz != null; clazz = clazz.getSuperclass()) {
-			EntityMetadata<?> emd = context.getEntityMetadata(clazz);
+			final EntityMetadata<?> emd = context.getEntityMetadata(clazz);
 			if (emd == null) {
 				continue;
 			}
-			String table = emd.getTableName();
+			final String table = emd.getTableName();
 			if (table2emd.containsKey(table)) {
 				continue;
 			}
@@ -267,12 +268,13 @@ public class CqlPersistor implements Persistor {
 	 * @param pushmiPullyu
 	 * @return converted object
 	 */
-	private <E> Object convertValue(FieldMetadata<E, Object, ?> fmd, Object obj, PushmiPullyuConverter pushmiPullyu) {
+	private <E> Object convertValue(final FieldMetadata<E, Object, ?> fmd, final Object obj, final PushmiPullyuConverter pushmiPullyu) {
 		Object result = obj;
 		
 		
 		if (obj instanceof Collection) {
 			@SuppressWarnings("unchecked")
+			final
 			Collection<Object> collection = (Collection<Object>)obj;
 			
 			final Collection<Object> resCollection;
@@ -284,8 +286,8 @@ public class CqlPersistor implements Persistor {
 				throw new IllegalArgumentException("Only List or Set are supported, got " + obj.getClass());
 			}
 			
-			ValueConverter<Object, Object> elementConverter = fmd.getConverter(1);
-			for (Object element : collection) {
+			final ValueConverter<Object, Object> elementConverter = fmd.getConverter(1);
+			for (final Object element : collection) {
 				resCollection.add(pushmiPullyu.convert(elementConverter, element));
 			}
 			result = resCollection;
@@ -294,12 +296,12 @@ public class CqlPersistor implements Persistor {
 			final Map<Object, Object> map = (Map)obj;
 			final Map<Object, Object> resMap = new LinkedHashMap<>();
 			
-			ValueConverter<Object, Object> keyConverter = fmd.getConverter(1);
-			ValueConverter<Object, Object> valueConverter = fmd.getConverter(2);
+			final ValueConverter<Object, Object> keyConverter = fmd.getConverter(1);
+			final ValueConverter<Object, Object> valueConverter = fmd.getConverter(2);
 			
-			for (Entry<Object, Object> entry : map.entrySet()) {
-				Object key = entry.getKey();
-				Object value = entry.getValue();
+			for (final Entry<Object, Object> entry : map.entrySet()) {
+				final Object key = entry.getKey();
+				final Object value = entry.getValue();
 				resMap.put(pushmiPullyu.convert(keyConverter, key), pushmiPullyu.convert(valueConverter, value));
 			}
 			
@@ -312,7 +314,7 @@ public class CqlPersistor implements Persistor {
 	
 	
 	
-	private Object transformValue(Object value) {
+	private Object transformValue(final Object value) {
 		if (value == null) {
 			return value;
 		}
@@ -323,8 +325,8 @@ public class CqlPersistor implements Persistor {
 			return ((InetAddress) value).getHostAddress();
 		}
 		if (value.getClass().isArray()) {
-			int n = Array.getLength(value);
-			List<Object> list = new ArrayList<Object>();
+			final int n = Array.getLength(value);
+			final List<Object> list = new ArrayList<Object>();
 			for (int i = 0; i < n; i++) {
 				list.add(Array.get(value, i));
 			}
@@ -335,35 +337,36 @@ public class CqlPersistor implements Persistor {
 
 
     @Override
-	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria) {
+	public <T, P> T fetch(final Class<T> entityClass, final Map<String, Object> criteria) {
 		throw new UnsupportedOperationException("This method is not implemented yet");
 	}
 	
 	
     @Override
-    public <E, P> E fetch(Class<E> clazz, P primaryKey) {
-        EntityMetadata<E> requestedEntityMetadata = context.getEntityMetadata(clazz);
+    public <E, P> E fetch(final Class<E> clazz, final P primaryKey) {
+        final EntityMetadata<E> requestedEntityMetadata = context.getEntityMetadata(clazz);
         EntityMetadata<E> emd = requestedEntityMetadata;
 
         Map<String, Class<?>[]> fieldTypes = new HashMap<>();
         Select.Selection select = selectFields(emd, fieldTypes);
-        List<Row> allResult = doSelectAll(emd, primaryKey).all();
+        final List<Row> allResult = doSelectAll(emd, primaryKey).all();
         
         Iterator<Map<String, Object>> result = transform(allResult, new RowSplitter(fieldTypes)).iterator();
         
         if (!result.hasNext()) {
-        	String requestedEntityPkFieldName = emd.getPrimaryKey().getName();
-        	for (EntityMetadata<?> e : context.getEntityMetadata()) {
-        		Class<?> c = e.getEntityType();
+        	final String requestedEntityPkFieldName = emd.getPrimaryKey().getName();
+        	for (final EntityMetadata<?> e : context.getEntityMetadata()) {
+        		final Class<?> c = e.getEntityType();
         		if (clazz.isAssignableFrom(c) && !clazz.equals(c) && e.getFieldByName(emd.getPrimaryKey().getName()) != null) {
         	        fieldTypes = new HashMap<>();
         	        select = selectFields(e, fieldTypes);
 
-        	        String column = e.getFieldByName(requestedEntityPkFieldName).getColumn();
+        	        final String column = e.getFieldByName(requestedEntityPkFieldName).getColumn();
         	        
         			result = doSelect(select, e, column, primaryKey, fieldTypes).iterator();
                 	if (result.hasNext()) {
             			@SuppressWarnings("unchecked")
+						final
     					EntityMetadata<E> e2 = (EntityMetadata<E>)e;
                 		emd = e2;
                 		break;
@@ -382,17 +385,18 @@ public class CqlPersistor implements Persistor {
 
         
         
-        Class<? extends E> leafClazz = getRealClass(emd, data);
-        E entity = ClassAccessor.newInstance(leafClazz);
+        final Class<? extends E> leafClazz = getRealClass(emd, data);
+        final E entity = ClassAccessor.newInstance(leafClazz);
         
         if (!leafClazz.equals(clazz)) {
             @SuppressWarnings("unchecked")
+			final
 			EntityMetadata<E> leafMeta = (EntityMetadata<E>)context.getEntityMetadata(leafClazz);
-            Map<String, Class<?>[]> leafFieldTypes = new HashMap<>();
+            final Map<String, Class<?>[]> leafFieldTypes = new HashMap<>();
             selectFields(leafMeta, leafFieldTypes);
             
             
-            Map<String, Class<?>[]> allFieldTypes = new HashMap<>(fieldTypes);
+            final Map<String, Class<?>[]> allFieldTypes = new HashMap<>(fieldTypes);
             fieldTypes.putAll(leafFieldTypes);
             
             if (!fieldTypes.equals(leafFieldTypes)) {
@@ -408,17 +412,17 @@ public class CqlPersistor implements Persistor {
         requestedEntityMetadata.getPrimaryKey().getAccessor().setValue(entity, primaryKey);
         
         
-        EntityMetadata<? extends E> leafMeta = context.getEntityMetadata(leafClazz);
-        Map<String, EntityMetadata<?>> downUpHierarchy = getDownUpHierarchy(leafMeta);
+        final EntityMetadata<? extends E> leafMeta = context.getEntityMetadata(leafClazz);
+        final Map<String, EntityMetadata<?>> downUpHierarchy = getDownUpHierarchy(leafMeta);
 
         
-        List<EntityMetadata<?>> downUpChain = new ArrayList<>();
-        List<EntityMetadata<?>> upDownChain = new ArrayList<>();
+        final List<EntityMetadata<?>> downUpChain = new ArrayList<>();
+        final List<EntityMetadata<?>> upDownChain = new ArrayList<>();
 
-        Iterator<EntityMetadata<?>> ihierarchy = downUpHierarchy.values().iterator();
+        final Iterator<EntityMetadata<?>> ihierarchy = downUpHierarchy.values().iterator();
         
         while(ihierarchy.hasNext()) {
-        	EntityMetadata<?> e = ihierarchy.next();
+        	final EntityMetadata<?> e = ihierarchy.next();
         	if (clazz.equals(e.getEntityType())) {
         		break;
         	}
@@ -427,14 +431,14 @@ public class CqlPersistor implements Persistor {
         Collections.reverse(upDownChain);
 
         while(ihierarchy.hasNext()) {
-        	EntityMetadata<?> e = ihierarchy.next();
+        	final EntityMetadata<?> e = ihierarchy.next();
         	downUpChain.add(e);
         }        
         
         
         if (!downUpChain.isEmpty() && getJoinerColumn(emd) != null) {
 	        Object pk = data.get(emd.getJoiner().getName());
-	        for (EntityMetadata<?> e : downUpChain) {
+	        for (final EntityMetadata<?> e : downUpChain) {
 	            fieldTypes = new HashMap<>();
 	            select = selectFields(e, fieldTypes);
 	            result = doSelect(select, e, pk, fieldTypes).iterator();
@@ -443,7 +447,7 @@ public class CqlPersistor implements Persistor {
 	            	break;
 	            }
 	            
-	            Map<String, Object> record = result.next(); 
+	            final Map<String, Object> record = result.next(); 
 	            data.putAll(column2field(e, record));
 	            
 	            if (e.getJoiner() == null) {
@@ -455,10 +459,10 @@ public class CqlPersistor implements Persistor {
         }
 
         Object key = primaryKey;
-        for (EntityMetadata<?> e : upDownChain) {
+        for (final EntityMetadata<?> e : upDownChain) {
             fieldTypes = new HashMap<>();
             select = selectFields(e, fieldTypes);
-            String jc = getJoinerColumn(e);
+            final String jc = getJoinerColumn(e);
             if (jc == null) {
             	break;
             }
@@ -469,7 +473,7 @@ public class CqlPersistor implements Persistor {
             	break;
             }
             
-            Map<String, Object> record = result.next(); 
+            final Map<String, Object> record = result.next(); 
             data.putAll(column2field(e, record));
             
             key = record.get(e.getJoiner().getColumn());
@@ -500,17 +504,17 @@ public class CqlPersistor implements Persistor {
     }
 
     
-	private <E> String getJoinerColumn(EntityMetadata<E> emd) {
-        FieldMetadata<?, ?, ?> joiner = emd.getJoiner();
+	private <E> String getJoinerColumn(final EntityMetadata<E> emd) {
+        final FieldMetadata<?, ?, ?> joiner = emd.getJoiner();
         return joiner == null ? null : joiner.getColumn(); 
 	}
     
-    private <E>  Select.Selection selectFields(EntityMetadata<E> emd, Map<String, Class<?>[]> fieldTypes) {
+    private <E>  Select.Selection selectFields(final EntityMetadata<E> emd, final Map<String, Class<?>[]> fieldTypes) {
 		return selectFor(
 				emd, 
 				new Predicate<FieldMetadata<E, Object, Object>>(){
 					@Override
-					public boolean apply(FieldMetadata<E, Object, Object> fmd) {
+					public boolean apply(final FieldMetadata<E, Object, Object> fmd) {
 						return fmd.getColumn() != null && !fmd.isLazy();
 					}
 				}, 
@@ -522,11 +526,11 @@ public class CqlPersistor implements Persistor {
 	
 	
 
-	private <E> Map<String, Object> column2field(EntityMetadata<E> emd, Map<String, Object> data) {
-		Map<String, Object> field2value = new HashMap<>();
+	private <E> Map<String, Object> column2field(final EntityMetadata<E> emd, final Map<String, Object> data) {
+		final Map<String, Object> field2value = new HashMap<>();
 		
-		for (Entry<String, Object> col2val : data.entrySet()) {
-			String column = col2val.getKey();
+		for (final Entry<String, Object> col2val : data.entrySet()) {
+			final String column = col2val.getKey();
 			
 			String field = findFieldNameByColumn(emd, column);
 			
@@ -541,11 +545,11 @@ public class CqlPersistor implements Persistor {
 	
 	
 	
-	private <E> void populateData(E entity, EntityMetadata<E> emd, Map<String, Object> data) {
-		for (Entry<String, Object> d : data.entrySet()) {
-			String fieldName = d.getKey();
-			Object columnValue = d.getValue();
-			FieldMetadata<E, Object, Object> fmd = findFieldMetadata(emd, fieldName);
+	private <E> void populateData(final E entity, final EntityMetadata<E> emd, final Map<String, Object> data) {
+		for (final Entry<String, Object> d : data.entrySet()) {
+			final String fieldName = d.getKey();
+			final Object columnValue = d.getValue();
+			final FieldMetadata<E, Object, Object> fmd = findFieldMetadata(emd, fieldName);
 			
 			
 			if (!belongsTo(fmd, entity) && isDefaultValue(fmd, columnValue)) {
@@ -556,9 +560,9 @@ public class CqlPersistor implements Persistor {
 			}
 			
 			
-			Object fieldValue = convertValue(fmd, columnValue, new PushmiPullyuConverter() {
+			final Object fieldValue = convertValue(fmd, columnValue, new PushmiPullyuConverter() {
 				@Override
-				public Object convert(ValueConverter<Object, Object> conveter, Object v) {
+				public Object convert(final ValueConverter<Object, Object> conveter, final Object v) {
 					return conveter.fromColumn(v);
 				}
 			});
@@ -602,7 +606,7 @@ public class CqlPersistor implements Persistor {
 			if (emd == null) {
 				continue;
 			}
-			FieldMetadata<E, Object, Object> fmd = emd.getField(column); 
+			final FieldMetadata<E, Object, Object> fmd = emd.getField(column); 
 			if (fmd != null) {
 				return fmd.getName();
 			}
@@ -611,21 +615,22 @@ public class CqlPersistor implements Persistor {
 		return null;
 	}
 	
-	private <E> Class<? extends E> getRealClass(EntityMetadata<E> emd, Map<String, Object> data) {
-		FieldMetadata<E, ?, ?> dmd = emd.getDiscrimintor();
+	private <E> Class<? extends E> getRealClass(final EntityMetadata<E> emd, final Map<String, Object> data) {
+		final FieldMetadata<E, ?, ?> dmd = emd.getDiscrimintor();
 		if (dmd == null) {
 			return emd.getEntityType();
 		}
 		
-		String discriminatorColumn = dmd.getColumn();
-		Object discriminatorValue = data.get(discriminatorColumn);
+		final String discriminatorColumn = dmd.getColumn();
+		final Object discriminatorValue = data.get(discriminatorColumn);
 		if (discriminatorValue == null) {
 			return emd.getEntityType();
 		}
 		
-		for (EntityMetadata<?> e : context.getEntityMetadata()) {
+		for (final EntityMetadata<?> e : context.getEntityMetadata()) {
 			if (emd.getEntityType().isAssignableFrom(e.getEntityType()) && discriminatorValue.equals(e.getDiscrimintor().getDefaultValue())) {
 				@SuppressWarnings("unchecked")
+				final
 				Class<? extends E> c =  (Class<? extends E>)e.getEntityType();
 				return c;
 			}
@@ -636,17 +641,17 @@ public class CqlPersistor implements Persistor {
 
 
 	@Override
-	public <E> void remove(E entity) {
-		Class<E> clazz = getEntityClass(entity);
-		EntityMetadata<E> emd = context.getEntityMetadata(clazz);
-		String table = emd.getTableName();
-		String keyspace = emd.getSchemaName();
-		Delete.Where where = QueryBuilder.delete()
+	public <E> void remove(final E entity) {
+		final Class<E> clazz = getEntityClass(entity);
+		final EntityMetadata<E> emd = context.getEntityMetadata(clazz);
+		final String table = emd.getTableName();
+		final String keyspace = emd.getSchemaName();
+		final Delete.Where where = QueryBuilder.delete()
 				.from(quote(keyspace), quote(table)).where();
 
-		Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
+		final Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
 
-		for (Clause clause : getPrimaryKeyClause(emd, primaryKey)) {
+		for (final Clause clause : getPrimaryKeyClause(emd, primaryKey)) {
 			where.and(clause);
 		}
 
@@ -656,14 +661,14 @@ public class CqlPersistor implements Persistor {
 
 	
 	private <E, P> Iterable<Clause> getPrimaryKeyClause(final EntityMetadata<E> entityMetadata, final P primaryKey) {
-		EntityMetadata<E> emd = entityMetadata;
-		FieldMetadata<E, Object, Object> dmd = emd.getDiscrimintor();
+		final EntityMetadata<E> emd = entityMetadata;
+		final FieldMetadata<E, Object, Object> dmd = emd.getDiscrimintor();
 		
 		boolean discriminator = false;
-		Collection<Clause> clause = new ArrayList<>();
+		final Collection<Clause> clause = new ArrayList<>();
 		if (dmd != null && dmd.getColumn() != null) {
-			String discriminatorColumn = dmd.getColumn();
-			Object discriminatorValue = dmd.getDefaultValue();
+			final String discriminatorColumn = dmd.getColumn();
+			final Object discriminatorValue = dmd.getDefaultValue();
 			if (discriminatorValue != null && !isPrimaryKey(emd.getSchemaName(), emd.getTableName(), emd.getPrimaryKey().getColumn())) {
 				clause.add(eq(quote(discriminatorColumn), discriminatorValue));
 				discriminator = true;
@@ -671,24 +676,24 @@ public class CqlPersistor implements Persistor {
 		}
 		
 		if (!discriminator) {
-			FieldMetadata<E, Object, Object> jmd = emd.getJoiner();
+			final FieldMetadata<E, Object, Object> jmd = emd.getJoiner();
 			if (jmd != null) {
-				String joinerColumn = jmd.getColumn();
+				final String joinerColumn = jmd.getColumn();
 				clause.add(eq(quote(joinerColumn), primaryKey));
 			} 
 		}
 		
 		
 		
-		FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
-		Object pkColumnValue = pkmd.getConverter().toColumn(primaryKey);
-		String pkName = emd.getPrimaryKey().getColumn();
+		final FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
+		final Object pkColumnValue = pkmd.getConverter().toColumn(primaryKey);
+		final String pkName = emd.getPrimaryKey().getColumn();
 		clause.add(eq(quote(pkName), pkColumnValue));
 		return clause;
 	}
 
-	private boolean isPrimaryKey(String keyspace, String table, String column) {
-		for (ColumnMetadata cmd : cluster.getMetadata().getKeyspace(keyspace).getTable(table).getPrimaryKey()) {
+	private boolean isPrimaryKey(final String keyspace, final String table, final String column) {
+		for (final ColumnMetadata cmd : cluster.getMetadata().getKeyspace(keyspace).getTable(table).getPrimaryKey()) {
 			if (column.equals(cmd.getName())) {
 				return true;
 			}
@@ -697,12 +702,12 @@ public class CqlPersistor implements Persistor {
 	}
 	
 	@Override
-	public <E> boolean exists(Class<E> entityClass, Object primaryKey) {
+	public <E> boolean exists(final Class<E> entityClass, final Object primaryKey) {
 		return count(entityClass, primaryKey).signum() == 1;
 	}
 
-	private <E> BigInteger count(Class<E> entityClass, Object primaryKey) {
-		EntityMetadata<E> emd = context.getEntityMetadata(entityClass);
+	private <E> BigInteger count(final Class<E> entityClass, final Object primaryKey) {
+		final EntityMetadata<E> emd = context.getEntityMetadata(entityClass);
 		return (BigInteger)doSelect(
 				select().countAll(),
 				emd,
@@ -714,15 +719,15 @@ public class CqlPersistor implements Persistor {
 	
 	
 	
-	private <E> Select.Selection selectFor(EntityMetadata<E> emd, Predicate<FieldMetadata<E, Object, Object>> filter, Map<String, Class<?>[]> fieldTypes) {
+	private <E> Select.Selection selectFor(final EntityMetadata<E> emd, final Predicate<FieldMetadata<E, Object, Object>> filter, final Map<String, Class<?>[]> fieldTypes) {
 		return selectFor(emd, Collections2.filter(emd.getFields(), filter), fieldTypes);
 	}
 	
 	
-	private <E> Select.Selection selectFor(EntityMetadata<E> emd, Collection<FieldMetadata<E, Object, Object>> fields, Map<String, Class<?>[]> fieldTypes) {
-		Select.Selection select = select();
+	private <E> Select.Selection selectFor(final EntityMetadata<E> emd, final Collection<FieldMetadata<E, Object, Object>> fields, final Map<String, Class<?>[]> fieldTypes) {
+		final Select.Selection select = select();
 		
-		for (FieldMetadata<E, ?, ?> fmd : fields) {
+		for (final FieldMetadata<E, ?, ?> fmd : fields) {
 			final String column = fmd.getColumn();
 			if (column != null) {
 				select.column(quote(column));
@@ -736,43 +741,43 @@ public class CqlPersistor implements Persistor {
 
 	
 	private <E, P> Iterable<Map<String, Object>> doSelect(
-			Select.Builder queryBuilder, 
-			EntityMetadata<E> emd,
-			P pk,
-			Map<String, Class<?>[]> fields) {
+			final Select.Builder queryBuilder, 
+			final EntityMetadata<E> emd,
+			final P pk,
+			final Map<String, Class<?>[]> fields) {
 		return doSelect(queryBuilder, emd, emd.getPrimaryKey().getColumn(), pk, fields);
 	}
 	
 	
 	private <E, P> Iterable<Map<String, Object>> doSelect(
-			Select.Builder queryBuilder, 
-			EntityMetadata<E> emd,
-			String column,
-			P value,
-			Map<String, Class<?>[]> fields) {
-		String table = emd.getTableName();
-		String keyspace = emd.getSchemaName();
+			final Select.Builder queryBuilder, 
+			final EntityMetadata<E> emd,
+			final String column,
+			final P value,
+			final Map<String, Class<?>[]> fields) {
+		final String table = emd.getTableName();
+		final String keyspace = emd.getSchemaName();
 
-		Where where = queryBuilder.from(quote(keyspace), quote(table)).allowFiltering().where();
+		final Where where = queryBuilder.from(quote(keyspace), quote(table)).allowFiltering().where();
 		FieldMetadata<E, Object, Object> fmd = emd.getField(column);
 		if (fmd == null) {
 			fmd = emd.getPrimaryKey();
 		}
-		Object columnValue = fmd.getConverter().toColumn(value);
+		final Object columnValue = fmd.getConverter().toColumn(value);
 		where.and(eq(quote(column), columnValue));
 
 		return execute(where, fields);
 	}
 
 	
-	private <E, P> ResultSet doSelectAll(EntityMetadata<E> emd, P pkValue) {
-		String table = emd.getTableName();
-		String keyspace = emd.getSchemaName();
+	private <E, P> ResultSet doSelectAll(final EntityMetadata<E> emd, final P pkValue) {
+		final String table = emd.getTableName();
+		final String keyspace = emd.getSchemaName();
 
-		Where where = select().all().from(quote(keyspace), quote(table)).allowFiltering().where();
-		FieldMetadata<E, Object, Object> fmd = emd.getPrimaryKey();
-		String column = fmd.getColumn();
-		Object columnValue = fmd.getConverter().toColumn(pkValue);
+		final Where where = select().all().from(quote(keyspace), quote(table)).allowFiltering().where();
+		final FieldMetadata<E, Object, Object> fmd = emd.getPrimaryKey();
+		final String column = fmd.getColumn();
+		final Object columnValue = fmd.getConverter().toColumn(pkValue);
 		where.and(eq(quote(column), columnValue));
 
 		
@@ -782,29 +787,29 @@ public class CqlPersistor implements Persistor {
 	
 	
 	@Override
-	public <E> Object[] fetchProperty(E entity, String... propertyNames) {
-		Class<E> clazz = getEntityClass(entity);
-		EntityMetadata<E> emd = context.getEntityMetadata(clazz);
-		Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
+	public <E> Object[] fetchProperty(final E entity, final String... propertyNames) {
+		final Class<E> clazz = getEntityClass(entity);
+		final EntityMetadata<E> emd = context.getEntityMetadata(clazz);
+		final Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
 
 		final Set<String> propertyNamesSet = new HashSet<>(Arrays.asList(propertyNames));
 
 		
-		Map<String, Class<?>[]> columnTypes = new LinkedHashMap<String, Class<?>[]>();
-		Select.Selection select = selectFor(
+		final Map<String, Class<?>[]> columnTypes = new LinkedHashMap<String, Class<?>[]>();
+		final Select.Selection select = selectFor(
 				emd, 
 				new Predicate<FieldMetadata<E, Object, Object>>() {
 					@Override
-					public boolean apply(FieldMetadata<E, Object, Object> fmd) {
+					public boolean apply(final FieldMetadata<E, Object, Object> fmd) {
 						return propertyNamesSet.contains(fmd.getName());
 					}
 				}, 
 				columnTypes);
 
-		List<String> columns = new ArrayList<>(columnTypes.keySet());
-		Object[] result = new Object[propertyNames.length];
+		final List<String> columns = new ArrayList<>(columnTypes.keySet());
+		final Object[] result = new Object[propertyNames.length];
 
-		Map<String, Object> rawResult = doSelect(select, emd, primaryKey, columnTypes).iterator().next();
+		final Map<String, Object> rawResult = doSelect(select, emd, primaryKey, columnTypes).iterator().next();
 
 		for (int i = 0; i < result.length; i++) {
 			result[i] = rawResult.get(columns.get(i));
@@ -814,18 +819,18 @@ public class CqlPersistor implements Persistor {
 	}
 
 	@Override
-	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory(Class<T> type) {
+	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory(final Class<T> type) {
 		return new JavassistObjectWrapperFactory<T>(context);
 	}
 
 	@Override
-	public void createSchema(String name, Map<String, Object> properties) {
-		session.execute(createKeyspace().named(name).with(
-				properties == null ? defaultKeyspaceProperties : properties));
+	public void createSchema(final String name, final Map<String, Object> properties) {
+		final Map<String, Object> props = properties == null || properties.isEmpty() ? defaultKeyspaceProperties : properties;
+		session.execute(createKeyspace().named(name).with(props));
 	}
 
 	@Override
-	public void dropSchema(String name) {
+	public void dropSchema(final String name) {
 		session.execute(dropKeyspace().named(name));
 	}
 
@@ -834,40 +839,40 @@ public class CqlPersistor implements Persistor {
 		return Lists.transform(cluster.getMetadata().getKeyspaces(),
 				new Function<KeyspaceMetadata, String>() {
 					@Override
-					public String apply(KeyspaceMetadata input) {
+					public String apply(final KeyspaceMetadata input) {
 						return input.getName();
 					}
 				});
 	}
 
 	@Override
-	public void useSchema(String name) {
+	public void useSchema(final String name) {
 		session.execute("USE " + name);
 	}
 
 	@Override
-	public <E> void createTable(EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	public <E> void createTable(final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		createTable(sessionHandler, entityMetadata, properties);
 	}
 
-	private <E> void createTable(Function<Query, Void> queryHandler,
-			EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
+	private <E> void createTable(final Function<Query, Void> queryHandler,
+			final EntityMetadata<E> entityMetadata, final Map<String, Object> properties) {
 		final CreateTable table = CommandBuilder.createTable()
 				.named(entityMetadata.getTableName())
 				.in(entityMetadata.getSchemaName()).with(properties);
 
 		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
 		
-		FieldMetadata<E, ?, ?> pkmd = entityMetadata.getPrimaryKey();
+		final FieldMetadata<E, ?, ?> pkmd = entityMetadata.getPrimaryKey();
 		if (pkmd != null) {
-			String pkColumn = pkmd.getColumn();
+			final String pkColumn = pkmd.getColumn();
 			if (entityMetadata.getField(pkColumn) == null) {
 				addColumn(table, pkmd, indexedColumns);					
 			}
 		}
 		
-		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+		for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
 			addColumn(table, fmd, indexedColumns);					
 		}
 
@@ -880,15 +885,15 @@ public class CqlPersistor implements Persistor {
 		// as a part of index identifier using dot-notation.
 		// So we have to specify current keyspace using "use keyspace"
 		useSchema(keyspaceName);
-		for (String column : getRequiredIndexedFields(entityMetadata)) {
+		for (final String column : getRequiredIndexedFields(entityMetadata)) {
 			queryHandler.apply(CommandBuilder.createIndex().in(keyspaceName)
 					.named(createIndexName(keyspaceName, tableName, column))
 					.on(tableName).column(column));
 		}
 	}
 	
-	private <E> void addColumn(CreateTable table, FieldMetadata<E, ?, ?> fmd, Collection<String> indexedColumns) {
-		String column = fmd.getColumn();
+	private <E> void addColumn(final CreateTable table, final FieldMetadata<E, ?, ?> fmd, final Collection<String> indexedColumns) {
+		final String column = fmd.getColumn();
 		if (column == null) {
 			return; // special case for fields that are not save as columns.
 		}
@@ -898,14 +903,14 @@ public class CqlPersistor implements Persistor {
 	}
 
 	@Override
-	public <E> void updateTable(EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	public <E> void updateTable(final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		processTable(sessionHandler, entityMetadata, properties);
 	}
 
 	@Override
-	public <E> void validateTable(EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	public <E> void validateTable(final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		final Map<String, Object> allProps = CollectionUtils.merge(
 				context.getProperties(), properties);
 
@@ -919,7 +924,7 @@ public class CqlPersistor implements Persistor {
 		case THROW_ALL_TOGETHER:
 			validationHandler = new Function<Query, Void>() {
 				@Override
-				public Void apply(Query query) {
+				public Void apply(final Query query) {
 					errorMessages.add(query.toString());
 					return null;
 				}
@@ -928,7 +933,7 @@ public class CqlPersistor implements Persistor {
 		case THROW_FIRST:
 			validationHandler = new Function<Query, Void>() {
 				@Override
-				public Void apply(Query query) {
+				public Void apply(final Query query) {
 					throw new IllegalStateException(query.toString());
 				}
 			};
@@ -946,18 +951,18 @@ public class CqlPersistor implements Persistor {
 	}
 
 	@Override
-	public <E> void dropTable(String keyspace, String tableName) {
+	public <E> void dropTable(final String keyspace, final String tableName) {
 		session.execute(CommandBuilder.dropTable().named(tableName)
 				.in(keyspace));
 	}
 
 	@Override
-	public Iterable<String> getTableNames(String keyspace) {
+	public Iterable<String> getTableNames(final String keyspace) {
 		return Collections2.transform(
 				cluster.getMetadata().getKeyspace(keyspace).getTables(),
 				new Function<TableMetadata, String>() {
 					@Override
-					public String apply(TableMetadata table) {
+					public String apply(final TableMetadata table) {
 						return table.getName();
 					}
 				});
@@ -985,9 +990,9 @@ public class CqlPersistor implements Persistor {
 		return transform(session.execute(query), new RowSplitter(fields));
 	}
 
-	private <E> FieldAttribute[] getFieldAttributes(FieldMetadata<E, ?, ?> fmd,
-			Collection<String> indexedColumns) {
-		Collection<FieldAttribute> attrs = new ArrayList<>();
+	private <E> FieldAttribute[] getFieldAttributes(final FieldMetadata<E, ?, ?> fmd,
+			final Collection<String> indexedColumns) {
+		final Collection<FieldAttribute> attrs = new ArrayList<>();
 		if (fmd.isKey()) {
 			attrs.add(FieldAttribute.PRIMARY_KEY);
 		}
@@ -998,21 +1003,21 @@ public class CqlPersistor implements Persistor {
 	}
 
 	private <E> Collection<String> getIndexedColumns(
-			EntityMetadata<E> entityMetadata) {
-		Collection<String> indexedColumns = new LinkedHashSet<String>();
-		for (IndexMetadata<E> imd : entityMetadata.getIndexes()) {
-			for (FieldMetadata<E, ?, ?> fmd : imd.getField()) {
+			final EntityMetadata<E> entityMetadata) {
+		final Collection<String> indexedColumns = new LinkedHashSet<String>();
+		for (final IndexMetadata<E> imd : entityMetadata.getIndexes()) {
+			for (final FieldMetadata<E, ?, ?> fmd : imd.getField()) {
 				indexedColumns.add(fmd.getColumn());
 			}
 		}
 		return indexedColumns;
 	}
 
-	private <E> void processTable(Function<Query, Void> queryHandler,
-			EntityMetadata<E> entityMetadata, Map<String, Object> properties) {
-		String entityTable = entityMetadata.getTableName();
+	private <E> void processTable(final Function<Query, Void> queryHandler,
+			final EntityMetadata<E> entityMetadata, final Map<String, Object> properties) {
+		final String entityTable = entityMetadata.getTableName();
 		String existingTableName = null;
-		for (String tableName : getTableNames(entityMetadata.getSchemaName())) {
+		for (final String tableName : getTableNames(entityMetadata.getSchemaName())) {
 			if (entityTable.equalsIgnoreCase(tableName)) {
 				existingTableName = tableName;
 			}
@@ -1025,28 +1030,28 @@ public class CqlPersistor implements Persistor {
 
 		// table already exists
 
-		TableMetadata existingTable = cluster.getMetadata()
+		final TableMetadata existingTable = cluster.getMetadata()
 				.getKeyspace(entityMetadata.getSchemaName())
 				.getTable(existingTableName);
 
-		Map<String, ColumnMetadata> existingColumns = new LinkedHashMap<>();
-		for (ColumnMetadata cmd : existingTable.getColumns()) {
+		final Map<String, ColumnMetadata> existingColumns = new LinkedHashMap<>();
+		for (final ColumnMetadata cmd : existingTable.getColumns()) {
 			existingColumns.put(cmd.getName(), cmd);
 		}
 
-		Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
+		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
 
 		// find fields that have to be added or altered
-		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+		for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
 			// AlterTable table =
 			// CommandBuilder.alterTable().named(entityMetadata.getTableName()).in(entityMetadata.getSchemaName()).with(properties);
-			String column = fmd.getColumn();
+			final String column = fmd.getColumn();
 			if (column == null) {
 				continue; // special case for fields that are not save as columns.
 			}
-			Class<?> columnType = fmd.getColumnType();
+			final Class<?> columnType = fmd.getColumnType();
 			
-			ColumnMetadata existingColumn = existingColumns.get(column);
+			final ColumnMetadata existingColumn = existingColumns.get(column);
 			if (existingColumn == null) {
 				handle(queryHandler,
 						CommandBuilder.alterTable().addColumn(column,
@@ -1054,10 +1059,10 @@ public class CqlPersistor implements Persistor {
 				continue;
 			}
 
-			Class<?> existingType = existingColumn.getType().asJavaClass();
+			final Class<?> existingType = existingColumn.getType().asJavaClass();
 
-			boolean existingColumnIsIndexed = existingColumn.getIndex() != null;
-			boolean fieldIsIndexed = indexedColumns.contains(fmd.getColumn());
+			final boolean existingColumnIsIndexed = existingColumn.getIndex() != null;
+			final boolean fieldIsIndexed = indexedColumns.contains(fmd.getColumn());
 
 			if (!existingType.isAssignableFrom(columnType)
 					|| existingColumnIsIndexed != fieldIsIndexed) {
@@ -1090,49 +1095,49 @@ public class CqlPersistor implements Persistor {
 		 */
 
 		// process indexes
-		String keyspaceName = entityMetadata.getSchemaName();
-		String tableName = entityMetadata.getTableName();
+		final String keyspaceName = entityMetadata.getSchemaName();
+		final String tableName = entityMetadata.getTableName();
 
-		Set<String> requiredIndexes = getRequiredIndexedFields(entityMetadata);
+		final Set<String> requiredIndexes = getRequiredIndexedFields(entityMetadata);
 
-		Set<String> existingIndexes = new HashSet<>(Collections2.transform(
+		final Set<String> existingIndexes = new HashSet<>(Collections2.transform(
 				Collections2.filter(existingTable.getColumns(),
 						new Predicate<ColumnMetadata>() {
 							@Override
-							public boolean apply(ColumnMetadata cmd) {
+							public boolean apply(final ColumnMetadata cmd) {
 								return cmd.getIndex() != null;
 							}
 						}), new Function<ColumnMetadata, String>() {
 					@Override
-					public String apply(ColumnMetadata cmd) {
+					public String apply(final ColumnMetadata cmd) {
 						return cmd.getName();
 					}
 				}));
 
 		// find missing indexes
-		Set<String> missingIndexes = new HashSet<>(requiredIndexes);
+		final Set<String> missingIndexes = new HashSet<>(requiredIndexes);
 		missingIndexes.removeAll(existingIndexes);
 
-		for (String column : missingIndexes) {
+		for (final String column : missingIndexes) {
 			queryHandler.apply(CommandBuilder.createIndex().in(keyspaceName)
 					.named(createIndexName(keyspaceName, tableName, column))
 					.on(tableName).column(column));
 		}
 
 		// find redundant indexes
-		Set<String> redundantIndexes = new HashSet<>(existingIndexes);
+		final Set<String> redundantIndexes = new HashSet<>(existingIndexes);
 		redundantIndexes.removeAll(requiredIndexes);
 
-		for (String column : redundantIndexes) {
+		for (final String column : redundantIndexes) {
 			queryHandler.apply(CommandBuilder.dropIndex().named(
 					createIndexName(keyspaceName, tableName, column)));
 		}
 
 	}
 
-	private <E> void handle(Function<Query, Void> queryHandler,
-			AlterTable command, EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	private <E> void handle(final Function<Query, Void> queryHandler,
+			final AlterTable command, final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		queryHandler.apply(command.named(entityMetadata.getTableName())
 				.in(entityMetadata.getSchemaName()).with(properties));
 	}
@@ -1150,15 +1155,15 @@ public class CqlPersistor implements Persistor {
 	 * @param column
 	 * @return unique index name
 	 */
-	private String createIndexName(String keyspace, String table, String column) {
+	private String createIndexName(final String keyspace, final String table, final String column) {
 		return Joiner.on('_').join(keyspace, table, column.replaceAll("[^a-zA-Z_]", "_"), "index");
 	}
 
 	@SuppressWarnings("unchecked")
-	private <E> Class<E> getEntityClass(E entity) {
-		ObjectWrapperFactory<E> wf = getObjectWrapperFactory((Class<E>) entity
+	private <E> Class<E> getEntityClass(final E entity) {
+		final ObjectWrapperFactory<E> wf = getObjectWrapperFactory((Class<E>) entity
 				.getClass());
-		E obj = wf.isWrapped(entity) ? wf.unwrap(entity) : entity;
+		final E obj = wf.isWrapped(entity) ? wf.unwrap(entity) : entity;
 		return (Class<E>) obj.getClass();
 	}
 
@@ -1175,40 +1180,40 @@ public class CqlPersistor implements Persistor {
 	 * @return
 	 */
 	private <E> Set<String> getRequiredIndexedFields(
-			EntityMetadata<E> entityMetadata) {
-		Set<String> requiredIndexes = new HashSet<>();
+			final EntityMetadata<E> entityMetadata) {
+		final Set<String> requiredIndexes = new HashSet<>();
 
-		for (IndexMetadata<E> imd : entityMetadata.getIndexes()) {
+		for (final IndexMetadata<E> imd : entityMetadata.getIndexes()) {
 			requiredIndexes.addAll(Collections2.transform(
 					Arrays.asList(imd.getField()),
 					new Function<FieldMetadata<E, ? extends Object, ? extends Object>, String>() {
 						@Override
 						public String apply(
-								FieldMetadata<E, ? extends Object, ? extends Object> fmd) {
+								final FieldMetadata<E, ? extends Object, ? extends Object> fmd) {
 							return fmd.getColumn();
 						}
 					}));
 		}
 		
 		// Add indexes created for inherited entities 
-		for (FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+		for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
 			final String column = fmd.getColumn();
 			if (column != null && (fmd.isDiscriminator() || fmd.isJoiner())) {
 				requiredIndexes.add(column);
 			}
 		}
 		
-		String tableName = entityMetadata.getTableName();
-		Class<E> clazz = entityMetadata.getEntityType();
+		final String tableName = entityMetadata.getTableName();
+		final Class<E> clazz = entityMetadata.getEntityType();
 		
-		for (EntityMetadata<?> e : context.getEntityMetadata()) {
-			Class<?> c = e.getEntityType();
+		for (final EntityMetadata<?> e : context.getEntityMetadata()) {
+			final Class<?> c = e.getEntityType();
 
-			FieldMetadata<?, ?, ?> fpk = e.getPrimaryKey();
+			final FieldMetadata<?, ?, ?> fpk = e.getPrimaryKey();
 			if (fpk == null) {
 				continue;
 			}
-			String pkColumn = fpk.getColumn();
+			final String pkColumn = fpk.getColumn();
 			if (pkColumn == null) {
 				continue;
 			}
@@ -1220,8 +1225,8 @@ public class CqlPersistor implements Persistor {
 			
 			// add indexes for PK of super classes if each class is stored in separate table
 			if (c.isAssignableFrom(clazz) && !clazz.equals(c)) {
-				FieldMetadata<?, ?, ?> parentForeignKey = entityMetadata.getFieldByName(fpk.getName());
-				String fkColumn = parentForeignKey.getColumn();
+				final FieldMetadata<?, ?, ?> parentForeignKey = entityMetadata.getFieldByName(fpk.getName());
+				final String fkColumn = parentForeignKey.getColumn();
 				if (fkColumn == null) {
 					continue;
 				}
@@ -1246,13 +1251,13 @@ public class CqlPersistor implements Persistor {
 	 * @param entity
 	 * @return
 	 */
-	private <E> boolean belongsTo(FieldMetadata<E, ?, ?> fmd, E entity) {
+	private <E> boolean belongsTo(final FieldMetadata<E, ?, ?> fmd, final E entity) {
 		// TODO: should we perform some more sanity tests here based on discriminator column?
 		return fmd.getClassType().isAssignableFrom(entity.getClass());
 	}
 
-	private <E, F> boolean isDefaultValue(FieldMetadata<E, F, ?> fmd, F value) {
-		Class<F> type = fmd.getType();
+	private <E, F> boolean isDefaultValue(final FieldMetadata<E, F, ?> fmd, final F value) {
+		final Class<F> type = fmd.getType();
 		if (!type.isPrimitive()) {
 			return value == null;
 		}

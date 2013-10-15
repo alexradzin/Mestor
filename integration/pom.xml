@@ -24,19 +24,19 @@
 			<artifactId>mestor-entity-manager</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.mestor</groupId>
 			<artifactId>mestor-interoperability</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.mestor</groupId>
 			<artifactId>mestor-cql-persistence</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
-		
+
 		<!-- JPA -->
 		<dependency>
 			<groupId>org.eclipse.persistence</groupId>
