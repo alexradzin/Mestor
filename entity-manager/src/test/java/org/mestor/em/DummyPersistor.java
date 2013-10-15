@@ -17,6 +17,7 @@
 
 package org.mestor.em;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.mestor.context.Persistor;
@@ -26,49 +27,49 @@ import org.mestor.wrap.ObjectWrapperFactory;
 public class DummyPersistor implements Persistor {
 
 	@Override
-	public <T> void store(T entity) {
+	public <T> void store(final T entity) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public <T, P> T fetch(Class<T> entityClass, P primaryKey) {
+	public <T, P> T fetch(final Class<T> entityClass, final P primaryKey) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> void remove(T entity) {
+	public <T> void remove(final T entity) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public <T> boolean exists(Class<T> entityClass, Object primaryKey) {
+	public <T> boolean exists(final Class<T> entityClass, final Object primaryKey) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
-	public <T> Object[] fetchProperty(T entity, String... propertyNames) {
+	public <T> Object[] fetchProperty(final T entity, final String... propertyNames) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory(Class<T> type) {
+	public <T> ObjectWrapperFactory<T> getObjectWrapperFactory(final Class<T> type) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public void createSchema(String name, Map<String, Object> properties) {
+	public void createSchema(final String name, final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void dropSchema(String name) {
+	public void dropSchema(final String name) {
 		// TODO Auto-generated method stub
 
 	}
@@ -80,49 +81,55 @@ public class DummyPersistor implements Persistor {
 	}
 
 	@Override
-	public void useSchema(String name) {
+	public void useSchema(final String name) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public <E> void createTable(EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	public <E> void createTable(final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public <E> void updateTable(EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	public <E> void updateTable(final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public <E> void validateTable(EntityMetadata<E> entityMetadata,
-			Map<String, Object> properties) {
+	public <E> void validateTable(final EntityMetadata<E> entityMetadata,
+			final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public <E> void dropTable(String keyspace, String tableName) {
+	public <E> void dropTable(final String keyspace, final String tableName) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public Iterable<String> getTableNames(String keyspace) {
+	public Iterable<String> getTableNames(final String keyspace) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria) {
+	public <T, P> T fetch(final Class<T> entityClass, final Map<String, Object> criteria) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
+	
+	@Override
+	public Collection<Class<?>> getNativeTypes() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 }

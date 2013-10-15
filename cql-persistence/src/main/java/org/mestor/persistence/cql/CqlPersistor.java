@@ -55,6 +55,7 @@ import org.mestor.metadata.ValueConverter;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
 import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
+import org.mestor.persistence.cql.management.CommandHelper;
 import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
 import org.mestor.reflection.ClassAccessor;
@@ -1275,5 +1276,10 @@ public class CqlPersistor implements Persistor {
 			return ((Boolean)value).booleanValue() == false;
 		}
 		return false;
+	}
+	
+	@Override
+	public Collection<Class<?>> getNativeTypes() {
+		return CommandHelper.getCassandraTypes().keySet();
 	}
 }

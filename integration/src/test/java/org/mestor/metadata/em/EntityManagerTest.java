@@ -17,6 +17,9 @@
 package org.mestor.metadata.em;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import java.util.Date;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
@@ -24,41 +27,83 @@ import javax.persistence.Persistence;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mestor.em.MestorProperties;
+import org.mestor.entities.SimpleFieldsProperty;
 import org.mestor.entities.annotated.SimpleProperty;
 
 public class EntityManagerTest {
 
-	
+	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
+		System.setProperty(MestorProperties.PERSISTENCE_XML.key(),
+				persistenceXmlLocation);
+		return Persistence.createEntityManagerFactory(puName)
+				.createEntityManager();
+	}
+
 	@Test
-	public void testSimplePropertyManipulation(){
-		final String persistenceXmlLocation = "simple_property.xml";
-		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
-		final EntityManager em = Persistence.createEntityManagerFactory("simple_property").createEntityManager();
-		
+	public void testSimplePropertyManipulation() {
+		final EntityManager em = getEntityManager("simple_property.xml", "simple_property");
+
 		final SimpleProperty sp = new SimpleProperty();
 		sp.setName("name");
 		sp.setType(String.class);
 		sp.setValue("value");
 		em.persist(sp);
-		findAndCheck(em, sp);
-		
+		findAndCheckSimpleProperty(em, sp);
+
 		sp.setValue("merge");
 		em.persist(sp);
-		findAndCheck(em, sp);
+		findAndCheckSimpleProperty(em, sp);
+
+		em.remove(sp);
+		final SimpleProperty spDb = em.find(SimpleProperty.class, sp.getName());
+		assertNull(spDb);
 	}
 
-	private void findAndCheck(final EntityManager em, final SimpleProperty sp) {
+	private void findAndCheckSimpleProperty(final EntityManager em,
+			final SimpleProperty sp) {
 		final SimpleProperty spDb = em.find(SimpleProperty.class, sp.getName());
 		assertEquals(sp.getName(), spDb.getName());
 		assertEquals(sp.getType(), spDb.getType());
 		assertEquals(sp.getValue(), spDb.getValue());
 	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testWrongFile() {
+		getEntityManager("wrong_file.xml", "wrong");
+	}
 	
+	@Test(expected = IllegalArgumentException.class)
+	public void testWrongPu() {
+		getEntityManager("wrong.xml", "wrong_pu");
+	}
+	
+	@Test(expected = IllegalArgumentException.class)
+	public void testWrongClass() {
+		getEntityManager("wrong.xml", "wrong_class");
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testWrongHost() {
+		getEntityManager("wrong.xml", "wrong_host");
+	}
+	
+	@Test
+	public void testSimpleFieldsProperty() {
+		final EntityManager em = getEntityManager("simple_fields_property.xml", "simple_fields_property");
+		for (int i = 0; i < 1000; i++) {
+			final SimpleFieldsProperty sfp = new SimpleFieldsProperty();
+			sfp.setId(Long.valueOf(i));
+			sfp.setName(String.valueOf(i));
+			sfp.setDate(new Date());
+			em.persist(sfp);
+		}
+	}
+
 	@Ignore
 	@Test
-	public void testStartEntityManager(){
-		final String persistenceXmlLocation = "persistence.xml";
-		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
-		Persistence.createEntityManagerFactory("integration_test").createEntityManager();
+	public void testStartEntityManager() {
+		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
+		// TODO: finish him
 	}
+
 }

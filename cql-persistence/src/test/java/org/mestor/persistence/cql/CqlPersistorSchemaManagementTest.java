@@ -41,6 +41,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.apache.cassandra.locator.NetworkTopologyStrategy;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mestor.cassandra.CassandraAwareTestRunner;
@@ -124,6 +125,7 @@ public class CqlPersistorSchemaManagementTest {
 	/**
 	 * This test sends empty properties when creating keyspace. This is illegal, so exception is expected.
 	 */
+	@Ignore
 	@Test(expected = SyntaxError.class)
 	public void testCreateSchemaWithout() {
 		helper.testCreateSchema("test1", Collections.<String, Object>emptyMap(), true);

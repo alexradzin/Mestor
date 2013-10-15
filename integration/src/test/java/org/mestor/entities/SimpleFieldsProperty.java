@@ -1,3 +1,5 @@
+package org.mestor.entities;
+
 /******************************************************************************************************/
 /*                                                                                                    */
 /*    Infinidat Ltd.  -  Proprietary and Confidential Material                                        */
@@ -15,19 +17,41 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+import java.util.Date;
 
-import java.util.Collection;
-import java.util.Map;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 
-import org.mestor.metadata.EntityMetadata;
+@Entity
+public class SimpleFieldsProperty {
+	@Id
+	private Long id;
 
-public interface EntityContext {
-	public Map<String, Object> getProperties();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
+	private String name;
+
+	private Date date;
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(final Long id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(final String name) {
+		this.name = name;
+	}
+
+	public Date getDate() {
+		return date;
+	}
+
+	public void setDate(final Date date) {
+		this.date = date;
+	}
 }

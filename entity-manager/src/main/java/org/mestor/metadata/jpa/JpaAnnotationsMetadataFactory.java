@@ -710,6 +710,12 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			final Class<AttributeConverter<F, C>> converterClass = convert.converter();
 			return Collections.<AttributeConverter<?, ?>>singletonList(createConverterInstance(converterClass, fmeta.getType()));
 		}
+		
+		final Collection<Class<?>> nativeTypes = entityContext.getNativeTypes();
+		if(nativeTypes.contains(type)){
+			return null;
+		}
+		
 		if (type.isEnum()) {
 			final Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>)type;
 			final Enumerated enumerated = fmeta.getAccessor().getAnnotation(Enumerated.class);

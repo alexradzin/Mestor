@@ -1,5 +1,6 @@
 package org.mestor.context;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.mestor.metadata.EntityMetadata;
@@ -28,4 +29,6 @@ public interface Persistor {
 	public Iterable<String> getTableNames(String keyspace);
 	
 	public final static ThreadLocal<Map<Object, Object>> fetchContext = new ThreadLocal<>();
+	
+	public Collection<Class<?>> getNativeTypes();
 }

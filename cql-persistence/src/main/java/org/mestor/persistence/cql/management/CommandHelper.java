@@ -23,6 +23,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,71 +48,75 @@ import com.google.common.primitives.Primitives;
 
 public class CommandHelper {
 	private final static Pattern capitalLetter = Pattern.compile("[A-Z]");
-	private final static Map<Class<?>, AbstractType<?>> cassandraTypes = new HashMap<>();
+	private final static Map<Class<?>, AbstractType<?>> cassandraTypes;
 	static {
-		initTypeMapping();
+		cassandraTypes = Collections.unmodifiableMap(initTypeMapping());
 	}
 	
+	public static Map<Class<?>, AbstractType<?>> getCassandraTypes() {
+		return cassandraTypes;
+	}
 	
-	private static void initTypeMapping() {
-		for (Native nativeType : Native.values()) {
-			AbstractType<?> cassandraType = nativeType.getType();
+	private static Map<Class<?>, AbstractType<?>> initTypeMapping() {
+		final Map<Class<?>, AbstractType<?>> cassandraTypesTmp = new HashMap<>();
+		for (final Native nativeType : Native.values()) {
+			final AbstractType<?> cassandraType = nativeType.getType();
 			
-			Class<?> type = null;
-			for (type = cassandraType.getClass(); type != null && !AbstractType.class.equals(type.getSuperclass()); type = type.getSuperclass()) {
-				// empty loop body. This loop is looking for the direct subclass of AbstractType,
-				// so the logic is coded into the loop header
+			Class<?> type = cassandraType.getClass();
+			while(type != null && !AbstractType.class.equals(type.getSuperclass())){ 
+				type = type.getSuperclass();
 			}
 			// if type is null here NullPointerException will be thrown. 
-			Type abstractType = type.getGenericSuperclass(); 
+			final Type abstractType = type.getGenericSuperclass(); 
 			
-			Class<?> clazz = (Class<?>)((ParameterizedType)abstractType).getActualTypeArguments()[0];
-			cassandraTypes.put(clazz, cassandraType);
+			final Class<?> clazz = (Class<?>)((ParameterizedType)abstractType).getActualTypeArguments()[0];
+			cassandraTypesTmp.put(clazz, cassandraType);
 		}
 
 		// define some mappings explicitly to avoid ambiguity.   
-		cassandraTypes.put(UUID.class, Native.UUID.getType());
-		cassandraTypes.put(String.class, Native.TEXT.getType());
-		cassandraTypes.put(Long.class, Native.BIGINT.getType());
-		cassandraTypes.put(BigInteger.class, Native.BIGINT.getType());
-		cassandraTypes.put(BigDecimal.class, Native.DECIMAL.getType());
+		cassandraTypesTmp.put(UUID.class, Native.UUID.getType());
+		cassandraTypesTmp.put(String.class, Native.TEXT.getType());
+		cassandraTypesTmp.put(Long.class, Native.BIGINT.getType());
+		cassandraTypesTmp.put(BigInteger.class, Native.BIGINT.getType());
+		cassandraTypesTmp.put(BigDecimal.class, Native.DECIMAL.getType());
 		
 		
-		cassandraTypes.put(byte[].class, Native.BLOB.getType());
-		cassandraTypes.put(Byte[].class, Native.BLOB.getType());
+		cassandraTypesTmp.put(byte[].class, Native.BLOB.getType());
+		cassandraTypesTmp.put(Byte[].class, Native.BLOB.getType());
 
 		// define collection types
-		cassandraTypes.put(List.class, ListType.getInstance((AbstractType<?>)null));
-		cassandraTypes.put(Set.class, SetType.getInstance((AbstractType<?>)null));
-		cassandraTypes.put(Map.class, MapType.getInstance(null, null));
+		cassandraTypesTmp.put(List.class, ListType.getInstance((AbstractType<?>)null));
+		cassandraTypesTmp.put(Set.class, SetType.getInstance((AbstractType<?>)null));
+		cassandraTypesTmp.put(Map.class, MapType.getInstance(null, null));
 
 		// find all primitive wrappers and create additional mapping for corresponding primitives
 		// wrap entry set with HashSet to avoid ConcurrentModificationException when adding entries while iterating over the map.
-		for (Entry<Class<?>, AbstractType<?>> entry : new HashSet<Entry<Class<?>, AbstractType<?>>>(cassandraTypes.entrySet())) {
-			Class<?> mappedClass = entry.getKey();
+		for (final Entry<Class<?>, AbstractType<?>> entry : new HashSet<Entry<Class<?>, AbstractType<?>>>(cassandraTypesTmp.entrySet())) {
+			final Class<?> mappedClass = entry.getKey();
 			if (Primitives.isWrapperType(mappedClass)) {
-				cassandraTypes.put(Primitives.unwrap(mappedClass), entry.getValue());
+				cassandraTypesTmp.put(Primitives.unwrap(mappedClass), entry.getValue());
 			}
 		}
 
 		// define array as list. 
-		cassandraTypes.put(Object[].class, ListType.getInstance((AbstractType<?>)null));
+		cassandraTypesTmp.put(Object[].class, ListType.getInstance((AbstractType<?>)null));
+		return cassandraTypesTmp;
 	}
 	
 	// quote
-	public static String fullname(String keyspace, String name) {
+	public static String fullname(final String keyspace, final String name) {
 		return keyspace == null ? name : quote(keyspace) + "." + quote(name);
 	}
 	
 	
-	static String createQueryString(String[] tokens, Map<String, Object> with) {
-		StringBuilder buf = new StringBuilder();
+	static String createQueryString(final String[] tokens, final Map<String, Object> with) {
+		final StringBuilder buf = new StringBuilder();
 		Joiner.on(" ").skipNulls().appendTo(buf, tokens);
 		if (with != null && !with.isEmpty()) {
 			buf.append(" ").append("WITH").append(" ");
-			int n = with.size();
+			final int n = with.size();
 			int i = 0;
-			for (Entry<String, Object> prop : with.entrySet()) {
+			for (final Entry<String, Object> prop : with.entrySet()) {
 				buf.append(" ").append(prop.getKey()).append("=").append(formatValue(prop.getValue()));
 				if (i < n - 1) {
 					buf.append(" AND ");
@@ -128,11 +133,11 @@ public class CommandHelper {
 //	}
 	
 	
-	private static String formatValue(Object value) {
+	private static String formatValue(final Object value) {
 		if (value == null) {
 			return null;
 		}
-		Class<?> type = value.getClass();
+		final Class<?> type = value.getClass();
 		if (CharSequence.class.isAssignableFrom(type)) {
 			return "'" + value + "'";
 		}
@@ -140,27 +145,27 @@ public class CommandHelper {
 			return value.toString();
 		}
 		if (Map.class.isAssignableFrom(type)) {
-			Map<?,?> mapvalue = (Map<?,?>)value;
+			final Map<?,?> mapvalue = (Map<?,?>)value;
 			return formatValue(mapvalue);
 		}
 		throw new IllegalArgumentException(String.valueOf(value));
 	}
 
 	
-	private static String formatValue(Map<?,?> mapvalue) {
+	private static String formatValue(final Map<?,?> mapvalue) {
 		try {
 			// use JSON format but replace " by ' as it is required by CQL syntax.
 			return new ObjectMapper().writeValueAsString(mapvalue).replace('\"', '\'');
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			throw new IllegalArgumentException(String.valueOf(mapvalue), e);
 		}
 	}
 	
 	
 	@SuppressWarnings("unchecked")
-	public static <T> AbstractType<T> toCassandraType(Class<?> clazz) {
+	public static <T> AbstractType<T> toCassandraType(final Class<?> clazz) {
 		// first try to find the direct mapping 
-		AbstractType<T> cassandraType = (AbstractType<T>)cassandraTypes.get(clazz);
+		final AbstractType<T> cassandraType = (AbstractType<T>)cassandraTypes.get(clazz);
 
 		if (cassandraType != null) {
 			return cassandraType;
@@ -168,8 +173,8 @@ public class CommandHelper {
 		
 		
 		// direct mapping is not found. Try to find mapping of base class or interface
-		for (Entry<Class<?>, AbstractType<?>> entry : cassandraTypes.entrySet()) {
-			Class<?> mappedClass = entry.getKey();
+		for (final Entry<Class<?>, AbstractType<?>> entry : cassandraTypes.entrySet()) {
+			final Class<?> mappedClass = entry.getKey();
 			if (mappedClass.isAssignableFrom(clazz)) {
 				return (AbstractType<T>)entry.getValue(); 
 			}
@@ -179,7 +184,7 @@ public class CommandHelper {
 		throw new IllegalArgumentException(clazz == null ? null : clazz.getName());
 	}
 	
-	public static CQL3Type toCqlType(Class<?> clazz, Class<?> ... generics) {
+	public static CQL3Type toCqlType(final Class<?> clazz, final Class<?> ... generics) {
 		AbstractType<?> cassandraType = toCassandraType(clazz);
 
 		if (cassandraType == null) {
@@ -216,14 +221,14 @@ public class CommandHelper {
 	 * @param name
 	 * @return quoted name if needed
 	 */
-	public static String quote(String name) {
+	public static String quote(final String name) {
 		return capitalLetter.matcher(name).find() ? "\"" + name + "\"" : name;
 	}
 	
-	public static Collection<String> quote(Collection<String> strings) {
+	public static Collection<String> quote(final Collection<String> strings) {
 		return Collections2.transform(strings, new Function<String, String>() {
 			@Override
-			public String apply(String s) {
+			public String apply(final String s) {
 				return quote(s);
 			}
 		});

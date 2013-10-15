@@ -84,10 +84,11 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		
 		final Map<String, Object> allParams = getAllParameters(info, properties);
 		
+		persistor = createPersistor(info, properties, allParams);
+		
 		this.entityClasses = new HashMap<>();
 		fillEntityClasses(info, properties, allParams);
 		open = true;
-		persistor = createPersistor(info, properties, allParams);
 		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
 	}
 
@@ -667,5 +668,10 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	public <T> List<EntityGraph<? super T>> getEntityGraphs(final Class<T> entityClass) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public Collection<Class<?>> getNativeTypes() {
+		return persistor.getNativeTypes();
 	}
 }

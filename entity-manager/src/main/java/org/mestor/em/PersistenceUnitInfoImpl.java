@@ -17,6 +17,7 @@
 
 package org.mestor.em;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
@@ -181,29 +182,27 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo {
 		};
 	}
 	
-	private void parsePersistenceXml(final String name) {
+	private void parsePersistenceXml(final String puName) {
 		final String persistenceXmlResource = MestorProperties.PERSISTENCE_XML.value(params);
-		final InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(persistenceXmlResource);
-		if (in == null) {
-			return;
-		}
-		
-		try {
+		try(
+				final InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(persistenceXmlResource)
+			){
+			if (in == null) {
+				return;
+			}
 			final JAXBContext jaxbContext = JAXBContext.newInstance(Persistence.class.getPackage().getName());
 			final Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
 			final Persistence persistence = (Persistence) jaxbUnmarshaller.unmarshal(in);
 			
 			// find current persistence unit
 			for (final PersistenceUnit pu : persistence.getPersistenceUnit()) {
-				if (name.equals(pu.getName())) {
+				if (puName.equals(pu.getName())) {
 					persistenceUnit = pu;
-					break;
+					return;
 				}
 			}
-			
-			
-			
-		} catch (final JAXBException e) {
+			throw new IllegalArgumentException("persistence.xml doesn't containe defined persistence unit element: " + puName);
+		} catch (final JAXBException | IOException e) {
 			throw new IllegalStateException("Parsing of persistence.xml located at " + persistenceXmlResource + " failed ", e);
 		}
 	}
