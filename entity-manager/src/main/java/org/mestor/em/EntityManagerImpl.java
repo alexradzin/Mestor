@@ -63,6 +63,7 @@ import org.mestor.metadata.jpa.NamingStrategy;
 import org.mestor.wrap.ObjectWrapperFactory;
 
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Primitives;
 
 //TODO use setProperty() (introduced in JPA 2.0) method for initialization
 public class EntityManagerImpl implements EntityManager, EntityContext {
@@ -73,14 +74,14 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	
 	private FlushModeType flushMode;
 	
-	private Persistor persistor; 
+	private final Persistor persistor; 
 	
 	
-	public EntityManagerImpl(PersistenceUnitInfo info, Map<String, Object> properties, Class<?>... classes) {
+	public EntityManagerImpl(final PersistenceUnitInfo info, final Map<String, Object> properties, final Class<?>... classes) {
 		this.info = info;
 		this.properties = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(properties));
 		
-		Map<String, Object> allParams = getAllParameters(info, properties);
+		final Map<String, Object> allParams = getAllParameters(info, properties);
 		
 		this.entityClasses = getEntityClasses(info, properties, allParams);
 		open = true;
@@ -101,31 +102,31 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 
 	@Override
-	public Query createNamedQuery(String name) {
+	public Query createNamedQuery(final String name) {
 		checkOpen();
 		return null;
 	}
 
 	@Override
-	public Query createNativeQuery(String sqlString) {
+	public Query createNativeQuery(final String sqlString) {
 		checkOpen();
 		return null;
 	}
 
 	@Override
-	public Query createNativeQuery(String sqlString, @SuppressWarnings("rawtypes") Class resultClass) {
+	public Query createNativeQuery(final String sqlString, @SuppressWarnings("rawtypes") final Class resultClass) {
 		checkOpen();
 		return null;
 	}
 
 	@Override
-	public Query createNativeQuery(String sqlString, String resultSetMapping) {
+	public Query createNativeQuery(final String sqlString, final String resultSetMapping) {
 		checkOpen();
 		return null;
 	}
 
 	@Override
-	public Query createQuery(String qlString) {
+	public Query createQuery(final String qlString) {
 		checkOpen();
 		return null;
 	}
@@ -144,7 +145,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
      *    entity's primary key
      */
 	@Override
-	public <T> T find(Class<T> entityClass, Object primaryKey) {
+	public <T> T find(final Class<T> entityClass, final Object primaryKey) {
 		checkOpen();
 		checkEntityClass(entityClass);
 		checkPrimaryKey(entityClass, primaryKey);		
@@ -157,12 +158,12 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
     *    cannot be accessed
 	 */
 	@Override
-	public <T> T getReference(Class<T> entityClass, Object primaryKey) {
+	public <T> T getReference(final Class<T> entityClass, final Object primaryKey) {
 		checkOpen();
 		checkEntityClass(entityClass);
 		checkPrimaryKey(entityClass, primaryKey);
 		
-		boolean exists =  persistor.exists(entityClass, primaryKey);
+		final boolean exists =  persistor.exists(entityClass, primaryKey);
 		if (exists) {
 			return getObjectWrapperFactory(entityClass).makeLazy(entityClass, primaryKey);
 		}
@@ -173,13 +174,14 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	
 	
 	@Override
-	public boolean contains(Object entity) {
+	public boolean contains(final Object entity) {
 		checkOpen();
 		
-		Class<?> entityClass = entity.getClass();
+		final Class<?> entityClass = entity.getClass();
 		checkEntityClass(entityClass);
 		
 		@SuppressWarnings({ "rawtypes", "unchecked" })
+		final
 		Object primaryKey = new EntityMetadata(entityClass).getPrimaryKey().getAccessor().getValue(entity);
 		return persistor.exists(entityClass, primaryKey);
 	}
@@ -223,12 +225,12 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	@Override
-	public void lock(Object entity, LockModeType lockMode) {
+	public void lock(final Object entity, final LockModeType lockMode) {
 		throw new UnsupportedOperationException("Locking is not supported");
 	}
 
 	@Override
-	public <T> T merge(T entity) {
+	public <T> T merge(final T entity) {
 		checkOpen();
 		if (!contains(entity)) {
 			throw new IllegalArgumentException(entity + " is not an entity or is removed entity");
@@ -239,43 +241,45 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	@Override
-	public void persist(Object entity) {
+	public void persist(final Object entity) {
 		checkOpen();
 		persistor.store(entity);
 	}
 
 	@Override
-	public void refresh(Object entity) {
+	public void refresh(final Object entity) {
 		doRefresh(entity);
 	}
 	
 
-	private <E> void doRefresh(E entity) {
+	private <E> void doRefresh(final E entity) {
 		@SuppressWarnings("unchecked")
+		final
 		Class<E> clazz = (Class<E>)entity.getClass();
-		EntityMetadata<E> emd = getEntityMetadata(clazz);
-		E existing = find(entity);
+		final EntityMetadata<E> emd = getEntityMetadata(clazz);
+		final E existing = find(entity);
 		emd.copy(existing, entity);
 	}
 	
 	
 	
-	private <E> E find(E entity) {
+	private <E> E find(final E entity) {
 		@SuppressWarnings("unchecked")
+		final
 		Class<E> clazz = (Class<E>)entity.getClass();
-		EntityMetadata<E> emd = getEntityMetadata(clazz);
-		Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
+		final EntityMetadata<E> emd = getEntityMetadata(clazz);
+		final Object primaryKey = emd.getPrimaryKey().getAccessor().getValue(entity);
 		return find(clazz, primaryKey);
 	}
 
 	@Override
-	public void remove(Object entity) {
+	public void remove(final Object entity) {
 		checkOpen();
 		persistor.remove(entity);
 	}
 
 	@Override
-	public void setFlushMode(FlushModeType flushMode) {
+	public void setFlushMode(final FlushModeType flushMode) {
 		this.flushMode = flushMode;
 	}
 
@@ -285,8 +289,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 	}
 	
-	private <T> void checkEntityClass(Class<T> entityClass) {
+	private <T> void checkEntityClass(final Class<T> entityClass) {
 		@SuppressWarnings("unchecked")
+		final
 		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
 		
 		if (emeta == null) {
@@ -294,41 +299,49 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 	}
 	
-	public <T> void checkPrimaryKey(Class<T> entityClass, Object primaryKey) {
+	public <T> void checkPrimaryKey(final Class<T> entityClass, final Object primaryKey) {
 		@SuppressWarnings("unchecked")
+		final
 		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
 		
-		FieldMetadata<?, ?, ?> pkMeta = emeta.getPrimaryKey();
+		final FieldMetadata<?, ?, ?> pkMeta = emeta.getPrimaryKey();
 		if (pkMeta == null) {
 			throw new IllegalStateException("Unable to retrieve entity " + entityClass + " using primary key because it does not have primary key");
 		}
 		
-		Class<?> pkType = emeta.getEntityType();
+		final Class<?> pkType = emeta.getEntityType();
 		if (primaryKey == null) {
 			if (!pkMeta.isNullable()) {
 				throw new IllegalArgumentException("Unable to retrieve entity " + entityClass + " using null primary key because it is not nullable");
 			}
 		} else {
-			if (!pkType.isAssignableFrom(primaryKey.getClass())) {
+			if (!compareTypes(pkType, primaryKey.getClass())) {
 				throw new IllegalArgumentException("Class " + primaryKey.getClass() + " is not compatible with primary key " + pkType + " for class " + entityClass);
 			}
 		}
+	}
+	
+	private boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
+		if(!declaredType.isAssignableFrom(actualType)){
+			return false;
+		}
+		return declaredType.isPrimitive() && declaredType.equals(Primitives.unwrap(actualType));
 	}
 	
 	
 	
 	
 
-	private Map<Class<?>, EntityMetadata<?>> getEntityClasses(PersistenceUnitInfo info, Map<String, Object> properties, Map<String, Object> allParams) {
+	private Map<Class<?>, EntityMetadata<?>> getEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
 		ClassLoader cl = info.getClassLoader();
-		List<URL> jarFiles = info.getJarFileUrls();
-		String puName = info.getPersistenceUnitName();
+		final List<URL> jarFiles = info.getJarFileUrls();
+		final String puName = info.getPersistenceUnitName();
 		//URL puRoot = info.getPersistenceUnitRootUrl();
 		
-		List<String> packages = MANAGED_CLASS_PACKAGE.value(allParams); 
+		final List<String> packages = MANAGED_CLASS_PACKAGE.value(allParams); 
 		
-		List<String> mgmtClassNames = info.getManagedClassNames();
-		boolean excludeUnlistedClasses = info.excludeUnlistedClasses();
+		final List<String> mgmtClassNames = info.getManagedClassNames();
+		final boolean excludeUnlistedClasses = info.excludeUnlistedClasses();
 		
 		
 		if (cl == null) {
@@ -347,22 +360,22 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		
 		final MetadataFactory mdf;
 		try {
-			Class<MetadataFactory> mdfClass = METADATA_FACTORY_CLASS.value(allParams);
+			final Class<MetadataFactory> mdfClass = METADATA_FACTORY_CLASS.value(allParams);
 			//TODO: add support of different naming strategies for tables, entities, fields, columns, indexes etc. 
-			NamingStrategy namingStrategy = NAMING_STRATEGY.value(allParams);
+			final NamingStrategy namingStrategy = NAMING_STRATEGY.value(allParams);
 			mdf = mdfClass.newInstance();
 			mdf.setSchema(puName);
 			
 			setProperty(mdf, NamingStrategy.class, namingStrategy);
 			setProperty(mdf, EntityContext.class, this);
-		} catch (ReflectiveOperationException e) {
+		} catch (final ReflectiveOperationException e) {
 			throw new IllegalArgumentException(e);
 		}
 		
 		
-		Map<Class<?>, EntityMetadata<?>> class2metadata = new HashMap<>();
-		for (Class<?> c : cs.scan()) {
-			EntityMetadata<?> md = mdf.create(c);
+		final Map<Class<?>, EntityMetadata<?>> class2metadata = new HashMap<>();
+		for (final Class<?> c : cs.scan()) {
+			final EntityMetadata<?> md = mdf.create(c);
 			if (md == null) {
 				throw new IllegalArgumentException("Class " + c + " is not a JPA entity");
 			}
@@ -374,17 +387,18 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	
-	private <M extends MetadataFactory, P> void setProperty(M mdf, Class<P> parameterType, P parameterValue) {
+	private <M extends MetadataFactory, P> void setProperty(final M mdf, final Class<P> parameterType, final P parameterValue) {
 		@SuppressWarnings("unchecked")
+		final
 		Class<M> mdfClass = (Class<M>)mdf.getClass();
-		EntityMetadata<M> mdfemd = new EntityMetadata<>(mdfClass);
-		Collection<String> parameterFields = mdfemd.getFieldNamesByType(parameterType);
-		int n = parameterFields.size();
+		final EntityMetadata<M> mdfemd = new EntityMetadata<>(mdfClass);
+		final Collection<String> parameterFields = mdfemd.getFieldNamesByType(parameterType);
+		final int n = parameterFields.size();
 		if (n > 1) {
 			throw new IllegalStateException("Cannot set parameter of type " + parameterType + " to " + mdfClass + ": there are more than 1 properties of this type");
 		}
 		if(n == 1) {
-			String namingStrategyField = parameterFields.iterator().next();
+			final String namingStrategyField = parameterFields.iterator().next();
 			mdfemd.getField(namingStrategyField).getAccessor().setValue(mdf, parameterValue);
 		}
 		
@@ -392,14 +406,14 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 	
 	
-	private Persistor createPersistor(PersistenceUnitInfo info, Map<String, Object> properties, Map<String, Object> allParams) {
+	private Persistor createPersistor(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
 		
-		Map<Object, Object> map = new HashMap<>();
+		final Map<Object, Object> map = new HashMap<>();
 		map.putAll(info.getProperties());
 		map.putAll(properties);
 		
 		
-		Class<Persistor> clazz = PERSISTOR_CLASS.value(allParams);
+		final Class<Persistor> clazz = PERSISTOR_CLASS.value(allParams);
 		
 		if (clazz == null) {
 			throw new IllegalArgumentException("No persistor class configured");
@@ -413,9 +427,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		try {
 			try {
 				c = clazz.getConstructor(EntityContext.class);
-				Persistor persistor = c.newInstance(this);
+				final Persistor persistor = c.newInstance(this);
 				return persistor;
-			} catch (NoSuchMethodException e) {
+			} catch (final NoSuchMethodException e) {
 				try {
 					c = clazz.getConstructor();
 					return c.newInstance();
@@ -425,15 +439,15 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 							" argument or default constructor to be a " + Persistor.class);
 				}
 			}
-		} catch (ReflectiveOperationException e) {
+		} catch (final ReflectiveOperationException e) {
 			throw new IllegalStateException("Cannot create persistor " + clazz, e);
 		}
 	}
 	
-	private Map<String, Object> getAllParameters(PersistenceUnitInfo info, Map<String, Object> properties) {
-		Map<String, Object> all = new HashMap<>();
+	private Map<String, Object> getAllParameters(final PersistenceUnitInfo info, final Map<String, Object> properties) {
+		final Map<String, Object> all = new HashMap<>();
 		if (info != null && info.getProperties() != null) {
-			Properties infoProps = info.getProperties();
+			final Properties infoProps = info.getProperties();
 			if(infoProps != null) {
 				all.putAll(Maps.fromProperties(infoProps));
 			}
@@ -449,7 +463,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	 * Retrieves instance of {@link ObjectWrapperFactory}
 	 * @return object wrapper factory
 	 */
-	private <T> ObjectWrapperFactory<T> getObjectWrapperFactory(Class<T> entityClass) {
+	private <T> ObjectWrapperFactory<T> getObjectWrapperFactory(final Class<T> entityClass) {
 		return persistor.getObjectWrapperFactory(entityClass);
 	}
 
@@ -472,7 +486,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz) {
+	public <T> EntityMetadata<T> getEntityMetadata(final Class<T> clazz) {
 		return (EntityMetadata<T>)entityClasses.get(clazz);
 	}
 
@@ -487,115 +501,115 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	@Override
-	public <T> T find(Class<T> entityClass, Object primaryKey, Map<String, Object> properties) {
+	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> T find(Class<T> entityClass, Object primaryKey, LockModeType lockMode) {
+	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> T find(Class<T> entityClass, Object primaryKey, LockModeType lockMode, Map<String, Object> properties) {
+	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode, final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public void lock(Object entity, LockModeType lockMode, Map<String, Object> properties) {
+	public void lock(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void refresh(Object entity, Map<String, Object> properties) {
+	public void refresh(final Object entity, final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void refresh(Object entity, LockModeType lockMode) {
+	public void refresh(final Object entity, final LockModeType lockMode) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void refresh(Object entity, LockModeType lockMode, Map<String, Object> properties) {
+	public void refresh(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void detach(Object entity) {
+	public void detach(final Object entity) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public LockModeType getLockMode(Object entity) {
+	public LockModeType getLockMode(final Object entity) {
 		// TODO Auto-generated method stub
 		return LockModeType.NONE;
 	}
 
 	@Override
-	public void setProperty(String propertyName, Object value) {
+	public void setProperty(final String propertyName, final Object value) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public <T> TypedQuery<T> createQuery(CriteriaQuery<T> criteriaQuery) {
+	public <T> TypedQuery<T> createQuery(final CriteriaQuery<T> criteriaQuery) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Query createQuery(@SuppressWarnings("rawtypes") CriteriaUpdate updateQuery) {
+	public Query createQuery(@SuppressWarnings("rawtypes") final CriteriaUpdate updateQuery) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Query createQuery(@SuppressWarnings("rawtypes") CriteriaDelete deleteQuery) {
+	public Query createQuery(@SuppressWarnings("rawtypes") final CriteriaDelete deleteQuery) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> TypedQuery<T> createQuery(String qlString, Class<T> resultClass) {
+	public <T> TypedQuery<T> createQuery(final String qlString, final Class<T> resultClass) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> TypedQuery<T> createNamedQuery(String name, Class<T> resultClass) {
+	public <T> TypedQuery<T> createNamedQuery(final String name, final Class<T> resultClass) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public StoredProcedureQuery createNamedStoredProcedureQuery(String name) {
+	public StoredProcedureQuery createNamedStoredProcedureQuery(final String name) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public StoredProcedureQuery createStoredProcedureQuery(String procedureName) {
+	public StoredProcedureQuery createStoredProcedureQuery(final String procedureName) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public StoredProcedureQuery createStoredProcedureQuery(String procedureName, @SuppressWarnings("rawtypes") Class... resultClasses) {
+	public StoredProcedureQuery createStoredProcedureQuery(final String procedureName, @SuppressWarnings("rawtypes") final Class... resultClasses) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public StoredProcedureQuery createStoredProcedureQuery(String procedureName, String... resultSetMappings) {
+	public StoredProcedureQuery createStoredProcedureQuery(final String procedureName, final String... resultSetMappings) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -607,7 +621,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	@Override
-	public <T> T unwrap(Class<T> cls) {
+	public <T> T unwrap(final Class<T> cls) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -631,25 +645,25 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	@Override
-	public <T> EntityGraph<T> createEntityGraph(Class<T> rootType) {
+	public <T> EntityGraph<T> createEntityGraph(final Class<T> rootType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public EntityGraph<?> createEntityGraph(String graphName) {
+	public EntityGraph<?> createEntityGraph(final String graphName) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public EntityGraph<?> getEntityGraph(String graphName) {
+	public EntityGraph<?> getEntityGraph(final String graphName) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> List<EntityGraph<? super T>> getEntityGraphs(Class<T> entityClass) {
+	public <T> List<EntityGraph<? super T>> getEntityGraphs(final Class<T> entityClass) {
 		// TODO Auto-generated method stub
 		return null;
 	}
