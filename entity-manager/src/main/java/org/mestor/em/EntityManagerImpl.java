@@ -322,8 +322,8 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 	
 	private boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
-		if(!declaredType.isAssignableFrom(actualType)){
-			return false;
+		if(declaredType.isAssignableFrom(actualType)){
+			return true;
 		}
 		return declaredType.isPrimitive() && declaredType.equals(Primitives.unwrap(actualType));
 	}
