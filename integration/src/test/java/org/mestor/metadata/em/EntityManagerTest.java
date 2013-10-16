@@ -18,8 +18,10 @@ package org.mestor.metadata.em;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
@@ -27,16 +29,17 @@ import javax.persistence.Persistence;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mestor.em.MestorProperties;
+import org.mestor.entities.Child;
+import org.mestor.entities.Human;
+import org.mestor.entities.Parent;
 import org.mestor.entities.SimpleFieldsProperty;
 import org.mestor.entities.annotated.SimpleProperty;
 
 public class EntityManagerTest {
 
 	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
-		System.setProperty(MestorProperties.PERSISTENCE_XML.key(),
-				persistenceXmlLocation);
-		return Persistence.createEntityManagerFactory(puName)
-				.createEntityManager();
+		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
+		return Persistence.createEntityManagerFactory(puName).createEntityManager();
 	}
 
 	@Test
@@ -85,6 +88,37 @@ public class EntityManagerTest {
 	@Test(expected = IllegalStateException.class)
 	public void testWrongHost() {
 		getEntityManager("wrong.xml", "wrong_host");
+	}
+	
+	@Ignore
+	@Test
+	public void testCascade() {
+		final EntityManager em = getEntityManager("parent_child.xml", "parent_child");
+		final Parent parent = createParent(em, "Parent");
+		createChild(em, "Child", parent);
+		final Parent updatedParent = em.find(Parent.class, parent.getIdentifier());
+		assertTrue(updatedParent.getChildren() != null && updatedParent.getChildren().size() == 1);
+	}
+	
+	private Parent createParent(final EntityManager em, final String name) {
+		final Parent parent = new Parent();
+		setHumanProps(parent, name);
+		em.persist(parent);
+		return parent;
+	}
+
+	final AtomicLong idSequence = new AtomicLong();
+	private void setHumanProps(final Human parent, final String name) {
+		parent.setIdentifier((int)idSequence.incrementAndGet());
+		parent.setName(name);
+	}
+	
+	private Child createChild(final EntityManager em, final String name, final Parent parent) {
+		final Child child = new Child();
+		setHumanProps(child, name);
+		child.setParent(parent);
+		em.persist(child);
+		return child;
 	}
 	
 	@Test
