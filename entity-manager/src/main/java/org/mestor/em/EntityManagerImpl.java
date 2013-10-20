@@ -64,12 +64,13 @@ import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.MetadataFactory;
 import org.mestor.metadata.jpa.JpaAnnotatedClassScanner;
 import org.mestor.metadata.jpa.NamingStrategy;
+import org.mestor.persistence.metamodel.MetamodelImpl;
+import org.mestor.persistence.query.QueryImpl;
 import org.mestor.wrap.ObjectWrapperFactory;
 
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Primitives;
 
-//TODO use setProperty() (introduced in JPA 2.0) method for initialization
 public class EntityManagerImpl implements EntityManager, EntityContext {
 	private final PersistenceUnitInfo info;
 	private final EntityManagerFactory entityManagerFactory;
@@ -82,6 +83,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	private final Persistor persistor;
 
+	private final Metamodel metamodel;
 
 	public EntityManagerImpl(final PersistenceUnitInfo info, final EntityManagerFactory entityManagerFactory, final Map<String, Object> properties, final Map<Class<?>, EntityMetadata<?>> entityClasses) {
 		this.info = info;
@@ -97,6 +99,8 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		fillEntityClasses(info, properties, allParams);
 		open = true;
 		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
+
+		metamodel = new MetamodelImpl(getEntityMetadata());
 	}
 
 	@Override
@@ -114,7 +118,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public Query createNamedQuery(final String name) {
 		checkOpen();
-		return null;
+		return createNamedQuery(name, Object.class);
 	}
 
 
@@ -139,7 +143,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public Query createQuery(final String qlString) {
 		checkOpen();
-		return null;
+		return createQuery(qlString, Object.class);
 	}
 
 	///////////
@@ -161,7 +165,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		checkEntityClass(entityClass);
 		checkPrimaryKey(entityClass, primaryKey);
 
-		return persistor.fetch(entityClass, primaryKey);
+		return find(entityClass, primaryKey, LockModeType.NONE);
 	}
 
 	/**
@@ -321,6 +325,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 
 		final Class<?> pkType = pkMeta.getColumnType();//emeta.getEntityType();
+
+//		final Class<?> pkType = emeta.getEntityType();
+
 		if (primaryKey == null) {
 			if (!pkMeta.isNullable()) {
 				throw new IllegalArgumentException("Unable to retrieve entity " + entityClass + " using null primary key because it is not nullable");
@@ -349,6 +356,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 
 	private void fillEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
+//	private Map<Class<?>, EntityMetadata<?>> getEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> allParams) {
 		ClassLoader cl = info.getClassLoader();
 		final List<URL> jarFiles = info.getJarFileUrls();
 		final String puName = info.getPersistenceUnitName();
@@ -357,6 +365,10 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		final List<String> packages = MANAGED_CLASS_PACKAGE.value(allParams);
 
 		final boolean excludeUnlistedClasses = info.excludeUnlistedClasses();
+
+//		final List<String> mgmtClassNames = info.getManagedClassNames();
+//		final boolean excludeUnlistedClasses = info.excludeUnlistedClasses();
+
 
 		if (cl == null) {
 			cl = Thread.currentThread().getContextClassLoader();
@@ -389,12 +401,14 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 
 
+		final Map<Class<?>, EntityMetadata<?>> class2metadata = new HashMap<>();
 		for (final Class<?> c : cs.scan()) {
 			final EntityMetadata<?> md = mdf.create(c);
 			if (md == null) {
 				throw new IllegalArgumentException("Class " + c + " is not a JPA entity");
 			}
 			entityClasses.put(c, md);
+			class2metadata.put(c, md);
 
 			for (final Entry<String, String> query : md.getNamedQueries().entrySet()) {
 				final String name = query.getKey();
@@ -407,6 +421,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 
 		mdf.update(entityClasses);
+		mdf.update(class2metadata);
+
+//		return class2metadata;
 	}
 
 
@@ -416,6 +433,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		Class<M> mdfClass = (Class<M>)mdf.getClass();
 		final MetadataFactory bmf = new BeanMetadataFactory();
 		final EntityMetadata<M> mdfemd = bmf.create(mdfClass);
+
 		final Collection<String> parameterFields = mdfemd.getFieldNamesByType(parameterType);
 		final int n = parameterFields.size();
 		if (n > 1) {
@@ -524,6 +542,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		return EntityTransactionImpl.getDirtyEntityManager();
 	}
 
+//<<<<<<< HEAD
 //	@Override
 //	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> properties) {
 //		// TODO Auto-generated method stub
@@ -560,6 +579,8 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 //
 //	}
 
+//=======
+//>>>>>>> Added criteria builder and some tests. Tests TBD
 	@Override
 	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> props) {
 		return find(entityClass, primaryKey, LockModeType.NONE, props);
@@ -632,7 +653,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public <T> TypedQuery<T> createQuery(final CriteriaQuery<T> criteriaQuery) {
 		checkOpen();
-		return null;
+		return new QueryImpl<T>(criteriaQuery, this);
 	}
 
 	@Override
@@ -727,7 +748,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public Metamodel getMetamodel() {
 		checkOpen();
-		return entityManagerFactory.getMetamodel();
+		return metamodel;
 	}
 
 

@@ -52,20 +52,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BeanMetadataFactory implements MetadataFactory {
-	
+
 	private final static Logger logger = LoggerFactory.getLogger(BeanMetadataFactory.class);
-	
+
 	private final static Pattern methodNamePattern = Pattern.compile("(set|get|is)");
 	private final Map<Class<? extends Annotation>, IndexAnnotation> indexDefs;
 	private final Map<Class<? extends Annotation>, IndexAnnotationContainer> indexContainerDefs;
 	private String schema;
-	
+
 	public BeanMetadataFactory() {
 		final IndexAnnotations indexAnnotations = laodIndexAnnotationsXml();
-		
+
 		final Map<Class<? extends Annotation>, IndexAnnotation> indexDefsTemp = new HashMap<>();
 		final Map<Class<? extends Annotation>, IndexAnnotationContainer> indexContainerDefsTemp = new HashMap<>();
-		
+
 		if(indexAnnotations != null) {
 			for (final Object def : indexAnnotations.getIndexDefs()) {
 				// although usage of instanceof is ugly I use it here because it is easier at the moment.
@@ -90,7 +90,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 				}
 			}
 		}
-		
+
 		indexDefs = Collections.unmodifiableMap(indexDefsTemp);
 		indexContainerDefs = Collections.unmodifiableMap(indexContainerDefsTemp);
 	}
@@ -106,7 +106,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 				if(indexConfig == null) {
 					return null;
 				}
-				
+
 				try {
 					final JAXBContext jaxbContext = JAXBContext.newInstance(indexAnnotationPackage);
 					final Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
@@ -126,43 +126,43 @@ public class BeanMetadataFactory implements MetadataFactory {
 		//TODO make this configurable
 		return "/" + indexAnnotationPackage.replace('.', '/') + "/" +  "index-annotations.xml";
 	}
-	
-	
-	
+
+
+
 	@Override
 	public <T> EntityMetadata<T> create(final Class<T> clazz) {
 		final EntityMetadata<T> emeta = new EntityMetadata<>(clazz);
-		
-		
+
+
 		final Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
-		
+
 		for (final Field f : FieldAccessor.getFields(clazz)) {
 			final String name = getFieldName(f);
-			
+
 			@SuppressWarnings("unchecked")
 			final
 			FieldMetadata<T, Object, Object> fmeta = create(clazz, (Class<Object>)f.getType(), name);
 			fmeta.setField(f);
-			
+
 			fields.put(name, fmeta);
 		}
-		
-		
+
+
 		for (final Method m : clazz.getMethods()) {
 			if(!(MethodAccessor.isGetter(m) || MethodAccessor.isSetter(m))) {
 				continue;
 			}
-			
+
 			final String fieldName = getFieldName(m);
 			FieldMetadata<T, Object, Object> fmeta = fields.get(fieldName);
-			
+
 			if (fmeta == null) {
 				@SuppressWarnings("unchecked")
 				final
 				Class<Object> type = (Class<Object>)m.getReturnType();
 				fmeta = create(clazz, type, fieldName);
 			}
-			
+
 			if(MethodAccessor.isGetter(m)) {
 				fmeta.setGetter(m);
 			}
@@ -170,33 +170,33 @@ public class BeanMetadataFactory implements MetadataFactory {
 				fmeta.setSetter(m);
 			}
 		}
-		
+
 
 		for(final FieldMetadata<T, Object, Object> field : fields.values()) {
 			emeta.addField(field);
 		}
-		
-		
+
+
 		emeta.addAllIndexes(findIndexes(emeta));
-		
+
 		return emeta;
 	}
 
-	
+
 	protected <T> Collection<IndexMetadata<T>> findIndexes(final EntityMetadata<T> entityMetadata) {
 		final Map<String, IndexMetadata<T>> indexes = new LinkedHashMap<>();
 		final Class<T> entityType = entityMetadata.getEntityType();
-		
+
 		// process class level index annotations
 		findIndexes(entityMetadata, entityType, null, indexes);
-		
+
 		// process field and method level index annotations
 		for (final FieldMetadata<T, Object, Object> fmeta : entityMetadata.getFields()) {
 			findIndexes(entityMetadata, fmeta.getAccessor().getField(), fmeta.getName(), indexes);
 			findIndexes(entityMetadata, fmeta.getAccessor().getGetter(), fmeta.getName(), indexes);
 		}
-		
-		
+
+
 		return indexes.values();
 	}
 
@@ -211,8 +211,8 @@ public class BeanMetadataFactory implements MetadataFactory {
 			processIndexContainerAnnotation(entityMetadata, a, fieldName, indexes);
 		}
 	}
-	
-	
+
+
 
 	private <T> void processIndexAnnotation(final EntityMetadata<T> entityMetadata, final Annotation a, final String fieldName, final Map<String, IndexMetadata<T>> indexes) {
 		final Class<? extends Annotation> annotationType = a.annotationType();
@@ -220,22 +220,22 @@ public class BeanMetadataFactory implements MetadataFactory {
 		if (indexDef == null) {
 			return;
 		}
-		
+
 		String indexName = invoke(annotationType, indexDef.getName(), null, String.class, a, null);
 		final String[] indexedColumnNames;
-		
+
 		if (fieldName != null) {
 			final FieldMetadata<T, Object, Object> field = entityMetadata.getFieldByName(fieldName.trim());
 			if(field == null) {
 				throw new IllegalArgumentException("Field not found");
 			}
-			
+
 			final String columnName = field.getColumn();
-			
+
 			if (indexName == null || "".equals(indexName)) {
 				indexName = columnName;
 			}
-			
+
 			indexedColumnNames = getIndexedColumnsForFieldIndex(indexes.get(indexName), columnName);
 		} else {
 			if(indexes.containsKey(indexName)){
@@ -244,7 +244,7 @@ public class BeanMetadataFactory implements MetadataFactory {
 			final Object indexColumnNamesFromAnnotation = invoke(annotationType, indexDef.getColumnNames(), null, Object.class, a, null);
 			indexedColumnNames = getIndexedColumnNames(indexColumnNamesFromAnnotation);
 		}
-		
+
 		if(indexName == null){
 			throw new NullPointerException("Index name is null");
 		}
@@ -266,14 +266,14 @@ public class BeanMetadataFactory implements MetadataFactory {
 
 
 
-	private <T> String[] addAndRemoveDuplicates(final String[] columnNames, final String columnName) {		
+	private <T> String[] addAndRemoveDuplicates(final String[] columnNames, final String columnName) {
 		final Collection<String> allNames = new LinkedHashSet<String>(Arrays.asList(columnNames));
 		if(columnName != null) {
 			allNames.add(columnName);
 		}
 		return allNames.toArray(new String[0]);
 	}
-	
+
 	private <T> String[] trimAndRemoveDuplicates(final String[] columnNames) {
 		final String [] trimmedColumnNames = new String[columnNames.length];
 		for (int i = 0; i < columnNames.length; i++) {
@@ -284,9 +284,9 @@ public class BeanMetadataFactory implements MetadataFactory {
 	}
 
 	private String[] getIndexedColumnNames(final Object indexColumnNames) {
-		
+
 		String[] indexedColumnNames = null;
-		
+
 		if (indexColumnNames.getClass().isArray()) {
 			indexedColumnNames = (String[]) indexColumnNames;
 		} else if (indexColumnNames instanceof String) {
@@ -298,18 +298,18 @@ public class BeanMetadataFactory implements MetadataFactory {
 
 		return trimAndRemoveDuplicates(indexedColumnNames);
 	}
-	
-	
+
+
 	private <T> void processIndexContainerAnnotation(final EntityMetadata<T> entityMetadata, final Annotation a, final String fieldName, final Map<String, IndexMetadata<T>> indexes) {
 		final Class<? extends Annotation> annotationType = a.annotationType();
 		final IndexAnnotationContainer indexContainerDef = indexContainerDefs.get(annotationType);
 		if(indexContainerDef == null) {
 			return;
 		}
-		
+
 		final Class<?> indexAnnotationClass = ClassAccessor.forName(indexContainerDef.getIndexAnnotationClassName());
 				//invoke(annotationType, indexContainerDef.getIndexAnnotationClassName(), null, String.class, a, null));
-		
+
 		final Object indexAnnotations = invoke(annotationType, indexContainerDef.getCollection(), null, Array.newInstance(indexAnnotationClass, 0).getClass(), a, null);
 		final int n = Array.getLength(indexAnnotations);
 		for (int i = 0; i < n; i++) {
@@ -317,25 +317,25 @@ public class BeanMetadataFactory implements MetadataFactory {
 			processIndexAnnotation(entityMetadata, indexAnnotation, fieldName, indexes);
 		}
 	}
-	
-	
+
+
 
 	@Override
 	public <T, F, C> FieldMetadata<T, F, C> create(final Class<T> clazz, final Class<F> fieldClass, final String fieldName) {
 		return new FieldMetadata<>(clazz, fieldClass, fieldName);
 	}
-	
+
 	@Override
 	public <T> IndexMetadata<T> create(final EntityMetadata<T> entityMetadata, final String name, final String... indexedFields) {
 		return new IndexMetadata<>(entityMetadata, name, indexedFields);
 	}
-	
-	
+
+
 	protected String getFieldName(final AccessibleObject ao) {
 		if (ao instanceof Field) {
 			return ((Field) ao).getName();
 		}
-		
+
 		if (ao instanceof Method) {
 			final String methodName = ((Method) ao).getName();
 			final Matcher m = methodNamePattern.matcher(methodName);
@@ -345,10 +345,10 @@ public class BeanMetadataFactory implements MetadataFactory {
 			final String name = m.replaceFirst("");
 			return name.substring(0, 1).toLowerCase() + name.substring(1);
 		}
-		
+
 		throw new IllegalArgumentException("Given accessible object is neither field nor method: " + ao);
 	}
-	
+
 	@Override
 	public void setSchema(final String schema) {
 		this.schema = schema;

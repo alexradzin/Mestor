@@ -41,904 +41,804 @@ import javax.persistence.criteria.Order;
 import javax.persistence.criteria.ParameterExpression;
 import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Predicate.BooleanOperator;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
 import javax.persistence.criteria.SetJoin;
 import javax.persistence.criteria.Subquery;
 
+
+//and
+//asc
+//conjunction
+//count
+//createQuery
+//desc
+//equal
+//ge
+//greaterThanOrEqualTo
+//gt
+//isNull
+//le
+//like
+//literal
+//lt
+//max
+//min
+//notEqual
+//or
+//sum
+//upper
+
+//TODO: create the following hierarchy
+
+//public abstract class SelectionImpl<X> implements Selection<X>, InternalSelection, Serializable{
+//public class ExpressionImpl<X> extends SelectionImpl<X> implements Expression<X>, InternalExpression{
+//public class FunctionExpressionImpl<X> extends ExpressionImpl<X>{
+//public class CompoundExpressionImpl extends FunctionExpressionImpl<Boolean> implements Predicate{
+//public class InImpl<T> extends CompoundExpressionImpl implements In<T> {
+//public class PredicateImpl extends CompoundExpressionImpl implements Predicate {
+//
+//public abstract class SelectionImpl<X> implements Selection<X>, InternalSelection, Serializable{
+//public class ExpressionImpl<X> extends SelectionImpl<X> implements Expression<X>, InternalExpression{
+//public class PathImpl<X> extends ExpressionImpl<X> implements Path<X>{
+//public class FromImpl<Z, X>  extends PathImpl<X> implements javax.persistence.criteria.From<Z, X> {
+//public class RootImpl<X> extends FromImpl<X, X> implements Root<X> {
+
+
 public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public CriteriaQuery<Object> createQuery() {
-		// TODO Auto-generated method stub
-		return null;
+		return createQuery(Object.class);
 	}
 
 	@Override
-	public <T> CriteriaQuery<T> createQuery(Class<T> resultClass) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> CriteriaQuery<T> createQuery(final Class<T> resultClass) {
+		return new CriteriaQueryImpl<T>(resultClass, this);
 	}
 
 	@Override
 	public CriteriaQuery<Tuple> createTupleQuery() {
-		// TODO Auto-generated method stub
-		return null;
+		return createQuery(Tuple.class);
 	}
 
 	@Override
-	public <T> CriteriaUpdate<T> createCriteriaUpdate(Class<T> targetEntity) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> CriteriaUpdate<T> createCriteriaUpdate(final Class<T> targetEntity) {
+		return new CriteriaUpdateImpl<T>(targetEntity, this);
 	}
 
 	@Override
-	public <T> CriteriaDelete<T> createCriteriaDelete(Class<T> targetEntity) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> CriteriaDelete<T> createCriteriaDelete(final Class<T> targetEntity) {
+		return new CriteriaDeleteImpl<T>(targetEntity, this);
 	}
 
 	@Override
-	public <Y> CompoundSelection<Y> construct(Class<Y> resultClass, Selection<?>... selections) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> CompoundSelection<Y> construct(final Class<Y> resultClass, final Selection<?>... selections) {
+		return new CompoundSelectionImpl<>(resultClass, selections);
 	}
 
 	@Override
-	public CompoundSelection<Tuple> tuple(Selection<?>... selections) {
-		// TODO Auto-generated method stub
-		return null;
+	public CompoundSelection<Tuple> tuple(final Selection<?>... selections) {
+		return construct(Tuple.class, selections);
 	}
 
 	@Override
-	public CompoundSelection<Object[]> array(Selection<?>... selections) {
-		// TODO Auto-generated method stub
-		return null;
+	public CompoundSelection<Object[]> array(final Selection<?>... selections) {
+		return construct(Object[].class, selections);
 	}
 
 	@Override
-	public Order asc(Expression<?> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Order asc(final Expression<?> x) {
+		return new OrderImpl(x, true);
 	}
 
 	@Override
-	public Order desc(Expression<?> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Order desc(final Expression<?> x) {
+		return new OrderImpl(x, false);
 	}
 
 	@Override
-	public <N extends Number> Expression<Double> avg(Expression<N> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<Double> avg(final Expression<N> x) {
+		return new FunctionExpressionImpl<Double>("avg", x);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> sum(Expression<N> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> sum(final Expression<N> x) {
+		return new FunctionExpressionImpl<N>("sum", x);
 	}
 
 	@Override
-	public Expression<Long> sumAsLong(Expression<Integer> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Long> sumAsLong(final Expression<Integer> x) {
+		return new FunctionExpressionImpl<Long>(Long.class, "sum", x);
 	}
 
 	@Override
-	public Expression<Double> sumAsDouble(Expression<Float> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Double> sumAsDouble(final Expression<Float> x) {
+		return new FunctionExpressionImpl<Double>(Double.class, "sum", x);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> max(Expression<N> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> max(final Expression<N> x) {
+		return new FunctionExpressionImpl<N>("max", x);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> min(Expression<N> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> min(final Expression<N> x) {
+		return new FunctionExpressionImpl<N>("min", x);
 	}
 
 	@Override
-	public <X extends Comparable<? super X>> Expression<X> greatest(Expression<X> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X extends Comparable<? super X>> Expression<X> greatest(final Expression<X> x) {
+		return new FunctionExpressionImpl<X>("max", x);
 	}
 
 	@Override
-	public <X extends Comparable<? super X>> Expression<X> least(Expression<X> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X extends Comparable<? super X>> Expression<X> least(final Expression<X> x) {
+		return new FunctionExpressionImpl<X>("min", x);
 	}
 
 	@Override
-	public Expression<Long> count(Expression<?> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Long> count(final Expression<?> x) {
+		return new FunctionExpressionImpl<Long>(Long.class, "count", x);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Expression<Long> countDistinct(final Expression<?> x) {
+		return new FunctionExpressionImpl<Long>(Long.class, "countDistinct", (Expression<Object>)x);
 	}
 
 	@Override
-	public Expression<Long> countDistinct(Expression<?> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate exists(final Subquery<?> subquery) {
+		return new BooleanFunctionExpressionImpl("exists", subquery);
 	}
 
 	@Override
-	public Predicate exists(Subquery<?> subquery) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Expression<Y> all(final Subquery<Y> subquery) {
+		return new FunctionExpressionImpl<Y>("all", subquery);
 	}
 
 	@Override
-	public <Y> Expression<Y> all(Subquery<Y> subquery) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Expression<Y> some(final Subquery<Y> subquery) {
+		return new FunctionExpressionImpl<Y>("some", subquery);
 	}
 
 	@Override
-	public <Y> Expression<Y> some(Subquery<Y> subquery) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Expression<Y> any(final Subquery<Y> subquery) {
+		return new FunctionExpressionImpl<Y>("any", subquery);
 	}
 
 	@Override
-	public <Y> Expression<Y> any(Subquery<Y> subquery) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate and(final Expression<Boolean> x, final Expression<Boolean> y) {
+		return new CompoundExpressionImpl(BooleanOperator.AND, x, y);
 	}
 
 	@Override
-	public Predicate and(Expression<Boolean> x, Expression<Boolean> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate and(final Predicate... restrictions) {
+		return new CompoundExpressionImpl(BooleanOperator.AND, restrictions);
 	}
 
 	@Override
-	public Predicate and(Predicate... restrictions) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate or(final Expression<Boolean> x, final Expression<Boolean> y) {
+		return new CompoundExpressionImpl(BooleanOperator.OR, x, y);
 	}
 
 	@Override
-	public Predicate or(Expression<Boolean> x, Expression<Boolean> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate or(final Predicate... restrictions) {
+		return new CompoundExpressionImpl(BooleanOperator.OR, restrictions);
 	}
 
 	@Override
-	public Predicate or(Predicate... restrictions) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate not(Expression<Boolean> restriction) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate not(final Expression<Boolean> restriction) {
+		throw new UnsupportedOperationException("NOT is not supported");
 	}
 
 	@Override
 	public Predicate conjunction() {
-		// TODO Auto-generated method stub
-		return null;
+		return new CompoundExpressionImpl(BooleanOperator.AND);
 	}
 
 	@Override
 	public Predicate disjunction() {
-		// TODO Auto-generated method stub
-		return null;
+		return new CompoundExpressionImpl(BooleanOperator.OR);
 	}
 
 	@Override
-	public Predicate isTrue(Expression<Boolean> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate isTrue(final Expression<Boolean> x) {
+		return new BooleanFunctionExpressionImpl("true", x, new ConstantExpresion<>(true));
 	}
 
 	@Override
-	public Predicate isFalse(Expression<Boolean> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate isFalse(final Expression<Boolean> x) {
+		return new BooleanFunctionExpressionImpl("false", x, new ConstantExpresion<>(false));
 	}
 
 	@Override
-	public Predicate isNull(Expression<?> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate isNull(final Expression<?> x) {
+		return new BooleanFunctionExpressionImpl("null", x, new ConstantExpresion<>(null));
 	}
 
 	@Override
-	public Predicate isNotNull(Expression<?> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate isNotNull(final Expression<?> x) {
+		// TODO should be null but negated.
+		return new BooleanFunctionExpressionImpl("not null", x, new ConstantExpresion<>(null));
 	}
 
 	@Override
-	public Predicate equal(Expression<?> x, Expression<?> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate equal(final Expression<?> x, final Expression<?> y) {
+		return compare("eq", x, y);
 	}
 
 	@Override
-	public Predicate equal(Expression<?> x, Object y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate equal(final Expression<?> x, final Object y) {
+		return equal(x, new ConstantExpresion<Object>(y));
 	}
 
 	@Override
-	public Predicate notEqual(Expression<?> x, Expression<?> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notEqual(final Expression<?> x, final Expression<?> y) {
+		return compare("ne", x, y);
 	}
 
 	@Override
-	public Predicate notEqual(Expression<?> x, Object y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notEqual(final Expression<?> x, final Object y) {
+		return notEqual(x, new ConstantExpresion<Object>(y));
 	}
 
+
+
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate greaterThan(Expression<? extends Y> x, Expression<? extends Y> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate greaterThan(final Expression<? extends Y> x, final Expression<? extends Y> y) {
+		return compare("gt", x, y);
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate greaterThan(Expression<? extends Y> x, Y y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate greaterThan(final Expression<? extends Y> x, final Y y) {
+		return greaterThan(x, new ConstantExpresion<Y>(y));
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate greaterThanOrEqualTo(Expression<? extends Y> x,
-			Expression<? extends Y> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate greaterThanOrEqualTo(final Expression<? extends Y> x,
+			final Expression<? extends Y> y) {
+		return compare("ge", x, y);
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate greaterThanOrEqualTo(Expression<? extends Y> x, Y y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate greaterThanOrEqualTo(final Expression<? extends Y> x, final Y y) {
+		return greaterThanOrEqualTo(x, new ConstantExpresion<Y>(y));
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate lessThan(Expression<? extends Y> x, Expression<? extends Y> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate lessThan(final Expression<? extends Y> x, final Expression<? extends Y> y) {
+		return compare("lt", x, y);
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate lessThan(Expression<? extends Y> x, Y y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate lessThan(final Expression<? extends Y> x, final Y y) {
+		return lessThan(x, new ConstantExpresion<Y>(y));
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate lessThanOrEqualTo(Expression<? extends Y> x,
-			Expression<? extends Y> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate lessThanOrEqualTo(final Expression<? extends Y> x,
+			final Expression<? extends Y> y) {
+		return compare("le", x, y);
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate lessThanOrEqualTo(Expression<? extends Y> x, Y y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate lessThanOrEqualTo(final Expression<? extends Y> x, final Y y) {
+		return lessThanOrEqualTo(x, new ConstantExpresion<Y>(y));
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate between(Expression<? extends Y> v, Expression<? extends Y> x,
-			Expression<? extends Y> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate between(final Expression<? extends Y> v, final Expression<? extends Y> x,
+			final Expression<? extends Y> y) {
+		return new BooleanFunctionExpressionImpl("between", v, x, y);
 	}
 
 	@Override
-	public <Y extends Comparable<? super Y>> Predicate between(Expression<? extends Y> v, Y x, Y y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y extends Comparable<? super Y>> Predicate between(final Expression<? extends Y> v, final Y x, final Y y) {
+		return between(v, new ConstantExpresion<Y>(x), new ConstantExpresion<Y>(x));
 	}
 
 	@Override
-	public Predicate gt(Expression<? extends Number> x, Expression<? extends Number> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate gt(final Expression<? extends Number> x, final Expression<? extends Number> y) {
+		return compare("gt", x, y);
 	}
 
 	@Override
-	public Predicate gt(Expression<? extends Number> x, Number y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate gt(final Expression<? extends Number> x, final Number y) {
+		return gt(x, new ConstantExpresion<Number>(y));
 	}
 
 	@Override
-	public Predicate ge(Expression<? extends Number> x, Expression<? extends Number> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate ge(final Expression<? extends Number> x, final Expression<? extends Number> y) {
+		return compare("ge", x, y);
 	}
 
 	@Override
-	public Predicate ge(Expression<? extends Number> x, Number y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate ge(final Expression<? extends Number> x, final Number y) {
+		return ge(x, new ConstantExpresion<Number>(y));
 	}
 
 	@Override
-	public Predicate lt(Expression<? extends Number> x, Expression<? extends Number> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate lt(final Expression<? extends Number> x, final Expression<? extends Number> y) {
+		return compare("lt", x, y);
 	}
 
 	@Override
-	public Predicate lt(Expression<? extends Number> x, Number y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate lt(final Expression<? extends Number> x, final Number y) {
+		return lt(x, new ConstantExpresion<Number>(y));
 	}
 
 	@Override
-	public Predicate le(Expression<? extends Number> x, Expression<? extends Number> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate le(final Expression<? extends Number> x, final Expression<? extends Number> y) {
+		return compare("le", x, y);
 	}
 
 	@Override
-	public Predicate le(Expression<? extends Number> x, Number y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate le(final Expression<? extends Number> x, final Number y) {
+		return ge(x, new ConstantExpresion<Number>(y));
 	}
 
 	@Override
-	public <N extends Number> Expression<N> neg(Expression<N> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> neg(final Expression<N> x) {
+		return new FunctionExpressionImpl<N>("size", x);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> abs(Expression<N> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> abs(final Expression<N> x) {
+		return new FunctionExpressionImpl<N>("abs", x);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> sum(Expression<? extends N> x, Expression<? extends N> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> sum(final Expression<? extends N> x, final Expression<? extends N> y) {
+		return new FunctionExpressionImpl<N>("sum", x, y);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> sum(Expression<? extends N> x, N y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> sum(final Expression<? extends N> x, final N y) {
+		return sum(x, new ConstantExpresion<N>(y));
 	}
 
 	@Override
-	public <N extends Number> Expression<N> sum(N x, Expression<? extends N> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> sum(final N x, final Expression<? extends N> y) {
+		return sum(new ConstantExpresion<N>(x), y);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> prod(Expression<? extends N> x, Expression<? extends N> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> prod(final Expression<? extends N> x, final Expression<? extends N> y) {
+		throw new UnsupportedOperationException("prod is not supported");
 	}
 
 	@Override
-	public <N extends Number> Expression<N> prod(Expression<? extends N> x, N y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> prod(final Expression<? extends N> x, final N y) {
+		throw new UnsupportedOperationException("prod is not supported");
 	}
 
 	@Override
-	public <N extends Number> Expression<N> prod(N x, Expression<? extends N> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> prod(final N x, final Expression<? extends N> y) {
+		throw new UnsupportedOperationException("prod is not supported");
 	}
 
 	@Override
-	public <N extends Number> Expression<N> diff(Expression<? extends N> x, Expression<? extends N> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> diff(final Expression<? extends N> x, final Expression<? extends N> y) {
+		return new FunctionExpressionImpl<>("diff", x, y);
 	}
 
 	@Override
-	public <N extends Number> Expression<N> diff(Expression<? extends N> x, N y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> diff(final Expression<? extends N> x, final N y) {
+		return diff(x, new ConstantExpresion<N>(y));
 	}
 
 	@Override
-	public <N extends Number> Expression<N> diff(N x, Expression<? extends N> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public <N extends Number> Expression<N> diff(final N x, final Expression<? extends N> y) {
+		return diff(new ConstantExpresion<N>(x), y);
 	}
 
 	@Override
-	public Expression<Number> quot(Expression<? extends Number> x, Expression<? extends Number> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Number> quot(final Expression<? extends Number> x, final Expression<? extends Number> y) {
+		return new FunctionExpressionImpl<>("quot", x, y);
 	}
 
 	@Override
-	public Expression<Number> quot(Expression<? extends Number> x, Number y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Number> quot(final Expression<? extends Number> x, final Number y) {
+		return quot(x, new ConstantExpresion<>(y));
 	}
 
 	@Override
-	public Expression<Number> quot(Number x, Expression<? extends Number> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Number> quot(final Number x, final Expression<? extends Number> y) {
+		return quot(new ConstantExpresion<>(x), y);
 	}
 
 	@Override
-	public Expression<Integer> mod(Expression<Integer> x, Expression<Integer> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> mod(final Expression<Integer> x, final Expression<Integer> y) {
+		return new FunctionExpressionImpl<>("mod", x, y);
 	}
 
 	@Override
-	public Expression<Integer> mod(Expression<Integer> x, Integer y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> mod(final Expression<Integer> x, final Integer y) {
+		return mod(x, new ConstantExpresion<>(y));
 	}
 
 	@Override
-	public Expression<Integer> mod(Integer x, Expression<Integer> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> mod(final Integer x, final Expression<Integer> y) {
+		return mod(new ConstantExpresion<>(x), y);
 	}
 
 	@Override
-	public Expression<Double> sqrt(Expression<? extends Number> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Double> sqrt(final Expression<? extends Number> x) {
+		return new FunctionExpressionImpl<>("sqrt", x);
 	}
 
 	@Override
-	public Expression<Long> toLong(Expression<? extends Number> number) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Long> toLong(final Expression<? extends Number> number) {
+		return toType(number);
 	}
 
 	@Override
-	public Expression<Integer> toInteger(Expression<? extends Number> number) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> toInteger(final Expression<? extends Number> number) {
+		return toType(number);
 	}
 
 	@Override
-	public Expression<Float> toFloat(Expression<? extends Number> number) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Float> toFloat(final Expression<? extends Number> number) {
+		return toType(number);
 	}
 
 	@Override
-	public Expression<Double> toDouble(Expression<? extends Number> number) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Double> toDouble(final Expression<? extends Number> number) {
+		return toType(number);
 	}
 
 	@Override
-	public Expression<BigDecimal> toBigDecimal(Expression<? extends Number> number) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<BigDecimal> toBigDecimal(final Expression<? extends Number> number) {
+		return toType(number);
 	}
 
 	@Override
-	public Expression<BigInteger> toBigInteger(Expression<? extends Number> number) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<BigInteger> toBigInteger(final Expression<? extends Number> number) {
+		return toType(number);
 	}
 
 	@Override
-	public Expression<String> toString(Expression<Character> character) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> toString(final Expression<Character> character) {
+		return toType(character);
 	}
 
 	@Override
-	public <T> Expression<T> literal(T value) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> Expression<T> literal(final T value) {
+		return new ConstantExpresion<T>(value);
 	}
 
 	@Override
-	public <T> Expression<T> nullLiteral(Class<T> resultClass) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> Expression<T> nullLiteral(final Class<T> resultClass) {
+		return new ConstantExpresion<T>(resultClass, null);
 	}
 
 	@Override
-	public <T> ParameterExpression<T> parameter(Class<T> paramClass) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> ParameterExpression<T> parameter(final Class<T> paramClass) {
+		return new ParameterExpressionImpl<T>(paramClass);
 	}
 
 	@Override
-	public <T> ParameterExpression<T> parameter(Class<T> paramClass, String name) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> ParameterExpression<T> parameter(final Class<T> paramClass, final String name) {
+		return new ParameterExpressionImpl<T>(name, paramClass);
 	}
 
 	@Override
-	public <C extends Collection<?>> Predicate isEmpty(Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <C extends Collection<?>> Predicate isEmpty(final Expression<C> collection) {
+		return new BooleanFunctionExpressionImpl("empty", collection);
 	}
 
 	@Override
-	public <C extends Collection<?>> Predicate isNotEmpty(Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <C extends Collection<?>> Predicate isNotEmpty(final Expression<C> collection) {
+		return new BooleanFunctionExpressionImpl("not empty", collection);
 	}
 
 	@Override
-	public <C extends Collection<?>> Expression<Integer> size(Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <C extends Collection<?>> Expression<Integer> size(final Expression<C> collection) {
+		return new FunctionExpressionImpl<Integer>(Integer.class, "size", collection);
 	}
 
 	@Override
-	public <C extends Collection<?>> Expression<Integer> size(C collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <C extends Collection<?>> Expression<Integer> size(final C collection) {
+		return literal(collection.size());
 	}
 
 	@Override
-	public <E, C extends Collection<E>> Predicate isMember(Expression<E> elem, Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <E, C extends Collection<E>> Predicate isMember(final Expression<E> elem, final Expression<C> collection) {
+		throw new UnsupportedOperationException("isMember is unsupported");
 	}
 
 	@Override
-	public <E, C extends Collection<E>> Predicate isMember(E elem, Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <E, C extends Collection<E>> Predicate isMember(final E elem, final Expression<C> collection) {
+		throw new UnsupportedOperationException("isMember is unsupported");
 	}
 
 	@Override
-	public <E, C extends Collection<E>> Predicate isNotMember(Expression<E> elem, Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <E, C extends Collection<E>> Predicate isNotMember(final Expression<E> elem, final Expression<C> collection) {
+		throw new UnsupportedOperationException("isNotMember is unsupported");
 	}
 
 	@Override
-	public <E, C extends Collection<E>> Predicate isNotMember(E elem, Expression<C> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <E, C extends Collection<E>> Predicate isNotMember(final E elem, final Expression<C> collection) {
+		throw new UnsupportedOperationException("isNotMember is unsupported");
 	}
 
 	@Override
-	public <V, M extends Map<?, V>> Expression<Collection<V>> values(M map) {
-		// TODO Auto-generated method stub
-		return null;
+	public <V, M extends Map<?, V>> Expression<Collection<V>> values(final M map) {
+		return new ConstantExpresion<Collection<V>>(null, ((Map<?, V>)map).values());
 	}
 
 	@Override
-	public <K, M extends Map<K, ?>> Expression<Set<K>> keys(M map) {
-		// TODO Auto-generated method stub
-		return null;
+	public <K, M extends Map<K, ?>> Expression<Set<K>> keys(final M map) {
+		return new ConstantExpresion<Set<K>>(null, ((Map<K, ?>)map).keySet());
 	}
 
 	@Override
-	public Predicate like(Expression<String> x, Expression<String> pattern) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate like(final Expression<String> x, final Expression<String> pattern) {
+		return compare("like", x, pattern);
 	}
 
 	@Override
-	public Predicate like(Expression<String> x, String pattern) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate like(final Expression<String> x, final String pattern) {
+		return like(x, new ConstantExpresion<String>(pattern));
 	}
 
 	@Override
-	public Predicate like(Expression<String> x, Expression<String> pattern, Expression<Character> escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate like(final Expression<String> x, final Expression<String> pattern, final Expression<Character> escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate like(Expression<String> x, Expression<String> pattern, char escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate like(final Expression<String> x, final Expression<String> pattern, final char escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate like(Expression<String> x, String pattern, Expression<Character> escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate like(final Expression<String> x, final String pattern, final Expression<Character> escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate like(Expression<String> x, String pattern, char escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate like(final Expression<String> x, final String pattern, final char escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate notLike(Expression<String> x, Expression<String> pattern) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notLike(final Expression<String> x, final Expression<String> pattern) {
+		return compare("not like", x, pattern);
 	}
 
 	@Override
-	public Predicate notLike(Expression<String> x, String pattern) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notLike(final Expression<String> x, final String pattern) {
+		return notLike(x, new ConstantExpresion<String>(pattern));
 	}
 
 	@Override
-	public Predicate notLike(Expression<String> x, Expression<String> pattern, Expression<Character> escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notLike(final Expression<String> x, final Expression<String> pattern, final Expression<Character> escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate notLike(Expression<String> x, Expression<String> pattern, char escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notLike(final Expression<String> x, final Expression<String> pattern, final char escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate notLike(Expression<String> x, String pattern, Expression<Character> escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notLike(final Expression<String> x, final String pattern, final Expression<Character> escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Predicate notLike(Expression<String> x, String pattern, char escapeChar) {
-		// TODO Auto-generated method stub
-		return null;
+	public Predicate notLike(final Expression<String> x, final String pattern, final char escapeChar) {
+		throw new UnsupportedOperationException("Like with escape characters are is not supported");
 	}
 
 	@Override
-	public Expression<String> concat(Expression<String> x, Expression<String> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> concat(final Expression<String> x, final Expression<String> y) {
+		return new FunctionExpressionImpl<>("concat", x, y);
 	}
 
 	@Override
-	public Expression<String> concat(Expression<String> x, String y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> concat(final Expression<String> x, final String y) {
+		return concat(x, new ConstantExpresion<String>(y));
 	}
 
 	@Override
-	public Expression<String> concat(String x, Expression<String> y) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> concat(final String x, final Expression<String> y) {
+		return concat(new ConstantExpresion<String>(x), y);
 	}
 
 	@Override
-	public Expression<String> substring(Expression<String> x, Expression<Integer> from) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> substring(final Expression<String> x, final Expression<Integer> from) {
+		return new FunctionExpressionImpl<>(String.class, "substring", x, from);
 	}
 
 	@Override
-	public Expression<String> substring(Expression<String> x, int from) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> substring(final Expression<String> x, final int from) {
+		return substring(x, new ConstantExpresion<Integer>(from));
 	}
 
 	@Override
-	public Expression<String> substring(Expression<String> x, Expression<Integer> from, Expression<Integer> len) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> substring(final Expression<String> x, final Expression<Integer> from, final Expression<Integer> len) {
+		return new FunctionExpressionImpl<>(String.class, "substring", x, from, len);
 	}
 
 	@Override
-	public Expression<String> substring(Expression<String> x, int from, int len) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> substring(final Expression<String> x, final int from, final int len) {
+		return substring(x, new ConstantExpresion<Integer>(from), new ConstantExpresion<Integer>(len));
 	}
 
 	@Override
-	public Expression<String> trim(Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> trim(final Expression<String> x) {
+		return trim(Trimspec.BOTH, x);
 	}
 
 	@Override
-	public Expression<String> trim(Trimspec ts, Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> trim(final Trimspec ts, final Expression<String> x) {
+		return new FunctionExpressionImpl<String>("trim", new ConstantExpresion<String>(ts.name()), x);
 	}
 
 	@Override
-	public Expression<String> trim(Expression<Character> t, Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> trim(final Expression<Character> t, final Expression<String> x) {
+		return trim(Trimspec.BOTH, t, x);
 	}
 
 	@Override
-	public Expression<String> trim(Trimspec ts, Expression<Character> t, Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> trim(final Trimspec ts, final Expression<Character> t, final Expression<String> x) {
+		return new FunctionExpressionImpl<String>("trim", new ConstantExpresion<String>(ts.name()), t, x);
 	}
 
 	@Override
-	public Expression<String> trim(char t, Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> trim(final char t, final Expression<String> x) {
+		return trim(new ConstantExpresion<>(new Character(t)), x);
 	}
 
 	@Override
-	public Expression<String> trim(Trimspec ts, char t, Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> trim(final Trimspec ts, final char t, final Expression<String> x) {
+		return trim(ts, new ConstantExpresion<>(new Character(t)), x);
 	}
 
 	@Override
-	public Expression<String> lower(Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> lower(final Expression<String> x) {
+		return new FunctionExpressionImpl<>("lower", x);
 	}
 
 	@Override
-	public Expression<String> upper(Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<String> upper(final Expression<String> x) {
+		return new FunctionExpressionImpl<>("upper", x);
 	}
 
 	@Override
-	public Expression<Integer> length(Expression<String> x) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> length(final Expression<String> x) {
+		return new FunctionExpressionImpl<>("length", x);
 	}
 
 	@Override
-	public Expression<Integer> locate(Expression<String> x, Expression<String> pattern) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> locate(final Expression<String> x, final Expression<String> pattern) {
+		return new FunctionExpressionImpl<>("locate", x, pattern);
 	}
 
 	@Override
-	public Expression<Integer> locate(Expression<String> x, String pattern) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> locate(final Expression<String> x, final String pattern) {
+		return locate(x, new ConstantExpresion<String>(pattern));
 	}
 
 	@Override
-	public Expression<Integer> locate(Expression<String> x, Expression<String> pattern, Expression<Integer> from) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> locate(final Expression<String> x, final Expression<String> pattern, final Expression<Integer> from) {
+		return new FunctionExpressionImpl<>("locate", x, pattern, from);
 	}
 
 	@Override
-	public Expression<Integer> locate(Expression<String> x, String pattern, int from) {
-		// TODO Auto-generated method stub
-		return null;
+	public Expression<Integer> locate(final Expression<String> x, final String pattern, final int from) {
+		return locate(x, new ConstantExpresion<>(pattern), new ConstantExpresion<Integer>(from));
 	}
 
 	@Override
 	public Expression<Date> currentDate() {
-		// TODO Auto-generated method stub
-		return null;
+		return new FunctionExpressionImpl<>("date");
 	}
 
 	@Override
 	public Expression<Timestamp> currentTimestamp() {
-		// TODO Auto-generated method stub
-		return null;
+		return new FunctionExpressionImpl<>("timestamp");
 	}
 
 	@Override
 	public Expression<Time> currentTime() {
+		return new FunctionExpressionImpl<>("time");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> In<T> in(final Expression<? extends T> expression) {
+		return new InImpl<T>((Expression<T>)expression);
+	}
+
+	@Override
+	public <Y> Expression<Y> coalesce(final Expression<? extends Y> x, final Expression<? extends Y> y) {
+		return new FunctionExpressionImpl<>("coalesce", x, y);
+	}
+
+	@Override
+	public <Y> Expression<Y> coalesce(final Expression<? extends Y> x, final Y y) {
+		return coalesce(x, new ConstantExpresion<Y>(y));
+	}
+
+	@Override
+	public <Y> Expression<Y> nullif(final Expression<Y> x, final Expression<?> y) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <T> In<T> in(Expression<? extends T> expression) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <Y> Expression<Y> coalesce(Expression<? extends Y> x, Expression<? extends Y> y) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <Y> Expression<Y> coalesce(Expression<? extends Y> x, Y y) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <Y> Expression<Y> nullif(Expression<Y> x, Expression<?> y) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <Y> Expression<Y> nullif(Expression<Y> x, Y y) {
+	public <Y> Expression<Y> nullif(final Expression<Y> x, final Y y) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public <T> Coalesce<T> coalesce() {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Coalence expression builder is not implemented yet");
 	}
 
 	@Override
-	public <C, R> SimpleCase<C, R> selectCase(Expression<? extends C> expression) {
-		// TODO Auto-generated method stub
-		return null;
+	public <C, R> SimpleCase<C, R> selectCase(final Expression<? extends C> expression) {
+		throw new UnsupportedOperationException("Cases are not supported yet");
 	}
 
 	@Override
 	public <R> Case<R> selectCase() {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Cases are not supported yet");
 	}
 
 	@Override
-	public <T> Expression<T> function(String name, Class<T> type, Expression<?>... args) {
-		// TODO Auto-generated method stub
-		return null;
+	public <T> Expression<T> function(final String name, final Class<T> type, final Expression<?>... args) {
+		return new FunctionExpressionImpl<>(type, name, args);
 	}
 
 	@Override
-	public <X, T, V extends T> Join<X, V> treat(Join<X, T> join, Class<V> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, T, V extends T> Join<X, V> treat(final Join<X, T> join, final Class<V> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
 	@Override
-	public <X, T, E extends T> CollectionJoin<X, E> treat(CollectionJoin<X, T> join, Class<E> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, T, E extends T> CollectionJoin<X, E> treat(final CollectionJoin<X, T> join, final Class<E> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
 	@Override
-	public <X, T, E extends T> SetJoin<X, E> treat(SetJoin<X, T> join, Class<E> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, T, E extends T> SetJoin<X, E> treat(final SetJoin<X, T> join, final Class<E> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
 	@Override
-	public <X, T, E extends T> ListJoin<X, E> treat(ListJoin<X, T> join, Class<E> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, T, E extends T> ListJoin<X, E> treat(final ListJoin<X, T> join, final Class<E> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
 	@Override
-	public <X, K, T, V extends T> MapJoin<X, K, V> treat(MapJoin<X, K, T> join, Class<V> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, K, T, V extends T> MapJoin<X, K, V> treat(final MapJoin<X, K, T> join, final Class<V> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
 	@Override
-	public <X, T extends X> Path<T> treat(Path<X> path, Class<T> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, T extends X> Path<T> treat(final Path<X> path, final Class<T> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
 	@Override
-	public <X, T extends X> Root<T> treat(Root<X> root, Class<T> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <X, T extends X> Root<T> treat(final Root<X> root, final Class<T> type) {
+		throw new UnsupportedOperationException("Joins are not supported");
 	}
 
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+	@SuppressWarnings("unchecked")
+	private <T, S> Expression<T> toType(final Expression<? extends S> value) {
+		return (Expression<T>) value;
 	}
 
+	private Predicate compare(final String op, final Expression<?> ... xs) {
+		return new BooleanFunctionExpressionImpl(op, xs);
+	}
 }

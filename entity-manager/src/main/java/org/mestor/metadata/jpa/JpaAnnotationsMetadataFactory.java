@@ -345,7 +345,6 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			converter = fmd.isKey() ?
 					new PrimaryKeyConverter<P, C>(fmd.getType(), entityContext) :
 					new IndexedFieldConverter<P, C>(fmd.getType(), fmd.getName(), entityContext);
-
 		}
 
 		if (elementCollection != null) {
@@ -408,6 +407,8 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	private <C> Class<C> castTypeToClass(final Type type) {
 		return (Class<C>)type;
 	}
+
+
 
 	private String extractName(final Object nameHolder, final String defaultValue) {
 		try {

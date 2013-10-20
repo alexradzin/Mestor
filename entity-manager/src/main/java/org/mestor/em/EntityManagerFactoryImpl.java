@@ -34,7 +34,8 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.metamodel.Metamodel;
 import javax.persistence.spi.PersistenceUnitInfo;
 
-import org.mestor.persistence.metamodel.MetamodelImpl;
+import org.mestor.persistence.metamodel.CompositeMetamodel;
+import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.util.CollectionUtils;
 
 import com.google.common.base.Predicate;
@@ -48,7 +49,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	private final Pattern prefixPattern = Pattern.compile("^" + prefix + "\\.");
 	private final Predicate<CharSequence> predicate = Predicates.contains(prefixPattern);
 
-	private final MetamodelImpl metamodel;
+//	private final MetamodelImpl metamodel;
+	private final CompositeMetamodel metamodel = new CompositeMetamodel();
 
 
 	private final PersistenceUnitInfo info;
@@ -64,9 +66,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 				Maps.filterKeys(System.getenv(), predicate),
 				Maps.filterKeys(Maps.fromProperties(System.getProperties()), predicate),
 				this.map));
-
-		metamodel = new MetamodelImpl(info, this, properties);
-
+//		metamodel = new MetamodelImpl(info, this, properties);
 	}
 
 	@Override
@@ -106,19 +106,19 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	@Override
 	public EntityManager createEntityManager(final SynchronizationType synchronizationType, @SuppressWarnings("rawtypes") final Map map) {
 		checkOpen();
-		return new EntityManagerImpl(info, this, CollectionUtils.merge(properties, map), metamodel.getEntityClasses());
+		final EntityManager em = new EntityManagerImpl(info, this, CollectionUtils.merge(properties, map), null);
+		metamodel.add(em.getMetamodel());
+		return em;
 	}
 
 	@Override
 	public CriteriaBuilder getCriteriaBuilder() {
-		// TODO Auto-generated method stub
-		return null;
+		return new CriteriaBuilderImpl();
 	}
 
 	@Override
 	public Metamodel getMetamodel() {
-		// TODO Auto-generated method stub
-		return null;
+		return metamodel;
 	}
 
 	@Override

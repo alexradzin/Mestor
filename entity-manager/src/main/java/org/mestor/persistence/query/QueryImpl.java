@@ -19,6 +19,8 @@ package org.mestor.persistence.query;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -32,10 +34,14 @@ import javax.persistence.Parameter;
 import javax.persistence.PersistenceException;
 import javax.persistence.TemporalType;
 import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+import javax.persistence.criteria.Selection;
 
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
 import org.mestor.query.QueryInfo;
+import org.mestor.query.QueryInfo.QueryType;
 
 import com.google.common.base.Function;
 
@@ -56,31 +62,64 @@ public class QueryImpl<T> implements TypedQuery<T> {
 	private final Map<String, Object> parameterInfo = new LinkedHashMap<>();
 
 
-	private QueryInfo queryInfo;
+	private final QueryInfo queryInfo;
 
 
-	public QueryImpl(final Class<T> resultType, final EntityContext context) {
-		this.resultType = resultType;
+
+
+	public QueryImpl(final CriteriaQuery<T> criteriaQuery, final EntityContext context) {
+		this.resultType = criteriaQuery.getResultType();
 		this.context = context;
 		this.persistor = context.getPersistor();
+
+		// TODO extract all data from criteria query
+
+		Map<String, Object> what = null;
+		final Selection<T> selection = criteriaQuery.getSelection();
+		if (selection != null) {
+			if(selection.isCompoundSelection()) {
+				what = new LinkedHashMap<>();
+				for (final Selection<?> s : selection.getCompoundSelectionItems()) {
+					final String alias = s.getAlias();
+					what.put(alias, alias);
+				}
+			} else {
+				final String alias = selection.getAlias();
+				what = Collections.<String, Object>singletonMap(alias, alias);
+			}
+		}
+
+		final Collection<Root<?>> roots = criteriaQuery.getRoots();
+		Map<String, String> from = null;
+		if (roots != null) {
+			from = new LinkedHashMap<>();
+			for (final Root<?> root : roots) {
+				final Class<?> type = root.getJavaType();
+				final String table = context.getEntityMetadata(type).getTableName();
+				final String alias = root.getAlias();
+				from.put(table, alias);
+			}
+		}
+
+		queryInfo = new QueryInfo(QueryType.SELECT, what, from);
 	}
 
 
 	@Override
 	public List<T> getResultList() {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO create copy of queryInfo with new limit if it is initiallized
+		return persistor.selectQuery(queryInfo);
 	}
 
 	@Override
 	public T getSingleResult() {
+		//TODO create copy of queryInfo and call persistor.selectQuery();
 		return null;
 	}
 
 	@Override
 	public int executeUpdate() {
-		// TODO Auto-generated method stub
-		return 0;
+		throw new IllegalStateException("Cannot execute update using CriteriaQuery");
 	}
 
 	@Override
@@ -319,6 +358,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 			return (Parameter<P>)parameters.get(parameterNames.get(index));
 		}
 	}
+
 
 	public QueryInfo getQueryInfo() {
 		return queryInfo;

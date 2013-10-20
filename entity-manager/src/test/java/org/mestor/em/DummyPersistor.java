@@ -18,10 +18,12 @@
 package org.mestor.em;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.query.QueryInfo;
 import org.mestor.wrap.ObjectWrapperFactory;
 
 public class DummyPersistor implements Persistor {
@@ -125,7 +127,13 @@ public class DummyPersistor implements Persistor {
 		return null;
 	}
 
-	
+	@Override
+	public <T> List<T> selectQuery(final QueryInfo queryInfo) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
 	@Override
 	public Collection<Class<?>> getNativeTypes() {
 		// TODO Auto-generated method stub

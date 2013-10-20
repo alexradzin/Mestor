@@ -17,163 +17,65 @@
 
 package org.mestor.persistence.query;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Order;
 import javax.persistence.criteria.ParameterExpression;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
-import javax.persistence.criteria.Subquery;
-import javax.persistence.metamodel.EntityType;
 
-public class CriteriaQueryImpl<T> implements CriteriaQuery<T> {
+
+public class CriteriaQueryImpl<T> extends AbstractQueryImpl<T, CriteriaQueryImpl<T>> implements CriteriaQuery<T> {
+    private List<Order> orderBy;
+
+	public CriteriaQueryImpl(final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
+		super(resultClass, queryBuilder);
+	}
+
+
+
 
 	@Override
-	public <X> Root<X> from(Class<X> entityClass) {
-		// TODO Auto-generated method stub
-		return null;
+	public CriteriaQuery<T> select(final Selection<? extends T> selection) {
+        this.selection = selection;
+		return this;
 	}
 
 	@Override
-	public <X> Root<X> from(EntityType<X> entity) {
-		// TODO Auto-generated method stub
-		return null;
+	public CriteriaQuery<T> multiselect(final Selection<?>... selections) {
+		return multiselect(asList(selections));
 	}
 
 	@Override
-	public Set<Root<?>> getRoots() {
-		// TODO Auto-generated method stub
-		return null;
+	public CriteriaQuery<T> multiselect(final List<Selection<?>> selectionList) {
+		throw new UnsupportedOperationException();
+	}
+
+
+
+	@Override
+	public CriteriaQuery<T> orderBy(final Order... o) {
+		return orderBy(asList(o));
 	}
 
 	@Override
-	public Selection<T> getSelection() {
-		// TODO Auto-generated method stub
-		return null;
+	public CriteriaQuery<T> orderBy(final List<Order> o) {
+        this.orderBy = o;
+        return this;
 	}
 
-	@Override
-	public List<Expression<?>> getGroupList() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate getGroupRestriction() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public boolean isDistinct() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public Class<T> getResultType() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <U> Subquery<U> subquery(Class<U> type) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate getRestriction() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> select(Selection<? extends T> selection) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> multiselect(Selection<?>... selections) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> multiselect(List<Selection<?>> selectionList) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> where(Expression<Boolean> restriction) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> where(Predicate... restrictions) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> groupBy(Expression<?>... grouping) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> groupBy(List<Expression<?>> grouping) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> having(Expression<Boolean> restriction) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> having(Predicate... restrictions) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> orderBy(Order... o) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> orderBy(List<Order> o) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CriteriaQuery<T> distinct(boolean distinct) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
 	@Override
 	public List<Order> getOrderList() {
-		// TODO Auto-generated method stub
-		return null;
+		return orderBy;
 	}
 
 	@Override
 	public Set<ParameterExpression<?>> getParameters() {
-		// TODO Auto-generated method stub
-		return null;
+		return Collections.emptySet();
 	}
 
 

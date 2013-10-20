@@ -35,42 +35,45 @@ public class JpaAnnotatedClassScanner implements ClassScanner {
 	public JpaAnnotatedClassScanner(final Collection<String> packages) {
 		this(null, packages);
 	}
-	
-	
+
+
+
 	public JpaAnnotatedClassScanner(final Collection<URL> resources, final Collection<String> packages) {
 		this(Thread.currentThread().getContextClassLoader(), resources, packages);
 	}
-	
+
 	public JpaAnnotatedClassScanner(final ClassLoader classLoader, final Collection<URL> resources, final Collection<String> packages) {
 		this(new ClassLoader[] {classLoader}, resources, packages);
 	}
-	
-	
+
+
 	public JpaAnnotatedClassScanner(final ClassLoader[] classLoaders, final Collection<URL> resources, final Collection<String> packages) {
 		this(Entity.class, classLoaders, resources, packages);
 	}
 
 	public JpaAnnotatedClassScanner(final Class<? extends Annotation> anno, final ClassLoader[] classLoaders, final Collection<URL> resources, final Collection<String> packages) {
 		final ConfigurationBuilder cb = new ConfigurationBuilder();
-		
+
 		for (final ClassLoader cl : classLoaders) {
 			cb.addClassLoader(cl);
 		}
-		
+
 		if (resources != null) {
 			cb.addUrls(resources);
 		}
-		
+
 		final FilterBuilder fb = new FilterBuilder();
+
 		for (final String p : packages) {
-			fb.add(new Include(p + "."));
+			final String regex = (p + ".").replace(".", "\\.") + "*";
+			fb.add(new Include(regex));
 		}
 		cb.filterInputsBy(fb);
-		
+
 		reflections = new Reflections(cb);
 	}
-	
-	
+
+
 	@Override
 	public Collection<Class<?>> scan() {
 		return reflections.getTypesAnnotatedWith(Entity.class);
