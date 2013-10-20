@@ -1,0 +1,94 @@
+/******************************************************************************************************/
+/*                                                                                                    */
+/*    Infinidat Ltd.  -  Proprietary and Confidential Material                                        */
+/*                                                                                                    */
+/*    Copyright (C) 2013, Infinidat Ltd. - All Rights Reserved                                        */
+/*                                                                                                    */
+/*    NOTICE: All information contained herein is, and remains the property of Infinidat Ltd.         */
+/*    All information contained herein is protected by trade secret or copyright law.                 */
+/*    The intellectual and technical concepts contained herein are proprietary to Infinidat Ltd.,     */
+/*    and may be protected by U.S. and Foreign Patents, or patents in progress.                       */
+/*                                                                                                    */
+/*    Redistribution or use, in source or binary forms, with or without modification,                 */
+/*    are strictly forbidden unless prior written permission is obtained from Infinidat Ltd.          */
+/*                                                                                                    */
+/*                                                                                                    */
+/******************************************************************************************************/
+
+package org.mestor.query;
+
+public class ClauseInfo {
+	private final String field;
+	private final Operand operand;
+	private final Object expression;
+
+	public static enum Operand {
+		/**
+		 * ==
+		 */
+		EQ,
+		/**
+		 * !=
+		 */
+		NE,
+		/**
+		 * >
+		 */
+		GT,
+		/**
+		 * >=
+		 */
+		GE,
+		/**
+		 * <
+		 */
+		LT,
+		/**
+		 * <=
+		 */
+		LE,
+		/**
+		 * like
+		 */
+		LIKE,
+		/**
+		 * not like
+		 */
+		NOT_LIKE,
+		/**
+		 * in
+		 */
+		IN,
+		/**
+		 * not
+		 */
+		NOT,
+
+		AND,
+		OR,
+
+		;
+	}
+
+
+	public ClauseInfo(final String field, final Operand operand, final Object expression) {
+		this.field = field;
+		this.operand = operand;
+		this.expression = expression;
+	}
+
+
+	public String getField() {
+		return field;
+	}
+
+
+	public Operand getOperand() {
+		return operand;
+	}
+
+
+	public Object getExpression() {
+		return expression;
+	}
+}
