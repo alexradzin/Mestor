@@ -22,21 +22,24 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.util.Collections;
-
 import javax.annotation.Nullable;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+import javax.persistence.metamodel.EntityType;
+import javax.persistence.metamodel.SingularAttribute;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mestor.entities.annotated.Person;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.persistence.query.CommonAbstractCriteriaBase;
 import org.mestor.persistence.query.QueryImpl;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.QueryInfo;
+import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo.QueryType;
 
 import com.google.common.base.Function;
@@ -68,16 +71,44 @@ public class CriteriaBuilderTest {
 		});
 	}
 
-	@Test @Ignore
+	@Test
 	public void testCreateQueryWithFrom() {
-		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, "person"), new Function<CriteriaQuery<Person>, Void>() {
-			@Override
-			public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
-				criteria.from(Person.class);
-				return null;
+		testCreateQuery(
+			Person.class,
+			new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", null)),
+			new Function<CriteriaQuery<Person>, Void>() {
+				@Override
+				public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
+					criteria.from(Person.class);
+					return null;
+				}
 			}
-		});
+		);
 	}
+
+
+	@Test
+	public void testCreateQueryWithFromAndWhere1() {
+		testCreateQuery(
+			Person.class,
+			new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", null), new ClauseInfo("identifier", Operand.EQ, 123), null),
+			new Function<CriteriaQuery<Person>, Void>() {
+				@Override
+				public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
+					final Root<Person> root = notNull(criteria.from(Person.class));
+					final EntityType<Person> personType = notNull(em.getMetamodel().entity(Person.class));
+					final SingularAttribute<? super Person, Integer> personIdAttr = notNull(personType.getSingularAttribute("identifier", Integer.class));
+
+					// this is ugly casting but it is good enough for tests.
+					@SuppressWarnings("rawtypes")
+					final CriteriaBuilder builder = ((CommonAbstractCriteriaBase)criteria).getCriteriaBuilder();
+					criteria.where(builder.equal(root.get(personIdAttr), 123));
+					return null;
+				}
+			}
+		);
+	}
+
 
 	private <T> void testCreateQuery(final Class<T> clazz, final QueryInfo expected, final Function<CriteriaQuery<T>, Void> f) {
 		final CriteriaBuilder builder = getCriteriaBuilder();
@@ -123,9 +154,7 @@ public class CriteriaBuilderTest {
 	}
 
 
-	//TODO implement this!!!!!!!!
 	private void assertQueryInfo(final QueryInfo expected, final QueryInfo actual) {
-
 		assertEquals(expected.getType(), actual.getType());
 		assertEquals(expected.getWhat(), actual.getWhat());
 		assertEquals(expected.getFrom(), actual.getFrom());
@@ -144,5 +173,10 @@ public class CriteriaBuilderTest {
 		assertEquals(expected.getExpression(), actual.getExpression());
 		assertEquals(expected.getField(), actual.getField());
 		assertEquals(expected.getOperand(), actual.getOperand());
+	}
+
+	private static <T> T notNull(final T value) {
+		assertNotNull(value);
+		return value;
 	}
 }

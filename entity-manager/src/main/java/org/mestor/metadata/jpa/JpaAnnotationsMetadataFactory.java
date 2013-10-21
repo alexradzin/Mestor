@@ -729,7 +729,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 		final Collection<Class<?>> nativeTypes = entityContext.getNativeTypes();
-		if(nativeTypes.contains(type)){
+		if(nativeTypes.contains(type)) {
 			return null;
 		}
 

@@ -26,9 +26,11 @@ import javax.persistence.criteria.CriteriaDelete;
 import javax.persistence.criteria.Root;
 import javax.persistence.metamodel.EntityType;
 
+import org.mestor.context.EntityContext;
+
 abstract class CriteriaChangeBase<T, S extends CriteriaChangeBase<T, S>> extends CommonAbstractCriteriaBase<T, S> implements CriteriaDelete<T> {
-	CriteriaChangeBase(final Class<T> targetEntity, final CriteriaBuilder queryBuilder) {
-		super(targetEntity, queryBuilder, new TreeSet<Root<?>>(new Comparator<Root<?>>() {
+	CriteriaChangeBase(final EntityContext entityContext, final Class<T> targetEntity, final CriteriaBuilder queryBuilder) {
+		super(entityContext, targetEntity, queryBuilder, new TreeSet<Root<?>>(new Comparator<Root<?>>() {
 			// Comparator that guarantees single element set every time new element is added it replaces any old element
 			@Override
 			public int compare(final Root<?> o1, final Root<?> o2) {
@@ -41,12 +43,12 @@ abstract class CriteriaChangeBase<T, S extends CriteriaChangeBase<T, S>> extends
 
 	@Override
 	public Root<T> from(final Class<T> entityClass) {
-		return addRoot(new RootImpl<T>(entityClass));
+		return addRoot(new RootImpl<T>(getEntityContext(), entityClass));
 	}
 
 	@Override
 	public Root<T> from(final EntityType<T> entity) {
-		return addRoot(new RootImpl<T>(entity.getJavaType()));
+		return from(entity.getJavaType());
 	}
 
 

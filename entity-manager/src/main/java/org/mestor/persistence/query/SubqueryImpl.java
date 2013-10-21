@@ -36,12 +36,14 @@ import javax.persistence.criteria.Selection;
 import javax.persistence.criteria.SetJoin;
 import javax.persistence.criteria.Subquery;
 
+import org.mestor.context.EntityContext;
+
 class SubqueryImpl<T> extends AbstractQueryImpl<T, SubqueryImpl<T>> implements Subquery<T> {
 	private String alias;
 	private final CommonAbstractCriteria parent;
 
-	SubqueryImpl(final Class<T> resultClass, final CriteriaBuilder queryBuilder, final CommonAbstractCriteria parent) {
-		super(resultClass, queryBuilder);
+	SubqueryImpl(final EntityContext entityContext, final Class<T> resultClass, final CriteriaBuilder queryBuilder, final CommonAbstractCriteria parent) {
+		super(entityContext, resultClass, queryBuilder);
 		this.parent = parent;
 	}
 
@@ -57,7 +59,7 @@ class SubqueryImpl<T> extends AbstractQueryImpl<T, SubqueryImpl<T>> implements S
 	}
 
 	private Predicate checkNull(final String cmd) {
-		return new BooleanFunctionExpressionImpl(cmd);
+		return new BooleanFunctionExpressionImpl(getEntityContext(), cmd);
 	}
 
 	@Override
@@ -67,22 +69,22 @@ class SubqueryImpl<T> extends AbstractQueryImpl<T, SubqueryImpl<T>> implements S
 
 	@Override
 	public Predicate in(final Object... values) {
-		return new InImpl<>(values);
+		return new InImpl<>(getEntityContext(), values);
 	}
 
 	@Override
 	public Predicate in(final Expression<?>... values) {
-		return new InImpl<Object>(Arrays.asList(values));
+		return new InImpl<Object>(getEntityContext(), Arrays.asList(values));
 	}
 
 	@Override
 	public Predicate in(final Collection<?> values) {
-		return new InImpl<Object>(values);
+		return new InImpl<Object>(getEntityContext(), values);
 	}
 
 	@Override
 	public Predicate in(final Expression<Collection<?>> values) {
-		return new InImpl<Object>(values);
+		return new InImpl<Object>(getEntityContext(), values);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -126,7 +128,7 @@ class SubqueryImpl<T> extends AbstractQueryImpl<T, SubqueryImpl<T>> implements S
 
 	@Override
 	public <Y> Root<Y> correlate(final Root<Y> parentRoot) {
-		return addRoot(new RootImpl<Y>(parentRoot.getJavaType()));
+		return addRoot(new RootImpl<Y>(getEntityContext(), parentRoot.getJavaType()));
 	}
 
 	@Override

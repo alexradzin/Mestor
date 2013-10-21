@@ -17,6 +17,7 @@
 
 package org.mestor.em;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,13 @@ import org.mestor.query.QueryInfo;
 import org.mestor.wrap.ObjectWrapperFactory;
 
 public class DummyPersistor implements Persistor {
+	private final static Collection<Class<?>> nativeTypes = Arrays.<Class<?>>asList(
+			short.class, int.class, long.class, char.class, byte.class,
+			Short.class, Integer.class, Long.class, Character.class, Byte.class,
+			String.class
+	);
+
+
 
 	@Override
 	public <T> void store(final T entity) {
@@ -136,8 +144,7 @@ public class DummyPersistor implements Persistor {
 
 	@Override
 	public Collection<Class<?>> getNativeTypes() {
-		// TODO Auto-generated method stub
-		return null;
+		return nativeTypes;
 	}
 
 }

@@ -24,6 +24,8 @@ import java.util.List;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Predicate;
 
+import org.mestor.context.EntityContext;
+
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
@@ -35,12 +37,12 @@ public class BooleanFunctionExpressionImpl extends FunctionExpressionImpl<Boolea
 		}
 	};
 
-	BooleanFunctionExpressionImpl(final String function, final Expression<?> ... arguments) {
-		this(function, Arrays.<Expression<?>>asList(arguments));
+	BooleanFunctionExpressionImpl(final EntityContext entityContext, final String function, final Expression<?> ... arguments) {
+		this(entityContext, function, Arrays.<Expression<?>>asList(arguments));
 	}
 
-	BooleanFunctionExpressionImpl(final String function, final Collection<Expression<?>> arguments) {
-		super(Boolean.class, function, arguments);
+	BooleanFunctionExpressionImpl(final EntityContext entityContext, final String function, final Collection<Expression<?>> arguments) {
+		super(entityContext, Boolean.class, function, arguments);
 	}
 
 	@Override
@@ -55,7 +57,7 @@ public class BooleanFunctionExpressionImpl extends FunctionExpressionImpl<Boolea
 
 	@Override
 	public List<Expression<Boolean>> getExpressions() {
-		return null;
+		return Arrays.<Expression<Boolean>>asList(this);
 	}
 
 	@Override

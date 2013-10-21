@@ -50,39 +50,39 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 	private final Class<T> clazz;
 	private final PersistenceType persistenceType;
 	private final String name;
-	
+
 	private final Map<String, Attribute<T, ?>> members = new LinkedHashMap<>();
-	
-	
+
+
 	private final Predicate<Attribute<T, ?>> isDeclaredHere = new Predicate<Attribute<T, ?>>() {
 		@Override
-		public boolean apply(Attribute<T, ?> attribute) {
+		public boolean apply(final Attribute<T, ?> attribute) {
 			return attribute.getDeclaringType().getJavaType().equals(getJavaType());
 		}};
-	
+
 	@SuppressWarnings({ "rawtypes", "unchecked" }) // I do not know why do I need this suppression. TODO: try to fix this.
 	private final Predicate<Attribute<T, ?>> isSingularAttribute = new TypedAttributePredicate(SingularAttribute.class);
 
 	@SuppressWarnings({ "rawtypes", "unchecked" }) // I do not know why do I need this suppression. TODO: try to fix this.
 	private final Predicate<Attribute<T, ?>> isPluralAttribute = new TypedAttributePredicate(PluralAttribute.class);
-	
-	
+
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public ManagedTypeImpl(EntityMetadata<T> emd) {
+	public ManagedTypeImpl(final EntityMetadata<T> emd) {
 		this.emd = emd;
 		clazz = emd.getEntityType();
 		name = emd.getEntityName();
-		
+
 		this.persistenceType = Utils.getAnnotatedCategory(
-				Utils.typeAnnotations, 
-				emd.getClass(), 
-				Lists.reverse(Arrays.asList(PersistenceType.values())).toArray(new PersistenceType[0]), 
+				Utils.typeAnnotations,
+				emd.getClass(),
+				Lists.reverse(Arrays.asList(PersistenceType.values())).toArray(new PersistenceType[0]),
 				PersistenceType.BASIC);
-		
-		
-		for (FieldMetadata<T, Object, Object> fmd : emd.getFields()) {
-			Class<?> type = fmd.getType();
-		
+
+
+		for (final FieldMetadata<T, Object, Object> fmd : emd.getFields()) {
+			final Class<?> type = fmd.getType();
+
 			Attribute<T, Object> attribute;
 			if (List.class.isAssignableFrom(type)) {
 				attribute =  new ListAttributeImpl(this, fmd);
@@ -117,14 +117,14 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 		return Sets.filter(new LinkedHashSet<Attribute<T, ?>>(members.values()), isDeclaredHere);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public <Y> SingularAttribute<? super T, Y> getSingularAttribute(String name, Class<Y> type) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> SingularAttribute<? super T, Y> getSingularAttribute(final String name, final Class<Y> type) {
+		return new SingularAttributeImpl<T, Y>(this, (FieldMetadata<T, Y, ?>)emd.getFieldByName(name));
 	}
 
 	@Override
-	public <Y> SingularAttribute<T, Y> getDeclaredSingularAttribute(String name, Class<Y> type) {
+	public <Y> SingularAttribute<T, Y> getDeclaredSingularAttribute(final String name, final Class<Y> type) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -141,49 +141,49 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 	}
 
 	@Override
-	public <E> CollectionAttribute<? super T, E> getCollection(String name, Class<E> elementType) {
+	public <E> CollectionAttribute<? super T, E> getCollection(final String name, final Class<E> elementType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <E> CollectionAttribute<T, E> getDeclaredCollection(String name, Class<E> elementType) {
+	public <E> CollectionAttribute<T, E> getDeclaredCollection(final String name, final Class<E> elementType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <E> SetAttribute<? super T, E> getSet(String name, Class<E> elementType) {
+	public <E> SetAttribute<? super T, E> getSet(final String name, final Class<E> elementType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <E> SetAttribute<T, E> getDeclaredSet(String name, Class<E> elementType) {
+	public <E> SetAttribute<T, E> getDeclaredSet(final String name, final Class<E> elementType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <E> ListAttribute<? super T, E> getList(String name, Class<E> elementType) {
+	public <E> ListAttribute<? super T, E> getList(final String name, final Class<E> elementType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <E> ListAttribute<T, E> getDeclaredList(String name, Class<E> elementType) {
+	public <E> ListAttribute<T, E> getDeclaredList(final String name, final Class<E> elementType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <K, V> MapAttribute<? super T, K, V> getMap(String name, Class<K> keyType, Class<V> valueType) {
+	public <K, V> MapAttribute<? super T, K, V> getMap(final String name, final Class<K> keyType, final Class<V> valueType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <K, V> MapAttribute<T, K, V> getDeclaredMap(String name, Class<K> keyType, Class<V> valueType) {
+	public <K, V> MapAttribute<T, K, V> getDeclaredMap(final String name, final Class<K> keyType, final Class<V> valueType) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -199,84 +199,85 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 	}
 
 	@Override
-	public Attribute<? super T, ?> getAttribute(String name) {
+	public Attribute<? super T, ?> getAttribute(final String name) {
 		return strict(
-				members.get(name), 
-				Predicates.<Attribute<? super T, ?>>notNull(), 
+				members.get(name),
+				Predicates.<Attribute<? super T, ?>>notNull(),
 				"managed_type_attribute_not_present", name, clazz);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Attribute<T, ?> getDeclaredAttribute(String name) {
+	public Attribute<T, ?> getDeclaredAttribute(final String name) {
 		return strict(
-				(Attribute<T, ?>)getAttribute(name), 
-				isDeclaredHere, 
+				(Attribute<T, ?>)getAttribute(name),
+				isDeclaredHere,
 				"managed_type_declared_attribute_not_present_but_is_on_superclass", name, clazz);
 	}
 
 	@Override
-	public SingularAttribute<? super T, ?> getSingularAttribute(String name) {
+	public SingularAttribute<? super T, ?> getSingularAttribute(final String name) {
 		return (SingularAttribute<? super T, ?>)getAttribute(name);
 	}
 
 	@Override
-	public SingularAttribute<T, ?> getDeclaredSingularAttribute(String name) {
+	public SingularAttribute<T, ?> getDeclaredSingularAttribute(final String name) {
 		return (SingularAttribute<T, ?>)getDeclaredAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public CollectionAttribute<? super T, ?> getCollection(String name) {
+	public CollectionAttribute<? super T, ?> getCollection(final String name) {
 		return (CollectionAttribute<? super T, ?>)getAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public CollectionAttribute<T, ?> getDeclaredCollection(String name) {
+	public CollectionAttribute<T, ?> getDeclaredCollection(final String name) {
 		return (CollectionAttribute<T, ?>)getDeclaredAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public SetAttribute<? super T, ?> getSet(String name) {
+	public SetAttribute<? super T, ?> getSet(final String name) {
 		return (SetAttribute<? super T, ?>)getAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public SetAttribute<T, ?> getDeclaredSet(String name) {
+	public SetAttribute<T, ?> getDeclaredSet(final String name) {
 		return (SetAttribute<T, ?>)getDeclaredAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public ListAttribute<? super T, ?> getList(String name) {
+	public ListAttribute<? super T, ?> getList(final String name) {
 		return (ListAttribute<? super T, ?>)getAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public ListAttribute<T, ?> getDeclaredList(String name) {
+	public ListAttribute<T, ?> getDeclaredList(final String name) {
 		return (ListAttribute<T, ?>)getDeclaredAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public MapAttribute<? super T, ?, ?> getMap(String name) {
+	public MapAttribute<? super T, ?, ?> getMap(final String name) {
 		return (MapAttribute<? super T, ?, ?>)getAttribute(name);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public MapAttribute<T, ?, ?> getDeclaredMap(String name) {
+	public MapAttribute<T, ?, ?> getDeclaredMap(final String name) {
 		return (MapAttribute<T, ?, ?>)getAttribute(name);
 	}
 
-	private <A extends Attribute<? super T, ?>> Set<A> getTypedAttributes(Set<A> singularAttributes, Predicate<Attribute<T, ?>> condition) {
-		for (Attribute<T, ?> a : members.values()) {
+	private <A extends Attribute<? super T, ?>> Set<A> getTypedAttributes(final Set<A> singularAttributes, final Predicate<Attribute<T, ?>> condition) {
+		for (final Attribute<T, ?> a : members.values()) {
 			if (condition.apply(a)) {
 				@SuppressWarnings("unchecked")
+				final
 				A sa = (A)a;
 				singularAttributes.add(sa);
 			}
@@ -284,26 +285,26 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 		return singularAttributes;
 	}
 
-	
-	private <V> V strict(V value, Predicate<V> predicate, String errorMsg, Object ... msgParams) {
+
+	private <V> V strict(final V value, final Predicate<V> predicate, final String errorMsg, final Object ... msgParams) {
 		if (predicate.apply(value)) {
 			return value;
 		}
-		
+
 		throw new IllegalArgumentException(Joiner.on(' ').join("metamodel_" + errorMsg, ":", msgParams));
 	}
-	
-	
-	
+
+
+
 	private static class TypedAttributePredicate<T> implements Predicate<Attribute<T, ?>> {
 		private final Class<? extends Attribute<T, ?>> type;
-		
-		TypedAttributePredicate(Class<? extends Attribute<T, ?>> type) {
+
+		TypedAttributePredicate(final Class<? extends Attribute<T, ?>> type) {
 			this.type = type;
 		}
-		
+
 		@Override
-		public boolean apply(Attribute<T, ?> attribute) {
+		public boolean apply(final Attribute<T, ?> attribute) {
 			return type.isAssignableFrom(attribute.getClass());
 		}
 	}
@@ -312,24 +313,24 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <Y> SingularAttribute<? super T, Y> getId(Class<Y> type) {
+	public <Y> SingularAttribute<? super T, Y> getId(final Class<Y> type) {
 		return new SingularAttributeImpl<T, Y>(this, (FieldMetadata<T, Y, ?>)emd.getPrimaryKey());
 	}
 
 	@Override
-	public <Y> SingularAttribute<T, Y> getDeclaredId(Class<Y> type) {
+	public <Y> SingularAttribute<T, Y> getDeclaredId(final Class<Y> type) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <Y> SingularAttribute<? super T, Y> getVersion(Class<Y> type) {
+	public <Y> SingularAttribute<? super T, Y> getVersion(final Class<Y> type) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <Y> SingularAttribute<T, Y> getDeclaredVersion(Class<Y> type) {
+	public <Y> SingularAttribute<T, Y> getDeclaredVersion(final Class<Y> type) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -380,5 +381,5 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 		return name;
 	}
 
-	
+
 }

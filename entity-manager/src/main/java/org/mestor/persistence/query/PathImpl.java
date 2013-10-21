@@ -22,10 +22,13 @@ import java.util.Map;
 
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Path;
+import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.Bindable;
 import javax.persistence.metamodel.MapAttribute;
 import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SingularAttribute;
+
+import org.mestor.context.EntityContext;
 
 public class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
 	private final static String PATHNODE_IS_PRIMITIVE_NODE = "pathnode_is_primitive_node";
@@ -35,10 +38,13 @@ public class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
     protected Object modelArtifact;
 
 
-    public PathImpl(final Path<?> parent, final Class<? extends X> javaClass, final Bindable<X> modelArtifact) {
-        super(javaClass);
+    public PathImpl(final EntityContext entityContext, final Path<?> parent, final Class<? extends X> javaClass, final Bindable<X> modelArtifact) {
+        super(entityContext, javaClass);
         this.pathParent = parent;
         this.modelArtifact = modelArtifact;
+        if (modelArtifact instanceof Attribute) {
+        	this.alias(((Attribute<?, ?>)modelArtifact).getName());
+        }
     }
 
 

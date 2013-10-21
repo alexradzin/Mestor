@@ -25,6 +25,8 @@ import java.util.List;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Predicate;
 
+import org.mestor.context.EntityContext;
+
 public class CompoundExpressionImpl extends ExpressionImpl<Boolean> implements Predicate {
 	private final BooleanOperator operator;
 	private final boolean not;
@@ -33,24 +35,24 @@ public class CompoundExpressionImpl extends ExpressionImpl<Boolean> implements P
 
 
 	@SafeVarargs
-	CompoundExpressionImpl(final BooleanOperator operator, final Expression<Boolean> ... expressions) {
-		this(operator, false, expressions);
+	CompoundExpressionImpl(final EntityContext entityContext, final BooleanOperator operator, final Expression<Boolean> ... expressions) {
+		this(entityContext, operator, false, expressions);
 	}
 
 
 	@SafeVarargs
-	CompoundExpressionImpl(final BooleanOperator operator, final boolean not, final Expression<Boolean> ... expressions) {
-		this(operator, not, Arrays.asList(expressions));
+	CompoundExpressionImpl(final EntityContext entityContext, final BooleanOperator operator, final boolean not, final Expression<Boolean> ... expressions) {
+		this(entityContext, operator, not, Arrays.asList(expressions));
 	}
 
 
-	CompoundExpressionImpl(final BooleanOperator operator, final Collection<Expression<Boolean>> expressions) {
-		this(operator, false, expressions);
+	CompoundExpressionImpl(final EntityContext entityContext, final BooleanOperator operator, final Collection<Expression<Boolean>> expressions) {
+		this(entityContext, operator, false, expressions);
 	}
 
 
-	CompoundExpressionImpl(final BooleanOperator operator, final boolean not, final Collection<Expression<Boolean>> expressions) {
-		super(Boolean.class);
+	CompoundExpressionImpl(final EntityContext entityContext, final BooleanOperator operator, final boolean not, final Collection<Expression<Boolean>> expressions) {
+		super(entityContext, Boolean.class);
 		this.operator = operator;
 		this.not = not;
 		this.expressions.addAll(expressions);
@@ -73,6 +75,6 @@ public class CompoundExpressionImpl extends ExpressionImpl<Boolean> implements P
 
 	@Override
 	public Predicate not() {
-		return new CompoundExpressionImpl(operator, !not, expressions);
+		return new CompoundExpressionImpl(getEntityContext(), operator, !not, expressions);
 	}
 }

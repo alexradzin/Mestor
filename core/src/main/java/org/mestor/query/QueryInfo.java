@@ -67,7 +67,7 @@ public class QueryInfo {
 	}
 
 	public QueryInfo(final QueryType type, final Collection<String> what, final String from, final ClauseInfo where, final Collection<OrderByInfo> orders, final Integer limit) {
-		this(type, mapFromKeys(what), Collections.<String, String>singletonMap(from, null), where, orders, limit);
+		this(type, mapFromKeys(what), Collections.<String, String>singletonMap(from, from), where, orders, limit);
 	}
 
 

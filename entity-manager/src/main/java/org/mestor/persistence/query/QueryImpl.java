@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Nullable;
 import javax.persistence.FlushModeType;
 import javax.persistence.LockModeType;
 import javax.persistence.Parameter;
@@ -35,15 +36,20 @@ import javax.persistence.PersistenceException;
 import javax.persistence.TemporalType;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
 
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
+import org.mestor.query.ClauseInfo;
+import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
 
 import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 
 public class QueryImpl<T> implements TypedQuery<T> {
 	private final Class<T> resultType;
@@ -101,7 +107,12 @@ public class QueryImpl<T> implements TypedQuery<T> {
 			}
 		}
 
-		queryInfo = new QueryInfo(QueryType.SELECT, what, from);
+
+		final Predicate restriction = criteriaQuery.getRestriction();
+		//restriction.isCompoundSelection();
+		final ClauseInfo where = createClauseInfo(restriction);
+
+		queryInfo = new QueryInfo(QueryType.SELECT, what, from, where, null);
 	}
 
 
@@ -362,5 +373,46 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	public QueryInfo getQueryInfo() {
 		return queryInfo;
+	}
+
+	private ClauseInfo createClauseInfo(final Predicate restriction) {
+		if (restriction == null) {
+			return null;
+		}
+		final List<Expression<Boolean>> expressions = restriction.getExpressions();
+		if (expressions == null || expressions.isEmpty()) {
+			return null;
+		}
+		final Predicate expression = (Predicate)expressions.get(0); //TODO: add support of several expressions
+
+		if (expression instanceof FunctionExpressionImpl) {
+			@SuppressWarnings("unchecked")
+			final FunctionExpressionImpl<Boolean> function = ((FunctionExpressionImpl<Boolean>)expression);
+			// if function is unsupported IllegalArgumentException will be thrown
+			final Operand operand = Operand.valueOf(function.getFunction().toUpperCase());
+			final Collection<Object> values = Collections2.transform(Collections2.filter(
+					function.getArguments(), new com.google.common.base.Predicate<Expression<?>>() {
+						@Override
+						public boolean apply(@Nullable final Expression<?> expr) {
+							return expr instanceof ConstantExpresion;
+						}
+
+					}
+				),
+				new Function<Expression<?>, Object>() {
+					@Override
+					public Object apply(@Nullable final Expression<?> expr) {
+						if (expr instanceof ConstantExpresion) {
+							return ((ConstantExpresion<?>)expr).getValue();
+						}
+						throw new UnsupportedOperationException(expr.getClass() + " TBD");
+					}
+			});
+			return new ClauseInfo(expression.getAlias(), operand, values);
+		}
+
+		// TODO: add support of In statement
+
+		throw new UnsupportedOperationException("Cannot create ClauseInfo from " + expression.getClass() + ": TBD");
 	}
 }

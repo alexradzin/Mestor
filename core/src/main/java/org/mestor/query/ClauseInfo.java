@@ -17,6 +17,9 @@
 
 package org.mestor.query;
 
+import java.lang.reflect.Array;
+import java.util.Collection;
+
 public class ClauseInfo {
 	private final String field;
 	private final Operand operand;
@@ -58,7 +61,7 @@ public class ClauseInfo {
 		/**
 		 * in
 		 */
-		IN,
+		IN(Object[].class),
 		/**
 		 * not
 		 */
@@ -66,15 +69,46 @@ public class ClauseInfo {
 
 		AND,
 		OR,
-
 		;
+
+
+		private final Class<?> paramType;
+
+		private Operand(final Class<?> paramType) {
+			this.paramType = paramType;
+		}
+
+		private Operand() {
+			this(Object.class);
+		}
+
+		public boolean isArrayParameter() {
+			return paramType.isArray();
+		}
 	}
 
 
 	public ClauseInfo(final String field, final Operand operand, final Object expression) {
 		this.field = field;
 		this.operand = operand;
-		this.expression = expression;
+
+		if (operand.isArrayParameter()) {
+			if (expression.getClass().isArray()) {
+				this.expression = expression;
+			} else if (expression instanceof Collection) {
+				this.expression = ((Collection<?>)expression).toArray();
+			} else {
+				this.expression = expression;
+			}
+		} else {
+			if (expression.getClass().isArray()) {
+				this.expression = Array.get(expression, 0);
+			} else if (expression instanceof Collection) {
+				this.expression = ((Collection<?>)expression).iterator().next();
+			} else {
+				this.expression = expression;
+			}
+		}
 	}
 
 

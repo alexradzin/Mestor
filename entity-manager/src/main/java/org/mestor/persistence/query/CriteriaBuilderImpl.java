@@ -47,6 +47,8 @@ import javax.persistence.criteria.Selection;
 import javax.persistence.criteria.SetJoin;
 import javax.persistence.criteria.Subquery;
 
+import org.mestor.context.EntityContext;
+
 
 //and
 //asc
@@ -87,6 +89,11 @@ import javax.persistence.criteria.Subquery;
 
 
 public class CriteriaBuilderImpl implements CriteriaBuilder {
+	private final EntityContext entityContext;
+
+	public CriteriaBuilderImpl(final EntityContext entityContext) {
+		this.entityContext = entityContext;
+	}
 
 	@Override
 	public CriteriaQuery<Object> createQuery() {
@@ -95,7 +102,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <T> CriteriaQuery<T> createQuery(final Class<T> resultClass) {
-		return new CriteriaQueryImpl<T>(resultClass, this);
+		return new CriteriaQueryImpl<T>(entityContext, resultClass, this);
 	}
 
 	@Override
@@ -105,17 +112,17 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <T> CriteriaUpdate<T> createCriteriaUpdate(final Class<T> targetEntity) {
-		return new CriteriaUpdateImpl<T>(targetEntity, this);
+		return new CriteriaUpdateImpl<T>(entityContext, targetEntity, this);
 	}
 
 	@Override
 	public <T> CriteriaDelete<T> createCriteriaDelete(final Class<T> targetEntity) {
-		return new CriteriaDeleteImpl<T>(targetEntity, this);
+		return new CriteriaDeleteImpl<T>(entityContext, targetEntity, this);
 	}
 
 	@Override
 	public <Y> CompoundSelection<Y> construct(final Class<Y> resultClass, final Selection<?>... selections) {
-		return new CompoundSelectionImpl<>(resultClass, selections);
+		return new CompoundSelectionImpl<>(entityContext, resultClass, selections);
 	}
 
 	@Override
@@ -140,93 +147,93 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <N extends Number> Expression<Double> avg(final Expression<N> x) {
-		return new FunctionExpressionImpl<Double>("avg", x);
+		return new FunctionExpressionImpl<Double>(entityContext, "avg", x);
 	}
 
 	@Override
 	public <N extends Number> Expression<N> sum(final Expression<N> x) {
-		return new FunctionExpressionImpl<N>("sum", x);
+		return new FunctionExpressionImpl<N>(entityContext, "sum", x);
 	}
 
 	@Override
 	public Expression<Long> sumAsLong(final Expression<Integer> x) {
-		return new FunctionExpressionImpl<Long>(Long.class, "sum", x);
+		return new FunctionExpressionImpl<Long>(entityContext, Long.class, "sum", x);
 	}
 
 	@Override
 	public Expression<Double> sumAsDouble(final Expression<Float> x) {
-		return new FunctionExpressionImpl<Double>(Double.class, "sum", x);
+		return new FunctionExpressionImpl<Double>(entityContext, Double.class, "sum", x);
 	}
 
 	@Override
 	public <N extends Number> Expression<N> max(final Expression<N> x) {
-		return new FunctionExpressionImpl<N>("max", x);
+		return new FunctionExpressionImpl<N>(entityContext, "max", x);
 	}
 
 	@Override
 	public <N extends Number> Expression<N> min(final Expression<N> x) {
-		return new FunctionExpressionImpl<N>("min", x);
+		return new FunctionExpressionImpl<N>(entityContext, "min", x);
 	}
 
 	@Override
 	public <X extends Comparable<? super X>> Expression<X> greatest(final Expression<X> x) {
-		return new FunctionExpressionImpl<X>("max", x);
+		return new FunctionExpressionImpl<X>(entityContext, "max", x);
 	}
 
 	@Override
 	public <X extends Comparable<? super X>> Expression<X> least(final Expression<X> x) {
-		return new FunctionExpressionImpl<X>("min", x);
+		return new FunctionExpressionImpl<X>(entityContext, "min", x);
 	}
 
 	@Override
 	public Expression<Long> count(final Expression<?> x) {
-		return new FunctionExpressionImpl<Long>(Long.class, "count", x);
+		return new FunctionExpressionImpl<Long>(entityContext, Long.class, "count", x);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Expression<Long> countDistinct(final Expression<?> x) {
-		return new FunctionExpressionImpl<Long>(Long.class, "countDistinct", (Expression<Object>)x);
+		return new FunctionExpressionImpl<Long>(entityContext, Long.class, "countDistinct", (Expression<Object>)x);
 	}
 
 	@Override
 	public Predicate exists(final Subquery<?> subquery) {
-		return new BooleanFunctionExpressionImpl("exists", subquery);
+		return new BooleanFunctionExpressionImpl(entityContext, "exists", subquery);
 	}
 
 	@Override
 	public <Y> Expression<Y> all(final Subquery<Y> subquery) {
-		return new FunctionExpressionImpl<Y>("all", subquery);
+		return new FunctionExpressionImpl<Y>(entityContext, "all", subquery);
 	}
 
 	@Override
 	public <Y> Expression<Y> some(final Subquery<Y> subquery) {
-		return new FunctionExpressionImpl<Y>("some", subquery);
+		return new FunctionExpressionImpl<Y>(entityContext, "some", subquery);
 	}
 
 	@Override
 	public <Y> Expression<Y> any(final Subquery<Y> subquery) {
-		return new FunctionExpressionImpl<Y>("any", subquery);
+		return new FunctionExpressionImpl<Y>(entityContext, "any", subquery);
 	}
 
 	@Override
 	public Predicate and(final Expression<Boolean> x, final Expression<Boolean> y) {
-		return new CompoundExpressionImpl(BooleanOperator.AND, x, y);
+		return new CompoundExpressionImpl(entityContext, BooleanOperator.AND, x, y);
 	}
 
 	@Override
 	public Predicate and(final Predicate... restrictions) {
-		return new CompoundExpressionImpl(BooleanOperator.AND, restrictions);
+		return new CompoundExpressionImpl(entityContext, BooleanOperator.AND, restrictions);
 	}
 
 	@Override
 	public Predicate or(final Expression<Boolean> x, final Expression<Boolean> y) {
-		return new CompoundExpressionImpl(BooleanOperator.OR, x, y);
+		return new CompoundExpressionImpl(entityContext, BooleanOperator.OR, x, y);
 	}
 
 	@Override
 	public Predicate or(final Predicate... restrictions) {
-		return new CompoundExpressionImpl(BooleanOperator.OR, restrictions);
+		return new CompoundExpressionImpl(entityContext, BooleanOperator.OR, restrictions);
 	}
 
 	@Override
@@ -236,33 +243,33 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Predicate conjunction() {
-		return new CompoundExpressionImpl(BooleanOperator.AND);
+		return new CompoundExpressionImpl(entityContext, BooleanOperator.AND);
 	}
 
 	@Override
 	public Predicate disjunction() {
-		return new CompoundExpressionImpl(BooleanOperator.OR);
+		return new CompoundExpressionImpl(entityContext, BooleanOperator.OR);
 	}
 
 	@Override
 	public Predicate isTrue(final Expression<Boolean> x) {
-		return new BooleanFunctionExpressionImpl("true", x, new ConstantExpresion<>(true));
+		return new BooleanFunctionExpressionImpl(entityContext, "true", x, new ConstantExpresion<>(true));
 	}
 
 	@Override
 	public Predicate isFalse(final Expression<Boolean> x) {
-		return new BooleanFunctionExpressionImpl("false", x, new ConstantExpresion<>(false));
+		return new BooleanFunctionExpressionImpl(entityContext, "false", x, new ConstantExpresion<>(false));
 	}
 
 	@Override
 	public Predicate isNull(final Expression<?> x) {
-		return new BooleanFunctionExpressionImpl("null", x, new ConstantExpresion<>(null));
+		return new BooleanFunctionExpressionImpl(entityContext, "null", x, new ConstantExpresion<>(null));
 	}
 
 	@Override
 	public Predicate isNotNull(final Expression<?> x) {
 		// TODO should be null but negated.
-		return new BooleanFunctionExpressionImpl("not null", x, new ConstantExpresion<>(null));
+		return new BooleanFunctionExpressionImpl(entityContext, "not null", x, new ConstantExpresion<>(null));
 	}
 
 	@Override
@@ -332,7 +339,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 	@Override
 	public <Y extends Comparable<? super Y>> Predicate between(final Expression<? extends Y> v, final Expression<? extends Y> x,
 			final Expression<? extends Y> y) {
-		return new BooleanFunctionExpressionImpl("between", v, x, y);
+		return new BooleanFunctionExpressionImpl(entityContext, "between", v, x, y);
 	}
 
 	@Override
@@ -382,17 +389,17 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <N extends Number> Expression<N> neg(final Expression<N> x) {
-		return new FunctionExpressionImpl<N>("size", x);
+		return new FunctionExpressionImpl<N>(entityContext, "size", x);
 	}
 
 	@Override
 	public <N extends Number> Expression<N> abs(final Expression<N> x) {
-		return new FunctionExpressionImpl<N>("abs", x);
+		return new FunctionExpressionImpl<N>(entityContext, "abs", x);
 	}
 
 	@Override
 	public <N extends Number> Expression<N> sum(final Expression<? extends N> x, final Expression<? extends N> y) {
-		return new FunctionExpressionImpl<N>("sum", x, y);
+		return new FunctionExpressionImpl<N>(entityContext, "sum", x, y);
 	}
 
 	@Override
@@ -422,7 +429,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <N extends Number> Expression<N> diff(final Expression<? extends N> x, final Expression<? extends N> y) {
-		return new FunctionExpressionImpl<>("diff", x, y);
+		return new FunctionExpressionImpl<>(entityContext, "diff", x, y);
 	}
 
 	@Override
@@ -437,7 +444,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<Number> quot(final Expression<? extends Number> x, final Expression<? extends Number> y) {
-		return new FunctionExpressionImpl<>("quot", x, y);
+		return new FunctionExpressionImpl<>(entityContext, "quot", x, y);
 	}
 
 	@Override
@@ -452,7 +459,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<Integer> mod(final Expression<Integer> x, final Expression<Integer> y) {
-		return new FunctionExpressionImpl<>("mod", x, y);
+		return new FunctionExpressionImpl<>(entityContext, "mod", x, y);
 	}
 
 	@Override
@@ -467,7 +474,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<Double> sqrt(final Expression<? extends Number> x) {
-		return new FunctionExpressionImpl<>("sqrt", x);
+		return new FunctionExpressionImpl<>(entityContext, "sqrt", x);
 	}
 
 	@Override
@@ -527,17 +534,17 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <C extends Collection<?>> Predicate isEmpty(final Expression<C> collection) {
-		return new BooleanFunctionExpressionImpl("empty", collection);
+		return new BooleanFunctionExpressionImpl(entityContext, "empty", collection);
 	}
 
 	@Override
 	public <C extends Collection<?>> Predicate isNotEmpty(final Expression<C> collection) {
-		return new BooleanFunctionExpressionImpl("not empty", collection);
+		return new BooleanFunctionExpressionImpl(entityContext, "not empty", collection);
 	}
 
 	@Override
 	public <C extends Collection<?>> Expression<Integer> size(final Expression<C> collection) {
-		return new FunctionExpressionImpl<Integer>(Integer.class, "size", collection);
+		return new FunctionExpressionImpl<Integer>(entityContext, Integer.class, "size", collection);
 	}
 
 	@Override
@@ -637,7 +644,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<String> concat(final Expression<String> x, final Expression<String> y) {
-		return new FunctionExpressionImpl<>("concat", x, y);
+		return new FunctionExpressionImpl<>(entityContext, "concat", x, y);
 	}
 
 	@Override
@@ -652,7 +659,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<String> substring(final Expression<String> x, final Expression<Integer> from) {
-		return new FunctionExpressionImpl<>(String.class, "substring", x, from);
+		return new FunctionExpressionImpl<>(entityContext, String.class, "substring", x, from);
 	}
 
 	@Override
@@ -662,7 +669,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<String> substring(final Expression<String> x, final Expression<Integer> from, final Expression<Integer> len) {
-		return new FunctionExpressionImpl<>(String.class, "substring", x, from, len);
+		return new FunctionExpressionImpl<>(entityContext, String.class, "substring", x, from, len);
 	}
 
 	@Override
@@ -677,7 +684,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<String> trim(final Trimspec ts, final Expression<String> x) {
-		return new FunctionExpressionImpl<String>("trim", new ConstantExpresion<String>(ts.name()), x);
+		return new FunctionExpressionImpl<String>(entityContext, "trim", new ConstantExpresion<String>(ts.name()), x);
 	}
 
 	@Override
@@ -687,7 +694,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<String> trim(final Trimspec ts, final Expression<Character> t, final Expression<String> x) {
-		return new FunctionExpressionImpl<String>("trim", new ConstantExpresion<String>(ts.name()), t, x);
+		return new FunctionExpressionImpl<String>(entityContext, "trim", new ConstantExpresion<String>(ts.name()), t, x);
 	}
 
 	@Override
@@ -702,22 +709,22 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<String> lower(final Expression<String> x) {
-		return new FunctionExpressionImpl<>("lower", x);
+		return new FunctionExpressionImpl<>(entityContext, "lower", x);
 	}
 
 	@Override
 	public Expression<String> upper(final Expression<String> x) {
-		return new FunctionExpressionImpl<>("upper", x);
+		return new FunctionExpressionImpl<>(entityContext, "upper", x);
 	}
 
 	@Override
 	public Expression<Integer> length(final Expression<String> x) {
-		return new FunctionExpressionImpl<>("length", x);
+		return new FunctionExpressionImpl<>(entityContext, "length", x);
 	}
 
 	@Override
 	public Expression<Integer> locate(final Expression<String> x, final Expression<String> pattern) {
-		return new FunctionExpressionImpl<>("locate", x, pattern);
+		return new FunctionExpressionImpl<>(entityContext, "locate", x, pattern);
 	}
 
 	@Override
@@ -727,7 +734,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<Integer> locate(final Expression<String> x, final Expression<String> pattern, final Expression<Integer> from) {
-		return new FunctionExpressionImpl<>("locate", x, pattern, from);
+		return new FunctionExpressionImpl<>(entityContext, "locate", x, pattern, from);
 	}
 
 	@Override
@@ -737,28 +744,28 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Expression<Date> currentDate() {
-		return new FunctionExpressionImpl<>("date");
+		return new FunctionExpressionImpl<>(entityContext, "date");
 	}
 
 	@Override
 	public Expression<Timestamp> currentTimestamp() {
-		return new FunctionExpressionImpl<>("timestamp");
+		return new FunctionExpressionImpl<>(entityContext, "timestamp");
 	}
 
 	@Override
 	public Expression<Time> currentTime() {
-		return new FunctionExpressionImpl<>("time");
+		return new FunctionExpressionImpl<>(entityContext, "time");
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> In<T> in(final Expression<? extends T> expression) {
-		return new InImpl<T>((Expression<T>)expression);
+		return new InImpl<T>(entityContext, (Expression<T>)expression);
 	}
 
 	@Override
 	public <Y> Expression<Y> coalesce(final Expression<? extends Y> x, final Expression<? extends Y> y) {
-		return new FunctionExpressionImpl<>("coalesce", x, y);
+		return new FunctionExpressionImpl<>(entityContext, "coalesce", x, y);
 	}
 
 	@Override
@@ -795,7 +802,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public <T> Expression<T> function(final String name, final Class<T> type, final Expression<?>... args) {
-		return new FunctionExpressionImpl<>(type, name, args);
+		return new FunctionExpressionImpl<>(entityContext, type, name, args);
 	}
 
 	@Override
@@ -839,6 +846,6 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 	}
 
 	private Predicate compare(final String op, final Expression<?> ... xs) {
-		return new BooleanFunctionExpressionImpl(op, xs);
+		return new BooleanFunctionExpressionImpl(entityContext, op, xs);
 	}
 }

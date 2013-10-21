@@ -22,10 +22,12 @@ import java.util.Collection;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Predicate;
 
+import org.mestor.context.EntityContext;
+
 public class ExpressionImpl<T> extends SelectionImpl<T> implements Expression<T> {
 
-	ExpressionImpl(final Class<? extends T> type) {
-		super(type);
+	ExpressionImpl(final EntityContext entityContext, final Class<? extends T> type) {
+		super(entityContext, type);
 	}
 
 	@Override
@@ -48,17 +50,17 @@ public class ExpressionImpl<T> extends SelectionImpl<T> implements Expression<T>
 
 	@Override
 	public Predicate in(final Expression<?>... values) {
-		return new BooleanFunctionExpressionImpl("in", values);
+		return new BooleanFunctionExpressionImpl(getEntityContext(), "in", values);
 	}
 
 	@Override
 	public Predicate in(final Collection<?> values) {
-		return new BooleanFunctionExpressionImpl("in", BooleanFunctionExpressionImpl.valuesToExpressions(values));
+		return new BooleanFunctionExpressionImpl(getEntityContext(), "in", BooleanFunctionExpressionImpl.valuesToExpressions(values));
 	}
 
 	@Override
 	public Predicate in(final Expression<Collection<?>> values) {
-		return new BooleanFunctionExpressionImpl("in", values);
+		return new BooleanFunctionExpressionImpl(getEntityContext(), "in", values);
 	}
 
 	@SuppressWarnings("unchecked")

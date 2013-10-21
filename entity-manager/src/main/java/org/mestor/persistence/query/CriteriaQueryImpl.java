@@ -27,12 +27,14 @@ import javax.persistence.criteria.Order;
 import javax.persistence.criteria.ParameterExpression;
 import javax.persistence.criteria.Selection;
 
+import org.mestor.context.EntityContext;
+
 
 public class CriteriaQueryImpl<T> extends AbstractQueryImpl<T, CriteriaQueryImpl<T>> implements CriteriaQuery<T> {
     private List<Order> orderBy;
 
-	public CriteriaQueryImpl(final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
-		super(resultClass, queryBuilder);
+	public CriteriaQueryImpl(final EntityContext entityContext, final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
+		super(entityContext, resultClass, queryBuilder);
 	}
 
 

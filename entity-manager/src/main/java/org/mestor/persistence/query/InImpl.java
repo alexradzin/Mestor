@@ -23,20 +23,22 @@ import java.util.Collection;
 import javax.persistence.criteria.CriteriaBuilder.In;
 import javax.persistence.criteria.Expression;
 
+import org.mestor.context.EntityContext;
+
 public class InImpl<B> extends BooleanFunctionExpressionImpl implements In<B> {
 	@SuppressWarnings("unchecked")
-	InImpl(final B ... values) {
-		super("in", BooleanFunctionExpressionImpl.valuesToExpressions(Arrays.asList(values)));
+	InImpl(final EntityContext entityContext, final B ... values) {
+		super(entityContext, "in", BooleanFunctionExpressionImpl.valuesToExpressions(Arrays.asList(values)));
 	}
 
 
 	@SafeVarargs
-	InImpl(final Expression<B> ...expressions) {
-		this(Arrays.<Expression<?>>asList(expressions));
+	InImpl(final EntityContext entityContext, final Expression<B> ...expressions) {
+		this(entityContext, Arrays.<Expression<?>>asList(expressions));
 	}
 
-	InImpl(final Collection<Expression<?>> expressions) {
-		super("in", expressions);
+	InImpl(final EntityContext entityContext, final Collection<Expression<?>> expressions) {
+		super(entityContext, "in", expressions);
 	}
 
 

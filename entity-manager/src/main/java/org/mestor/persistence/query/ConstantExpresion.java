@@ -26,7 +26,7 @@ public class ConstantExpresion<T> extends ExpressionImpl<T> {
 	}
 
 	ConstantExpresion(final Class<? extends T> type, final T value) {
-		super(type);
+		super(null, type);
 		this.value = value;
 	}
 

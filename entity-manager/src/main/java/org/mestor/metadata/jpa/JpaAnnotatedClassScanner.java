@@ -65,7 +65,7 @@ public class JpaAnnotatedClassScanner implements ClassScanner {
 		final FilterBuilder fb = new FilterBuilder();
 
 		for (final String p : packages) {
-			final String regex = (p + ".").replace(".", "\\.") + "*";
+			final String regex = (p + ".").replace(".", "\\.") + ".*";
 			fb.add(new Include(regex));
 		}
 		cb.filterInputsBy(fb);

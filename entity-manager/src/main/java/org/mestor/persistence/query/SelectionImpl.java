@@ -22,11 +22,15 @@ import java.util.List;
 
 import javax.persistence.criteria.Selection;
 
+import org.mestor.context.EntityContext;
+
 public abstract class SelectionImpl<X> implements Selection<X>, Serializable {
 	private final Class<? extends X> type;
+	private final EntityContext entityContext;
 	private String alias;
 
-	SelectionImpl(final Class<? extends X> type) {
+	SelectionImpl(final EntityContext entityContext, final Class<? extends X> type) {
+		this.entityContext = entityContext;
 		this.type = type;
 	}
 
@@ -54,5 +58,9 @@ public abstract class SelectionImpl<X> implements Selection<X>, Serializable {
 	@Override
 	public List<Selection<?>> getCompoundSelectionItems() {
 		throw new IllegalStateException("Criteria not a compound selection");
+	}
+
+	protected EntityContext getEntityContext() {
+		return entityContext;
 	}
 }

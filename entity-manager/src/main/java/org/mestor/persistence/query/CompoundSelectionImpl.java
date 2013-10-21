@@ -23,16 +23,19 @@ import java.util.List;
 import javax.persistence.criteria.CompoundSelection;
 import javax.persistence.criteria.Selection;
 
+import org.mestor.context.EntityContext;
+
 
 public class CompoundSelectionImpl<X> extends SelectionImpl<X> implements CompoundSelection<X> {
-	CompoundSelectionImpl(final Class<? extends X> type) {
-		super(type);
+	protected List<Selection<?>> subSelections;
+
+	CompoundSelectionImpl(final EntityContext entityContext, final Class<? extends X> type) {
+		super(entityContext, type);
 	}
-    protected List<Selection<?>> subSelections;
 
     @SuppressWarnings("unchecked")
-	public CompoundSelectionImpl(final Class<? extends X> type, @SuppressWarnings("rawtypes") final Selection[] subSelections) {
-    	super(type);
+	public CompoundSelectionImpl(final EntityContext entityContext, final Class<? extends X> type, @SuppressWarnings("rawtypes") final Selection[] subSelections) {
+    	this(entityContext, type);
         this.subSelections = new ArrayList<Selection<?>>();
         for (final Selection<X> sel : subSelections) {
         	this.subSelections.add(sel);

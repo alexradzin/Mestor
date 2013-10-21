@@ -20,8 +20,10 @@ package org.mestor.persistence.query;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaDelete;
 
+import org.mestor.context.EntityContext;
+
 public class CriteriaDeleteImpl<T> extends CriteriaChangeBase<T, CriteriaDeleteImpl<T>> implements CriteriaDelete<T> {
-	CriteriaDeleteImpl(final Class<T> targetEntity, final CriteriaBuilder queryBuilder) {
-		super(targetEntity, queryBuilder);
+	CriteriaDeleteImpl(final EntityContext entityContext, final Class<T> targetEntity, final CriteriaBuilder queryBuilder) {
+		super(entityContext, targetEntity, queryBuilder);
 	}
 }

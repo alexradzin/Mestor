@@ -30,6 +30,8 @@ import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
 import javax.persistence.metamodel.EntityType;
 
+import org.mestor.context.EntityContext;
+
 
 abstract class AbstractQueryImpl<T, S extends CommonAbstractCriteriaBase<T, S> & AbstractQuery<T>> extends CommonAbstractCriteriaBase<T, S>  implements AbstractQuery<T> {
 //    protected Metamodel metamodel;
@@ -40,13 +42,13 @@ abstract class AbstractQueryImpl<T, S extends CommonAbstractCriteriaBase<T, S> &
     protected Selection<? extends T> selection;
 
 
-	protected AbstractQueryImpl(final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
-		super(resultClass, queryBuilder);
+	protected AbstractQueryImpl(final EntityContext entityContext, final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
+		super(entityContext, resultClass, queryBuilder);
 	}
 
 	@Override
 	public <X> Root<X> from(final Class<X> entityClass) {
-		return addRoot(new RootImpl<X>(entityClass));
+		return addRoot(new RootImpl<X>(getEntityContext(), entityClass));
 	}
 
 	@Override

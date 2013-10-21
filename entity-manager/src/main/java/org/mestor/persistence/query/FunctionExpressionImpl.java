@@ -24,8 +24,11 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Selection;
+
+import org.mestor.context.EntityContext;
 
 public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 	private final Class<R> returnType;
@@ -35,33 +38,41 @@ public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 
 
 	@SuppressWarnings("unchecked")
-	FunctionExpressionImpl(final String function, final Expression<?> argument) {
-		this((Class<R>)argument.getJavaType(), function, Collections.<Expression<?>>singleton(argument));
+	FunctionExpressionImpl(final EntityContext entityContext, final String function, final Expression<?> argument) {
+		this(entityContext, (Class<R>)argument.getJavaType(), function, Collections.<Expression<?>>singleton(argument));
 	}
 
 
 
-	FunctionExpressionImpl(final Class<R> returnType, final String function, final Expression<?> ... arguments) {
-		this(returnType, function, Arrays.<Expression<?>>asList(arguments));
+	FunctionExpressionImpl(final EntityContext entityContext, final Class<R> returnType, final String function, final Expression<?> ... arguments) {
+		this(entityContext, returnType, function, Arrays.<Expression<?>>asList(arguments));
 	}
 
 	@SuppressWarnings("unchecked")
-	FunctionExpressionImpl(final String function, final Expression<?> ... arguments) {
-		this((Class<R>)arguments.getClass().getComponentType(), function, Arrays.<Expression<?>>asList(arguments));
+	FunctionExpressionImpl(final EntityContext entityContext, final String function, final Expression<?> ... arguments) {
+		this(entityContext, (Class<R>)arguments.getClass().getComponentType(), function, Arrays.<Expression<?>>asList(arguments));
 	}
 
-	FunctionExpressionImpl(final Class<R> returnType, final String function, final Collection<Expression<?>> arguments) {
-		super(returnType);
+	FunctionExpressionImpl(final EntityContext entityContext, final Class<R> returnType, final String function, final Collection<Expression<?>> arguments) {
+		super(entityContext, returnType);
 		this.returnType = returnType;
 		this.function = function;
 		this.arguments.addAll(arguments);
+
+		// Look for the first Path argument to extract alias
+		for (final Expression<?> arg : arguments) {
+			if (arg instanceof Path) {
+				this.alias(arg.getAlias());
+				break;
+			}
+		}
 	}
 
 
-	@Override
-	public Selection<R> alias(final String name) {
-		return this;
-	}
+//	@Override
+//	public Selection<R> alias(final String name) {
+//		return this;
+//	}
 
 	@Override
 	public boolean isCompoundSelection() {
@@ -78,10 +89,10 @@ public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 		return returnType;
 	}
 
-	@Override
-	public String getAlias() {
-		return function;
-	}
+//	@Override
+//	public String getAlias() {
+//		return function;
+//	}
 
 	@Override
 	public Predicate isNull() {
@@ -120,5 +131,13 @@ public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 
 	protected void addArgument(final Expression<?> argument) {
 		this.arguments.add(argument);
+	}
+
+	public List<Expression<?>> getArguments() {
+		return Collections.unmodifiableList(arguments);
+	}
+
+	public String getFunction() {
+		return function;
 	}
 }

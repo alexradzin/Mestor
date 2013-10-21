@@ -35,7 +35,6 @@ import javax.persistence.metamodel.Metamodel;
 import javax.persistence.spi.PersistenceUnitInfo;
 
 import org.mestor.persistence.metamodel.CompositeMetamodel;
-import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.util.CollectionUtils;
 
 import com.google.common.base.Predicate;
@@ -113,7 +112,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
 	@Override
 	public CriteriaBuilder getCriteriaBuilder() {
-		return new CriteriaBuilderImpl();
+		throw new UnsupportedOperationException("EntityManagerFactory.getCriteriaBuilder() is not supported yet");
 	}
 
 	@Override

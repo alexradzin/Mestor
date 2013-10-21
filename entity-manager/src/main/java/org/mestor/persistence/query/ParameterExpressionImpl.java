@@ -42,7 +42,7 @@ public class ParameterExpressionImpl<T> extends ExpressionImpl<T> implements Par
 	}
 
 	private ParameterExpressionImpl(final String name, final Integer position, final Class<T> type) {
-		super(type);
+		super(null, type);
 		this.name = name;
 		this.position = position;
 		this.type = type;

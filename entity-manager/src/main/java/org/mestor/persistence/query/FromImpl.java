@@ -43,15 +43,17 @@ import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 
+import org.mestor.context.EntityContext;
+
 class FromImpl<Z, X> extends PathImpl<X> implements From<Z, X> {
-	FromImpl(final Path<?> parent, final Class<? extends X> javaClass, final Bindable<X> modelArtifact) {
-		super(parent, javaClass, modelArtifact);
+	FromImpl(final EntityContext entityContext, final Path<?> parent, final Class<? extends X> javaClass, final Bindable<X> modelArtifact) {
+		super(entityContext, parent, javaClass, modelArtifact);
 	}
 
 	@Override
 	public <Y> Path<Y> get(final SingularAttribute<? super X, Y> attribute) {
         if (attribute.getPersistentAttributeType().equals(PersistentAttributeType.BASIC)){
-            return new PathImpl<Y>(this, attribute.getBindableJavaType(), attribute);
+            return new PathImpl<Y>(getEntityContext(), this, attribute.getBindableJavaType(), attribute);
         }
         throw new IllegalArgumentException("Joins are not supported so far");
 	}
@@ -69,7 +71,7 @@ class FromImpl<Z, X> extends PathImpl<X> implements From<Z, X> {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public Expression<Class<? extends X>> type() {
-		return new ExpressionImpl(getJavaType());
+		return new ExpressionImpl(getEntityContext(), getJavaType());
 	}
 
 	@Override

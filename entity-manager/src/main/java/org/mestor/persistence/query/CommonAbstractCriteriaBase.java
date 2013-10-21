@@ -27,6 +27,8 @@ import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
 import javax.persistence.criteria.Subquery;
 
+import org.mestor.context.EntityContext;
+
 public class CommonAbstractCriteriaBase<T, S extends AbstractQueryCriteria<T, S>> implements AbstractQueryCriteria<T, S> {
 	protected final Class<T> resultClass;
 
@@ -36,13 +38,15 @@ public class CommonAbstractCriteriaBase<T, S extends AbstractQueryCriteria<T, S>
 
 	protected Selection<? extends T> selection;
 	protected final CriteriaBuilder queryBuilder;
+    private final EntityContext entityContext;
 
-	protected CommonAbstractCriteriaBase(final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
-		this(resultClass, queryBuilder,  new LinkedHashSet<Root<?>>());
+	protected CommonAbstractCriteriaBase(final EntityContext entityContext, final Class<T> resultClass, final CriteriaBuilder queryBuilder) {
+		this(entityContext, resultClass, queryBuilder,  new LinkedHashSet<Root<?>>());
 	}
 
 
-	protected CommonAbstractCriteriaBase(final Class<T> resultClass, final CriteriaBuilder queryBuilder, final Set<Root<?>> roots) {
+	protected CommonAbstractCriteriaBase(final EntityContext entityContext, final Class<T> resultClass, final CriteriaBuilder queryBuilder, final Set<Root<?>> roots) {
+		this.entityContext = entityContext;
 		this.resultClass = resultClass;
 		this.queryBuilder = queryBuilder;
 		this.roots = roots;
@@ -51,7 +55,7 @@ public class CommonAbstractCriteriaBase<T, S extends AbstractQueryCriteria<T, S>
 
 	@Override
 	public <U> Subquery<U> subquery(final Class<U> type) {
-		return new SubqueryImpl<U>(type, queryBuilder, this);
+		return new SubqueryImpl<U>(entityContext, type, queryBuilder, this);
 	}
 
 	@Override
@@ -106,4 +110,11 @@ public class CommonAbstractCriteriaBase<T, S extends AbstractQueryCriteria<T, S>
 		return root;
 	}
 
+	public CriteriaBuilder getCriteriaBuilder() {
+		return queryBuilder;
+	}
+
+	protected EntityContext getEntityContext() {
+		return entityContext;
+	}
 }

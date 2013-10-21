@@ -65,6 +65,7 @@ import org.mestor.metadata.MetadataFactory;
 import org.mestor.metadata.jpa.JpaAnnotatedClassScanner;
 import org.mestor.metadata.jpa.NamingStrategy;
 import org.mestor.persistence.metamodel.MetamodelImpl;
+import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.persistence.query.QueryImpl;
 import org.mestor.wrap.ObjectWrapperFactory;
 
@@ -742,7 +743,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public CriteriaBuilder getCriteriaBuilder() {
 		checkOpen();
-		return entityManagerFactory.getCriteriaBuilder();
+		return new CriteriaBuilderImpl(this);
 	}
 
 	@Override

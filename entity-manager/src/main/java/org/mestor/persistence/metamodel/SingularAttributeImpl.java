@@ -24,7 +24,7 @@ import javax.persistence.metamodel.Type;
 import org.mestor.metadata.FieldMetadata;
 
 public class SingularAttributeImpl<E, F> extends AttributeImpl<E, F> implements SingularAttribute<E, F> {
-	public SingularAttributeImpl(ManagedType<E> managedType, FieldMetadata<E, F, ?> fmd) {
+	public SingularAttributeImpl(final ManagedType<E> managedType, final FieldMetadata<E, F, ?> fmd) {
 		super(managedType, fmd);
 	}
 

@@ -26,12 +26,14 @@ import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Path;
 import javax.persistence.metamodel.SingularAttribute;
 
+import org.mestor.context.EntityContext;
+
 public class CriteriaUpdateImpl<T>  extends CriteriaChangeBase<T, CriteriaUpdateImpl<T>> implements CriteriaUpdate<T> {
 	private final Map<Object, Object> fields = new LinkedHashMap<>();
 
 
-	CriteriaUpdateImpl(final Class<T> targetEntity, final CriteriaBuilder queryBuilder) {
-		super(targetEntity, queryBuilder);
+	CriteriaUpdateImpl(final EntityContext entityContext, final Class<T> targetEntity, final CriteriaBuilder queryBuilder) {
+		super(entityContext, targetEntity, queryBuilder);
 	}
 
 	@Override
