@@ -191,7 +191,7 @@ public class CqlQueryFactory {
 		Object expression = where.getExpression();
 
 		if (expression instanceof ClauseInfo) {
-			return createClause(where, qls);
+			return createClause((ClauseInfo)expression, qls);
 		} else if (expression.getClass().isArray() && ClauseInfo.class.equals(expression.getClass().getComponentType())) {
 			if (Operand.AND.equals(where.getOperand())) {
 				final Collection<Clause> clauses = new ArrayList<>();

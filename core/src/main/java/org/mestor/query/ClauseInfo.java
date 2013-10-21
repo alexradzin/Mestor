@@ -67,8 +67,8 @@ public class ClauseInfo {
 		 */
 		NOT,
 
-		AND,
-		OR,
+		AND(Object[].class),
+		OR(Object[].class),
 		;
 
 
