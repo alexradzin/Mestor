@@ -15,59 +15,72 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.persistence.query;
+package org.mestor.util;
 
-import java.util.Arrays;
-import java.util.Collection;
+import static org.junit.Assert.assertEquals;
 
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Predicate;
-import org.mestor.context.EntityContext;
+import java.util.ArrayList;
+import java.util.List;
 
-public class ExpressionImpl<T> extends SelectionImpl<T> implements Expression<T> {
+import org.junit.Test;
 
-	ExpressionImpl(final EntityContext entityContext, final Class<? extends T> type) {
-		super(entityContext, type);
+public class TypeUtilTest {
+	@Test
+	public void isCompatibleToInterfaceToItsImplementation() {
+		testIsCompatibleTo(List.class, ArrayList.class, true);
 	}
 
-	@Override
-	public Predicate isNull() {
-		throw new UnsupportedOperationException("is null");
+	@Test
+	public void isCompatibleToImplementationToItsInterface() {
+		testIsCompatibleTo(ArrayList.class, List.class, false);
 	}
 
-	@Override
-	public Predicate isNotNull() {
-		throw new UnsupportedOperationException("is not null");
+	@Test
+	public void isCompatibleToSameClasses() {
+		testIsCompatibleTo(ArrayList.class, ArrayList.class, true);
 	}
 
-	@Override
-	public Predicate in(final Object... values) {
-		return in(values == null ? null : Arrays.asList(values));
+	@Test
+	public void isCompatibleToSamePrimitives() {
+		testIsCompatibleTo(long.class, long.class, true);
 	}
 
-	@Override
-	public Predicate in(final Expression<?>... values) {
-		return setThisAlias(new BooleanFunctionExpressionImpl(getEntityContext(), "in", values));
+	@Test
+	public void isCompatibleToSamePrimitiveWrappers() {
+		testIsCompatibleTo(Short.class, Short.class, true);
 	}
 
-	@Override
-	public Predicate in(final Collection<?> values) {
-		return setThisAlias(new BooleanFunctionExpressionImpl(getEntityContext(), "in", BooleanFunctionExpressionImpl.valuesToExpressions(values)));
+	@Test
+	public void isCompatibleToPrimitiveAndCorrespondingWrapper() {
+		testIsCompatibleTo(double.class, Double.class, true);
 	}
 
-	@Override
-	public Predicate in(final Expression<Collection<?>> values) {
-		return setThisAlias(new BooleanFunctionExpressionImpl(getEntityContext(), "in", values));
+	@Test
+	public void isCompatibleToWrapperAndCorrespondingPrimitive() {
+		testIsCompatibleTo(Double.class, double.class, true);
 	}
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public <X> Expression<X> as(final Class<X> type) {
-		return (Expression<X>)this;
+	@Test
+	public void isCompatibleToPrimiteiveAndCompatiblePrimitive() {
+		testIsCompatibleTo(long.class, int.class, true);
 	}
 
-	private Predicate setThisAlias(final Predicate predicate) {
-		predicate.alias(getAlias());
-		return predicate;
+	@Test
+	public void isCompatibleToPrimiteiveAndCompatibleWrapper() {
+		testIsCompatibleTo(long.class, Short.class, true);
+	}
+
+	@Test
+	public void isCompatibleToPrimiteiveAndIncompatibleWrapper() {
+		testIsCompatibleTo(short.class, Integer.class, false);
+	}
+
+	@Test
+	public void isCompatibleToPrimiteiveAndIncompatiblePrimitive() {
+		testIsCompatibleTo(byte.class, short.class, false);
+	}
+
+	private void testIsCompatibleTo(final Class<?> left, final Class<?> right, final boolean expected) {
+		assertEquals(expected, TypeUtil.isCompatibleTo(left, right));
 	}
 }

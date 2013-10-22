@@ -26,13 +26,13 @@ import org.mestor.metadata.FieldMetadata;
 abstract class PluralAttributeImpl<T, C, E> extends AttributeImpl<T, C> implements PluralAttribute<T, C, E> {
 	protected Class<E> elementClass;
 	protected Type<E> elementType;
-	
-	
-	protected PluralAttributeImpl(ManagedType<T> managedType, FieldMetadata<T, C, ?> fmd) {
+
+
+	protected PluralAttributeImpl(final ManagedType<T> managedType, final FieldMetadata<T, C, ?> fmd) {
 		super(managedType, fmd);
 		initElementType();
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	protected void initElementType() {
 		elementClass = (Class<E>)fmd.getGenericTypes().iterator().next();
@@ -58,6 +58,4 @@ abstract class PluralAttributeImpl<T, C, E> extends AttributeImpl<T, C> implemen
 	public Type<E> getElementType() {
 		return elementType;
 	}
-
-
 }

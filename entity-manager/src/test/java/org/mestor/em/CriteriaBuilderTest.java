@@ -17,17 +17,23 @@
 
 package org.mestor.em;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Collections;
+
 import javax.annotation.Nullable;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Path;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.SingularAttribute;
@@ -38,8 +44,8 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.persistence.query.CommonAbstractCriteriaBase;
 import org.mestor.persistence.query.QueryImpl;
 import org.mestor.query.ClauseInfo;
-import org.mestor.query.QueryInfo;
 import org.mestor.query.ClauseInfo.Operand;
+import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
 
 import com.google.common.base.Function;
@@ -88,26 +94,130 @@ public class CriteriaBuilderTest {
 
 
 	@Test
-	public void testCreateQueryWithFromAndWhere1() {
+	public void testCreateQueryWithFromAndWhereIdEqConst() {
+		testCreateQueryWithFromAndWhere1("identifier", Integer.class, Operand.EQ, 123);
+	}
+
+	@Test
+	public void testCreateQueryWithFromAndWhereIdGtConst() {
+		testCreateQueryWithFromAndWhere1("identifier", Integer.class, Operand.GT, 456);
+	}
+
+	@Test
+	public void testCreateQueryWithFromAndWhereNameEqConst() {
+		testCreateQueryWithFromAndWhere1("name", String.class, Operand.EQ, "John");
+	}
+
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testCreateQueryWithFromAndWhereNotExistingField() {
+		testCreateQueryWithFromAndWhere1("doesnotexist", String.class, Operand.EQ, "Foobar");
+	}
+
+	@Test
+	public void testCreateQueryWithFromAndWhereWith2Fields() {
+		testCreateQuery(
+				Person.class,
+				new QueryInfo(
+						QueryType.SELECT,
+						null,
+						Collections.<String, String>singletonMap("person", null),
+						new ClauseInfo(null, Operand.AND, new ClauseInfo[] {
+								new ClauseInfo("name", Operand.EQ, "John"),
+								new ClauseInfo("lastName", Operand.EQ, "Lennon")
+						}),
+						null),
+
+
+				new Function<CriteriaQuery<Person>, Void>() {
+					@Override
+					public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
+						final Root<Person> root = notNull(criteria.from(Person.class));
+						final EntityType<Person> personType = notNull(em.getMetamodel().entity(Person.class));
+						final SingularAttribute<? super Person, String> personNameAttr = notNull(personType.getSingularAttribute("name", String.class));
+						final SingularAttribute<? super Person, String> personLastNameAttr = notNull(personType.getSingularAttribute("lastName", String.class));
+
+						// this is ugly casting but it is good enough for tests.
+						@SuppressWarnings("rawtypes")
+						final CriteriaBuilder builder = ((CommonAbstractCriteriaBase)criteria).getCriteriaBuilder();
+
+						criteria.where(
+								builder.and(
+										builder.equal(root.get(personNameAttr), "John"),
+										builder.equal(root.get(personLastNameAttr), "Lennon")
+								));
+						return null;
+					}
+				}
+			);
+	}
+
+	@Test
+	public void testCreateQueryWithFromAndWhereIn() {
+		testCreateQuery(
+				Person.class,
+				new QueryInfo(
+						QueryType.SELECT,
+						null,
+						Collections.<String, String>singletonMap("person", null),
+							new ClauseInfo("name", Operand.IN, new String[] {"John", "Paul", "George", "Ringo"}),
+						null),
+
+
+				new Function<CriteriaQuery<Person>, Void>() {
+					@Override
+					public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
+						final Root<Person> root = notNull(criteria.from(Person.class));
+						final EntityType<Person> personType = notNull(em.getMetamodel().entity(Person.class));
+						final SingularAttribute<? super Person, String> personNameAttr = notNull(personType.getSingularAttribute("name", String.class));
+						criteria.where(root.get(personNameAttr).in(Arrays.asList("John", "Paul", "George", "Ringo")));
+						return null;
+					}
+				}
+			);
+	}
+
+
+	private <T> void testCreateQueryWithFromAndWhere1(final String fieldName, final Class<T> fieldType, final Operand operand, final T fieldValue) {
 		testCreateQuery(
 			Person.class,
-			new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", null), new ClauseInfo("identifier", Operand.EQ, 123), null),
+			new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", null), new ClauseInfo(fieldName, operand, fieldValue), null),
 			new Function<CriteriaQuery<Person>, Void>() {
 				@Override
 				public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
 					final Root<Person> root = notNull(criteria.from(Person.class));
 					final EntityType<Person> personType = notNull(em.getMetamodel().entity(Person.class));
-					final SingularAttribute<? super Person, Integer> personIdAttr = notNull(personType.getSingularAttribute("identifier", Integer.class));
+					final SingularAttribute<? super Person, T> personIdAttr = notNull(personType.getSingularAttribute(fieldName, fieldType));
 
 					// this is ugly casting but it is good enough for tests.
 					@SuppressWarnings("rawtypes")
 					final CriteriaBuilder builder = ((CommonAbstractCriteriaBase)criteria).getCriteriaBuilder();
-					criteria.where(builder.equal(root.get(personIdAttr), 123));
+
+					final Path<T> path = root.get(personIdAttr);
+					final Predicate predicate;
+
+					switch(operand) {
+						case EQ:
+							predicate = builder .equal(path, fieldValue);
+							break;
+						case GT: {
+							@SuppressWarnings("unchecked")
+							final Path<Number> numPath = (Path<Number>)path;
+							predicate = builder.gt(numPath, (Number)fieldValue);
+							break;
+						}
+						default:
+							throw new UnsupportedOperationException(operand.name());
+					}
+
+
+					criteria.where(predicate);
 					return null;
 				}
 			}
 		);
 	}
+
 
 
 	private <T> void testCreateQuery(final Class<T> clazz, final QueryInfo expected, final Function<CriteriaQuery<T>, Void> f) {
@@ -158,19 +268,43 @@ public class CriteriaBuilderTest {
 		assertEquals(expected.getType(), actual.getType());
 		assertEquals(expected.getWhat(), actual.getWhat());
 		assertEquals(expected.getFrom(), actual.getFrom());
-		assertCauseInfo(expected.getWhere(), actual.getWhere());
+		assertClauseInfo(expected.getWhere(), actual.getWhere());
 
 		assertEquals(expected.getOrders(), actual.getOrders());
 		assertEquals(expected.getStart(), actual.getStart());
 		assertEquals(expected.getLimit(), actual.getLimit());
 	}
 
-	private void assertCauseInfo(final ClauseInfo expected, final ClauseInfo actual) {
+	private void assertClauseInfo(final ClauseInfo expected, final ClauseInfo actual) {
 		if (expected == null) {
 			assertNull(actual);
 			return;
 		}
-		assertEquals(expected.getExpression(), actual.getExpression());
+
+		final Object expectedExpression = expected.getExpression();
+		final Object actualExpression = actual.getExpression();
+
+		if (expectedExpression instanceof ClauseInfo) {
+			assertClauseInfo((ClauseInfo)expectedExpression, (ClauseInfo)actualExpression);
+		} else if (expectedExpression != null && expectedExpression.getClass().isArray()) {
+			final int expectedLength = Array.getLength(expectedExpression);
+			final int actualLength = Array.getLength(actualExpression);
+			assertEquals(expectedLength, actualLength);
+			for (int i = 0; i < expectedLength; i++) {
+				final Object e = Array.get(expectedExpression, i);
+				final Object a = Array.get(actualExpression, i);
+				if (e instanceof ClauseInfo) {
+					assertClauseInfo((ClauseInfo)e, (ClauseInfo)a);
+				} else if (e != null && e.getClass().isArray()) {
+					assertArrayEquals((Object[])e, (Object[])a);
+				} else {
+					assertEquals(e, a);
+				}
+			}
+		} else {
+			assertEquals(expectedExpression, actualExpression);
+		}
+
 		assertEquals(expected.getField(), actual.getField());
 		assertEquals(expected.getOperand(), actual.getOperand());
 	}

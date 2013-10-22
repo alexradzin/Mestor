@@ -18,12 +18,13 @@
 package org.mestor.persistence.metamodel;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.persistence.Embedded;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.CollectionAttribute;
 import javax.persistence.metamodel.EntityType;
@@ -38,12 +39,14 @@ import javax.persistence.metamodel.Type;
 
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.util.TypeUtil;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.Primitives;
 
 public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 	private final EntityMetadata<T> emd;
@@ -67,7 +70,7 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 	private final Predicate<Attribute<T, ?>> isPluralAttribute = new TypedAttributePredicate(PluralAttribute.class);
 
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	//@SuppressWarnings({ "unchecked" })
 	public ManagedTypeImpl(final EntityMetadata<T> emd) {
 		this.emd = emd;
 		clazz = emd.getEntityType();
@@ -81,19 +84,7 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 
 
 		for (final FieldMetadata<T, Object, Object> fmd : emd.getFields()) {
-			final Class<?> type = fmd.getType();
-
-			Attribute<T, Object> attribute;
-			if (List.class.isAssignableFrom(type)) {
-				attribute =  new ListAttributeImpl(this, fmd);
-			} else if (Set.class.isAssignableFrom(type)) {
-				attribute =  new SetAttributeImpl(this, fmd);
-			} else if (Map.class.isAssignableFrom(type)) {
-				attribute =  new MapAttributeImpl(this, fmd);
-			} else {
-				attribute =  new SingularAttributeImpl<T, Object>(this, fmd);
-			}
-			members.put(fmd.getName(), attribute);
+			members.put(fmd.getName(), AttributeImpl.createInstance(fmd, this));
 		}
 	}
 
@@ -117,16 +108,22 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 		return Sets.filter(new LinkedHashSet<Attribute<T, ?>>(members.values()), isDeclaredHere);
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked"})
 	@Override
 	public <Y> SingularAttribute<? super T, Y> getSingularAttribute(final String name, final Class<Y> type) {
-		return new SingularAttributeImpl<T, Y>(this, (FieldMetadata<T, Y, ?>)emd.getFieldByName(name));
+		return (SingularAttribute<? super T, Y>)strict(
+				(Attribute<T, ?>)getSingularAttribute(name),
+				new JavaClassAttributeChecker<T>(type),
+				"attribute " + name + " is not compatible with " + type);
 	}
 
+	@SuppressWarnings({ "unchecked"})
 	@Override
 	public <Y> SingularAttribute<T, Y> getDeclaredSingularAttribute(final String name, final Class<Y> type) {
-		// TODO Auto-generated method stub
-		return null;
+		return (SingularAttribute<T, Y>)strict(
+				getDeclaredSingularAttribute(name),
+				new JavaClassAttributeChecker<T>(type),
+				"attribute " + name + " is not compatible with " + type);
 	}
 
 	@Override
@@ -140,52 +137,76 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 		return getTypedAttributes(new LinkedHashSet(), Predicates.and(isSingularAttribute, isDeclaredHere));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> CollectionAttribute<? super T, E> getCollection(final String name, final Class<E> elementType) {
-		// TODO Auto-generated method stub
-		return null;
+		return (CollectionAttribute<? super T, E>)strict(
+				(Attribute<T, ?>)getCollection(name),
+				new CollectionElementAttributeChecker<T>(elementType),
+				"element type  of collection attribute " + name + " is not compatible with " + elementType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> CollectionAttribute<T, E> getDeclaredCollection(final String name, final Class<E> elementType) {
-		// TODO Auto-generated method stub
-		return null;
+		return (CollectionAttribute<T, E>)strict(
+				getDeclaredCollection(name),
+				new CollectionElementAttributeChecker<T>(elementType),
+				"element type  of collection attribute " + name + " is not compatible with " + elementType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> SetAttribute<? super T, E> getSet(final String name, final Class<E> elementType) {
-		// TODO Auto-generated method stub
-		return null;
+		return (SetAttribute<? super T, E>)strict(
+				(Attribute<T, ?>)getSet(name),
+				new CollectionElementAttributeChecker<T>(elementType),
+				"element type of set attribute " + name + " is not compatible with " + elementType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> SetAttribute<T, E> getDeclaredSet(final String name, final Class<E> elementType) {
-		// TODO Auto-generated method stub
-		return null;
+		return (SetAttribute<T, E>)strict(
+				getDeclaredSet(name),
+				new CollectionElementAttributeChecker<T>(elementType),
+				"element type of set attribute " + name + " is not compatible with " + elementType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> ListAttribute<? super T, E> getList(final String name, final Class<E> elementType) {
-		// TODO Auto-generated method stub
-		return null;
+		return (ListAttribute<? super T, E>)strict(
+				(Attribute<T, ?>)getList(name),
+				new CollectionElementAttributeChecker<T>(elementType),
+				"element type of list attribute " + name + " is not compatible with " + elementType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> ListAttribute<T, E> getDeclaredList(final String name, final Class<E> elementType) {
-		// TODO Auto-generated method stub
-		return null;
+		return (ListAttribute<T, E>)strict(
+				getDeclaredList(name),
+				new CollectionElementAttributeChecker<T>(elementType),
+				"element type of list attribute " + name + " is not compatible with " + elementType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <K, V> MapAttribute<? super T, K, V> getMap(final String name, final Class<K> keyType, final Class<V> valueType) {
-		// TODO Auto-generated method stub
-		return null;
+		return strict(
+				(MapAttribute<T, K, V>)getMap(name),
+				new MapEntryAttributeChecker<T, K, V>(keyType, valueType),
+				"entry type of map attribute " + name + " is not compatible with " + keyType + "->" + valueType);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <K, V> MapAttribute<T, K, V> getDeclaredMap(final String name, final Class<K> keyType, final Class<V> valueType) {
-		// TODO Auto-generated method stub
-		return null;
+		return strict(
+				(MapAttribute<T, K, V>)getDeclaredMap(name),
+				new MapEntryAttributeChecker<T, K, V>(keyType, valueType),
+				"entry type of map attribute " + name + " is not compatible with " + keyType + "->" + valueType);
 	}
 
 	@Override
@@ -205,6 +226,7 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 				Predicates.<Attribute<? super T, ?>>notNull(),
 				"managed_type_attribute_not_present", name, clazz);
 	}
+
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -277,8 +299,7 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 		for (final Attribute<T, ?> a : members.values()) {
 			if (condition.apply(a)) {
 				@SuppressWarnings("unchecked")
-				final
-				A sa = (A)a;
+				final A sa = (A)a;
 				singularAttributes.add(sa);
 			}
 		}
@@ -296,18 +317,6 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 
 
 
-	private static class TypedAttributePredicate<T> implements Predicate<Attribute<T, ?>> {
-		private final Class<? extends Attribute<T, ?>> type;
-
-		TypedAttributePredicate(final Class<? extends Attribute<T, ?>> type) {
-			this.type = type;
-		}
-
-		@Override
-		public boolean apply(final Attribute<T, ?> attribute) {
-			return type.isAssignableFrom(attribute.getClass());
-		}
-	}
 
 
 
@@ -319,8 +328,7 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 
 	@Override
 	public <Y> SingularAttribute<T, Y> getDeclaredId(final Class<Y> type) {
-		// TODO Auto-generated method stub
-		return null;
+		return getDeclaredSingularAttribute(emd.getPrimaryKey().getName(), type);
 	}
 
 	@Override
@@ -337,14 +345,30 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 
 	@Override
 	public IdentifiableType<? super T> getSupertype() {
-		// TODO Auto-generated method stub
-		return null;
+		// this method cannot be implemented because this class does not have access to EntityContext.
+		// TODO: pass EntityContext here and uncomment the method.
+//		for (Class<?> c = getJavaType(); !Object.class.equals(c); c = c.getSuperclass()) {
+//			final EntityMetadata<? super T> superEmd = (EntityMetadata<? super T>)getEntityContext().getEntityMetadata(c);
+//			if (superEmd != null) {
+//				return superEmd.getPrimaryKey() != null ? new ManagedTypeImpl<>(superEmd) : null;
+//			}
+//		}
+//		return null;
+		throw new UnsupportedOperationException("TBD");
 	}
 
 	@Override
 	public boolean hasSingleIdAttribute() {
-		// TODO Auto-generated method stub
-		return false;
+		final FieldMetadata<T, ?, ?> pk = emd.getPrimaryKey();
+		if (pk == null) {
+			return false;
+		}
+		final Class<?> pkType = pk.getType();
+		if (pkType.isPrimitive() || Primitives.isWrapperType(pkType)) {
+			return true;
+		}
+
+		return pkType.getAnnotation(Embedded.class) != null;
 	}
 
 	@Override
@@ -354,26 +378,28 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 
 	@Override
 	public Set<SingularAttribute<? super T, ?>> getIdClassAttributes() {
-		// TODO Auto-generated method stub
-		return null;
+		// this method cannot be implemented because this class does not have access to EntityContext.
+		// TODO: pass EntityContext here and uncomment the method.
+		throw new UnsupportedOperationException("TBD");
 	}
 
 	@Override
 	public Type<?> getIdType() {
-		// TODO Auto-generated method stub
-		return null;
+		final FieldMetadata<T, ?, ?> pk = emd.getPrimaryKey();
+		if (pk == null) {
+			return null;
+		}
+		return new TypeImpl<>(pk.getType());
 	}
 
 	@Override
-	public javax.persistence.metamodel.Bindable.BindableType getBindableType() {
-		// TODO Auto-generated method stub
-		return null;
+	public BindableType getBindableType() {
+		return BindableType.ENTITY_TYPE;
 	}
 
 	@Override
 	public Class<T> getBindableJavaType() {
-		// TODO Auto-generated method stub
-		return null;
+		return getJavaType();
 	}
 
 	@Override
@@ -382,4 +408,63 @@ public class ManagedTypeImpl<T> implements ManagedType<T>, EntityType<T> {
 	}
 
 
+	private static class TypedAttributePredicate<T> implements Predicate<Attribute<T, ?>> {
+		private final Class<? extends Attribute<T, ?>> type;
+
+		TypedAttributePredicate(final Class<? extends Attribute<T, ?>> type) {
+			this.type = type;
+		}
+
+		@Override
+		public boolean apply(final Attribute<T, ?> attribute) {
+			return TypeUtil.isCompatibleTo(type, attribute.getClass());
+		}
+	}
+
+	private static class JavaClassAttributeChecker<T> implements Predicate<Attribute<T, ?>> {
+		private final Class<?> type;
+
+		JavaClassAttributeChecker(final Class<?> type) {
+			this.type = type;
+		}
+
+		@Override
+		public boolean apply(final Attribute<T, ?> attribute) {
+			return TypeUtil.isCompatibleTo(type, attribute.getJavaType());
+		}
+	}
+
+	private static class CollectionElementAttributeChecker<T> implements Predicate<Attribute<T, ?>> {
+		private final Class<?> type;
+
+		CollectionElementAttributeChecker(final Class<?> type) {
+			this.type = type;
+		}
+
+		@Override
+		public boolean apply(final Attribute<T, ?> attribute) {
+			final FieldMetadata<?, ?, ?>  fmd = ((AttributeImpl<T, ?>)attribute).getFieldMetadata();
+			return TypeUtil.isCompatibleTo(type, fmd.getGenericTypes().iterator().next());
+		}
+	}
+
+	private static class MapEntryAttributeChecker<T, K, V> implements Predicate<MapAttribute<T, K, V>> {
+		private final Class<?> keyType;
+		private final Class<?> valueType;
+
+		MapEntryAttributeChecker(final Class<?> keyType, final Class<?> valueType) {
+			this.keyType = keyType;
+			this.valueType = valueType;
+		}
+
+		@Override
+		public boolean apply(final MapAttribute<T, K, V> attribute) {
+			final FieldMetadata<?, ?, ?>  fmd = ((MapAttributeImpl<T, K, V>)attribute).getFieldMetadata();
+			final Iterator<Class<?>> it = fmd.getGenericTypes().iterator();
+			final Class<?> attrKeyType = it.next();
+			final Class<?> attrValueType = it.next();
+
+			return TypeUtil.isCompatibleTo(keyType, attrKeyType) && TypeUtil.isCompatibleTo(valueType, attrValueType);
+		}
+	}
 }

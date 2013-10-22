@@ -38,6 +38,7 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Predicate.BooleanOperator;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
 
@@ -383,36 +384,48 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		if (expressions == null || expressions.isEmpty()) {
 			return null;
 		}
-		final Predicate expression = (Predicate)expressions.get(0); //TODO: add support of several expressions
+//		final Predicate expression = (Predicate)expressions.get(0); //TODO: add support of several expressions
 
-		if (expression instanceof FunctionExpressionImpl) {
-			@SuppressWarnings("unchecked")
-			final FunctionExpressionImpl<Boolean> function = ((FunctionExpressionImpl<Boolean>)expression);
-			// if function is unsupported IllegalArgumentException will be thrown
-			final Operand operand = Operand.valueOf(function.getFunction().toUpperCase());
-			final Collection<Object> values = Collections2.transform(Collections2.filter(
-					function.getArguments(), new com.google.common.base.Predicate<Expression<?>>() {
+
+		final List<ClauseInfo> clauses = new ArrayList<>();
+
+		for (final Expression<Boolean> expression : expressions) {
+			if (expression instanceof FunctionExpressionImpl) {
+				final FunctionExpressionImpl<Boolean> function = ((FunctionExpressionImpl<Boolean>)expression);
+				// if function is unsupported IllegalArgumentException will be thrown
+				final Operand operand = Operand.valueOf(function.getFunction().toUpperCase());
+				final Collection<Object> values = Collections2.transform(Collections2.filter(
+						function.getArguments(), new com.google.common.base.Predicate<Expression<?>>() {
+							@Override
+							public boolean apply(@Nullable final Expression<?> expr) {
+								return expr instanceof ConstantExpresion;
+							}
+						}
+					),
+					new Function<Expression<?>, Object>() {
 						@Override
-						public boolean apply(@Nullable final Expression<?> expr) {
-							return expr instanceof ConstantExpresion;
+						public Object apply(@Nullable final Expression<?> expr) {
+							if (expr instanceof ConstantExpresion) {
+								return ((ConstantExpresion<?>)expr).getValue();
+							}
+							throw new UnsupportedOperationException(expr.getClass() + " TBD");
 						}
-
-					}
-				),
-				new Function<Expression<?>, Object>() {
-					@Override
-					public Object apply(@Nullable final Expression<?> expr) {
-						if (expr instanceof ConstantExpresion) {
-							return ((ConstantExpresion<?>)expr).getValue();
-						}
-						throw new UnsupportedOperationException(expr.getClass() + " TBD");
-					}
-			});
-			return new ClauseInfo(expression.getAlias(), operand, values);
+				});
+				clauses.add(new ClauseInfo(expression.getAlias(), operand, values));
+				continue;
+			}
+			throw new UnsupportedOperationException("Cannot create ClauseInfo from " + expression.getClass() + ": TBD");
 		}
 
-		// TODO: add support of In statement
+		if (clauses.size() == 1) {
+			return clauses.get(0);
+		}
 
-		throw new UnsupportedOperationException("Cannot create ClauseInfo from " + expression.getClass() + ": TBD");
+
+		final BooleanOperator operator = restriction.getOperator();
+		final Operand operand = Operand.valueOf(operator.name());
+		return new ClauseInfo(restriction.getAlias(), operand, clauses.toArray(new ClauseInfo[0]));
+
+		// TODO: add support of In statement
 	}
 }

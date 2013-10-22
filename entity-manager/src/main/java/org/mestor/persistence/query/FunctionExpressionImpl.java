@@ -25,7 +25,6 @@ import java.util.List;
 
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Path;
-import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Selection;
 
 import org.mestor.context.EntityContext;
@@ -69,10 +68,6 @@ public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 	}
 
 
-//	@Override
-//	public Selection<R> alias(final String name) {
-//		return this;
-//	}
 
 	@Override
 	public boolean isCompoundSelection() {
@@ -89,45 +84,6 @@ public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 		return returnType;
 	}
 
-//	@Override
-//	public String getAlias() {
-//		return function;
-//	}
-
-	@Override
-	public Predicate isNull() {
-		return null;
-	}
-
-	@Override
-	public Predicate isNotNull() {
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Object... values) {
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Expression<?>... values) {
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Collection<?> values) {
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Expression<Collection<?>> values) {
-		return null;
-	}
-
-	@Override
-	public <X> Expression<X> as(final Class<X> type) {
-		return null;
-	}
 
 	protected void addArgument(final Expression<?> argument) {
 		this.arguments.add(argument);

@@ -22,7 +22,9 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Member;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.Basic;
 import javax.persistence.ElementCollection;
@@ -41,30 +43,30 @@ abstract class AttributeImpl<E, F> implements Attribute<E, F> {
 	protected final ManagedType<E> managedType;
 	protected final FieldMetadata<E, F, ?> fmd;
 	protected final PersistentAttributeType persistentAttributeType;
-	
+
 	private final static Map<PersistentAttributeType, Class<? extends Annotation>> attributeTypeAnnotations = new EnumMap<PersistentAttributeType, Class<? extends Annotation>>(PersistentAttributeType.class) {{
-	     put(PersistentAttributeType.MANY_TO_ONE, ManyToOne.class); 
-	     put(PersistentAttributeType.ONE_TO_ONE, OneToOne.class); 
+	     put(PersistentAttributeType.MANY_TO_ONE, ManyToOne.class);
+	     put(PersistentAttributeType.ONE_TO_ONE, OneToOne.class);
 	     put(PersistentAttributeType.BASIC, Basic.class);
 	     put(PersistentAttributeType.EMBEDDED, Embedded.class);
-	     put(PersistentAttributeType.MANY_TO_MANY, ManyToMany.class); 
-	     put(PersistentAttributeType.ONE_TO_MANY, OneToMany.class); 
+	     put(PersistentAttributeType.MANY_TO_MANY, ManyToMany.class);
+	     put(PersistentAttributeType.ONE_TO_MANY, OneToMany.class);
 	     put(PersistentAttributeType.ELEMENT_COLLECTION, ElementCollection.class);
 	}};
-	
-	
-	
-	
-	public AttributeImpl(ManagedType<E> managedType, FieldMetadata<E, F, ?> fmd) {
+
+
+
+
+	public AttributeImpl(final ManagedType<E> managedType, final FieldMetadata<E, F, ?> fmd) {
 		this.managedType = managedType;
 		this.fmd = fmd;
 		this.persistentAttributeType = Utils.getAnnotatedCategory(
-				attributeTypeAnnotations, 
-				fmd.getAccessor(), 
-				PersistentAttributeType.values(), 
+				attributeTypeAnnotations,
+				fmd.getAccessor(),
+				PersistentAttributeType.values(),
 				PersistentAttributeType.BASIC);
 	}
-	
+
 
 	@Override
 	public String getName() {
@@ -93,8 +95,8 @@ abstract class AttributeImpl<E, F> implements Attribute<E, F> {
 
 	@Override
 	public boolean isAssociation() {
-		Class<F> clazz = getJavaType();
-		AnnotatedElement accessor = fmd.getAccessor();
+		final Class<F> clazz = getJavaType();
+		final AnnotatedElement accessor = fmd.getAccessor();
 		if (accessor.getAnnotation(Entity.class) != null) {
 			return true;
 		}
@@ -103,7 +105,7 @@ abstract class AttributeImpl<E, F> implements Attribute<E, F> {
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -111,6 +113,24 @@ abstract class AttributeImpl<E, F> implements Attribute<E, F> {
 	public boolean isCollection() {
 		return Collection.class.isAssignableFrom(getJavaType());
 	}
-	
 
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static <T, F> Attribute<T, F> createInstance(final FieldMetadata<T, F, ?> fmd, final ManagedType<T> managedType) {
+		final Class<F> type = fmd.getType();
+		if (List.class.isAssignableFrom(type)) {
+			return  new ListAttributeImpl(managedType, fmd);
+		}
+		if (Set.class.isAssignableFrom(type)) {
+			return new SetAttributeImpl(managedType, fmd);
+		}
+		if (Map.class.isAssignableFrom(type)) {
+			return new MapAttributeImpl(managedType, fmd);
+		}
+		return new SingularAttributeImpl(managedType, fmd);
+	}
+
+	FieldMetadata<E, F, ?> getFieldMetadata() {
+		return fmd;
+	}
 }

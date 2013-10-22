@@ -18,7 +18,6 @@
 package org.mestor.persistence.query;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -31,27 +30,29 @@ import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.ListJoin;
 import javax.persistence.criteria.MapJoin;
 import javax.persistence.criteria.Path;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Selection;
 import javax.persistence.criteria.SetJoin;
 import javax.persistence.metamodel.Attribute.PersistentAttributeType;
 import javax.persistence.metamodel.Bindable;
 import javax.persistence.metamodel.CollectionAttribute;
 import javax.persistence.metamodel.ListAttribute;
+import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.MapAttribute;
 import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 
 import org.mestor.context.EntityContext;
+import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
+import org.mestor.persistence.metamodel.ManagedTypeImpl;
 
-class FromImpl<Z, X> extends PathImpl<X> implements From<Z, X> {
-	FromImpl(final EntityContext entityContext, final Path<?> parent, final Class<? extends X> javaClass, final Bindable<X> modelArtifact) {
+class FromImpl<Z, W> extends PathImpl<W> implements From<Z, W> {
+	FromImpl(final EntityContext entityContext, final Path<?> parent, final Class<? extends W> javaClass, final Bindable<W> modelArtifact) {
 		super(entityContext, parent, javaClass, modelArtifact);
 	}
 
 	@Override
-	public <Y> Path<Y> get(final SingularAttribute<? super X, Y> attribute) {
+	public <Y> Path<Y> get(final SingularAttribute<? super W, Y> attribute) {
         if (attribute.getPersistentAttributeType().equals(PersistentAttributeType.BASIC)){
             return new PathImpl<Y>(getEntityContext(), this, attribute.getBindableJavaType(), attribute);
         }
@@ -59,274 +60,187 @@ class FromImpl<Z, X> extends PathImpl<X> implements From<Z, X> {
 	}
 
 	@Override
-	public <E, C extends Collection<E>> Expression<C> get(final PluralAttribute<X, C, E> collection) {
+	public <E, C extends Collection<E>> Expression<C> get(final PluralAttribute<W, C, E> collection) {
         throw new UnsupportedOperationException("Plural attributes cannot be used in from statement right now");
 	}
 
 	@Override
-	public <K, V, M extends Map<K, V>> Expression<M> get(final MapAttribute<X, K, V> map) {
+	public <K, V, M extends Map<K, V>> Expression<M> get(final MapAttribute<W, K, V> map) {
         throw new UnsupportedOperationException("Map attributes cannot be used in from statement right now");
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
-	public Expression<Class<? extends X>> type() {
+	public Expression<Class<? extends W>> type() {
 		return new ExpressionImpl(getEntityContext(), getJavaType());
 	}
 
 	@Override
 	public <Y> Path<Y> get(final String attributeName) {
-		// TODO Auto-generated method stub
+		final FieldMetadata<? extends W, Y, ?> fmd = getEntityContext().getEntityMetadata(getJavaType()).getFieldByName(attributeName);
+		final EntityMetadata<? extends W> emd = getEntityContext().getEntityMetadata(fmd.getClassType());
+		// This is bad to create new instance of ManagedType rather than retrieve it from Metamodel.
+		// However this is the easiest way to achieve this instance here now.
+		// Probably in future we should add reference to Metamodel instead or additionally to EntityContext to one of the base classes
+		// of FromImpl (e.g. SelectionImpl)
+		final ManagedType<? extends W> managedType = new ManagedTypeImpl<>(emd);
 
-		//new SingularAttributeImpl<>(managedType, fmd);
-		return null;
-	}
+		@SuppressWarnings("unchecked") //De facto all implementations of Attribute are Bindable
+		final Bindable<Y> bindableAttribute = (Bindable<Y>)managedType.getAttribute(attributeName);
 
-	@Override
-	public Predicate isNull() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate isNotNull() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Object... values) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Expression<?>... values) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Collection<?> values) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Predicate in(final Expression<Collection<?>> values) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <X> Expression<X> as(final Class<X> type) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Selection<X> alias(final String name) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public boolean isCompoundSelection() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public List<Selection<?>> getCompoundSelectionItems() {
-		// TODO Auto-generated method stub
-		return null;
+		return new PathImpl<Y>(getEntityContext(), this, fmd.getType(), bindableAttribute);
 	}
 
 
+
 	@Override
-	public String getAlias() {
-		// TODO Auto-generated method stub
-		return null;
+	public Set<Fetch<W, ?>> getFetches() {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public Set<Fetch<X, ?>> getFetches() {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Fetch<W, Y> fetch(final SingularAttribute<? super W, Y> attribute) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> Fetch<X, Y> fetch(final SingularAttribute<? super X, Y> attribute) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Fetch<W, Y> fetch(final SingularAttribute<? super W, Y> attribute, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> Fetch<X, Y> fetch(final SingularAttribute<? super X, Y> attribute, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Fetch<W, Y> fetch(final PluralAttribute<? super W, ?, Y> attribute) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> Fetch<X, Y> fetch(final PluralAttribute<? super X, ?, Y> attribute) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <Y> Fetch<X, Y> fetch(final PluralAttribute<? super X, ?, Y> attribute, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Fetch<W, Y> fetch(final PluralAttribute<? super W, ?, Y> attribute, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> Fetch<X, Y> fetch(final String attributeName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> Fetch<X, Y> fetch(final String attributeName, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public Set<Join<X, ?>> getJoins() {
-		// TODO Auto-generated method stub
-		return null;
+	public Set<Join<W, ?>> getJoins() {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public boolean isCorrelated() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
-	public From<Z, X> getCorrelationParent() {
-		// TODO Auto-generated method stub
-		return null;
+	public From<Z, W> getCorrelationParent() {
+		throw new IllegalStateException("Correlation point is not supported");
 	}
 
 	@Override
-	public <Y> Join<X, Y> join(final SingularAttribute<? super X, Y> attribute) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Join<W, Y> join(final SingularAttribute<? super W, Y> attribute) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> Join<X, Y> join(final SingularAttribute<? super X, Y> attribute, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> Join<W, Y> join(final SingularAttribute<? super W, Y> attribute, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> CollectionJoin<X, Y> join(final CollectionAttribute<? super X, Y> collection) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> CollectionJoin<W, Y> join(final CollectionAttribute<? super W, Y> collection) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> SetJoin<X, Y> join(final SetAttribute<? super X, Y> set) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> SetJoin<W, Y> join(final SetAttribute<? super W, Y> set) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> ListJoin<X, Y> join(final ListAttribute<? super X, Y> list) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> ListJoin<W, Y> join(final ListAttribute<? super W, Y> list) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <K, V> MapJoin<X, K, V> join(final MapAttribute<? super X, K, V> map) {
-		// TODO Auto-generated method stub
-		return null;
+	public <K, V> MapJoin<W, K, V> join(final MapAttribute<? super W, K, V> map) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> CollectionJoin<X, Y> join(final CollectionAttribute<? super X, Y> collection, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> CollectionJoin<W, Y> join(final CollectionAttribute<? super W, Y> collection, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> SetJoin<X, Y> join(final SetAttribute<? super X, Y> set, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> SetJoin<W, Y> join(final SetAttribute<? super W, Y> set, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <Y> ListJoin<X, Y> join(final ListAttribute<? super X, Y> list, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <Y> ListJoin<W, Y> join(final ListAttribute<? super W, Y> list, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
-	public <K, V> MapJoin<X, K, V> join(final MapAttribute<? super X, K, V> map, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+	public <K, V> MapJoin<W, K, V> join(final MapAttribute<? super W, K, V> map, final JoinType jt) {
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> Join<X, Y> join(final String attributeName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> CollectionJoin<X, Y> joinCollection(final String attributeName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> SetJoin<X, Y> joinSet(final String attributeName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> ListJoin<X, Y> joinList(final String attributeName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, K, V> MapJoin<X, K, V> joinMap(final String attributeName) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> Join<X, Y> join(final String attributeName, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> CollectionJoin<X, Y> joinCollection(final String attributeName, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> SetJoin<X, Y> joinSet(final String attributeName, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, Y> ListJoin<X, Y> joinList(final String attributeName, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 	@Override
 	public <X, K, V> MapJoin<X, K, V> joinMap(final String attributeName, final JoinType jt) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("join");
 	}
 
 
