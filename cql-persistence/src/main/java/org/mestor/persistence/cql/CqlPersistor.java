@@ -66,6 +66,7 @@ import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.Query;
 import com.datastax.driver.core.ResultSet;
@@ -222,7 +223,8 @@ public class CqlPersistor implements Persistor {
 				insert.value(quote(name), value);
 			}
 		}
-
+		
+		insert.setConsistencyLevel(ConsistencyLevel.ONE);
 		session.execute(insert);
 
 		// TODO implement cascade here
@@ -776,7 +778,7 @@ public class CqlPersistor implements Persistor {
 		final Object columnValue = fmd.getConverter().toColumn(pkValue);
 		where.and(eq(quote(column), columnValue));
 
-
+		where.setConsistencyLevel(ConsistencyLevel.ONE);
 		return session.execute(where);
 	}
 

@@ -69,6 +69,7 @@
     <module>cql-persistence</module>
     <module>interoperability</module>
     <module>integration</module>
+    <module>benchmark</module>
   </modules>
 
 

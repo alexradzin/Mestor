@@ -1,5 +1,3 @@
-package org.mestor.entities;
-
 /******************************************************************************************************/
 /*                                                                                                    */
 /*    Infinidat Ltd.  -  Proprietary and Confidential Material                                        */
@@ -16,42 +14,40 @@ package org.mestor.entities;
 /*                                                                                                    */
 /*                                                                                                    */
 /******************************************************************************************************/
+package org.mestor.benchmarks.queries;
 
-import java.util.Date;
+import java.util.concurrent.Callable;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 
-@Entity
-public class SimpleFieldsProperty {
-	@Id
-	private Long id;
+import org.mestor.benchmarks.BenchmarkBase;
+import org.mestor.benchmarks.entities.IdObject;
 
-	private String name;
+public class CreateCallable extends EntityManagerAware implements Callable<Void> {
 
-	private Date date;
-
-	public Long getId() {
-		return id;
+	private final int start;
+	private final int end;
+	
+	public CreateCallable(final BenchmarkBase benchmarkTest, final EntityManager em, final int start, final int end) {
+		super(benchmarkTest, em);
+		this.start = start;
+		this.end = end;
+	}
+	
+	@Override
+	public Void call() throws Exception {
+		this.create();
+		return null;
 	}
 
-	public void setId(final Long id) {
-		this.id = id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(final String name) {
-		this.name = name;
-	}
-
-	public Date getDate() {
-		return date;
-	}
-
-	public void setDate(final Date date) {
-		this.date = date;
+	void create() {
+		final EntityTransaction transaction = em.getTransaction();
+		transaction.begin();
+		for (int i = start; i < end; i++) {
+			final IdObject sfp = test.createInstance(i + 1);
+			em.persist(sfp);
+		}
+		transaction.commit();
 	}
 }

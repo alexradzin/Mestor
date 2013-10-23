@@ -340,7 +340,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 	}
 
-	private boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
+	static boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
 		if(declaredType.isAssignableFrom(actualType)){
 			return true;
 		}

@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.persistence.EntityManager;
@@ -32,12 +31,11 @@ import org.mestor.em.MestorProperties;
 import org.mestor.entities.Child;
 import org.mestor.entities.Human;
 import org.mestor.entities.Parent;
-import org.mestor.entities.SimpleFieldsProperty;
 import org.mestor.entities.annotated.SimpleProperty;
 
 public class EntityManagerTest {
 
-	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
+	static EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
 		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
 		return Persistence.createEntityManagerFactory(puName).createEntityManager();
 	}
@@ -119,18 +117,6 @@ public class EntityManagerTest {
 		child.setParent(parent);
 		em.persist(child);
 		return child;
-	}
-	
-	@Test
-	public void testSimpleFieldsProperty() {
-		final EntityManager em = getEntityManager("simple_fields_property.xml", "simple_fields_property");
-		for (int i = 0; i < 1000; i++) {
-			final SimpleFieldsProperty sfp = new SimpleFieldsProperty();
-			sfp.setId(Long.valueOf(i));
-			sfp.setName(String.valueOf(i));
-			sfp.setDate(new Date());
-			em.persist(sfp);
-		}
 	}
 
 	@Ignore

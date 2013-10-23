@@ -47,7 +47,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
     
 
 
-    public static EntityTransaction getTransaction(EntityContext context) {
+    public static EntityTransaction getTransaction(final EntityContext context) {
     	EntityTransaction transaction = entityTransactions.get();
     	if(transaction == null) {
     		transaction = new EntityTransactionImpl(context);    		
@@ -63,18 +63,18 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
     }
     
     // package protected access for tests
-    EntityTransactionImpl(EntityContext context) {
+    EntityTransactionImpl(final EntityContext context) {
     	this.context = context;
     	this.persistor = context.getPersistor();
     	
-    	Comparator<Object> comparator= new EntityComparator<>(context);
+    	final Comparator<Object> comparator= new EntityComparator<>(context);
     	dirtyEntities = new TreeMap<>(comparator);
     }
 
 
 	@Override
 	public void begin() {
-		checkIsActive();        
+		assertNotActive();
         active = true;
         //persistor.beginTransaction();
 	}
@@ -83,7 +83,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 	public void commit() {
 		try {
 			commitInternal();
-		} catch (RuntimeException e) {
+		} catch (final RuntimeException e) {
 			throw new javax.persistence.RollbackException(e);
 		} finally {
 			entityTransactions.remove();
@@ -91,12 +91,12 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 	}
 	
 	protected void commitInternal() {
-		checkIsActive();        
+		assertIsActive();        
 		try {
-			for (Object dirty : getDirtyEntities()) {
+			for (final Object dirty : getDirtyEntities()) {
 				persistor.store(dirty);
 			}
-		} catch (RuntimeException ex) {
+		} catch (final RuntimeException ex) {
 			if (!this.rollbackOnly) {
 				throw new RollbackException(ex);
 			} 
@@ -111,7 +111,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 
 	@Override
 	public void rollback() {
-		checkIsActive();
+		assertIsActive();
 		try {
 			getTransaction(context).rollback();
 		} finally {
@@ -124,13 +124,13 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 
 	@Override
 	public void setRollbackOnly() {
-		checkIsActive();        
+		assertIsActive();        
 		rollbackOnly = true;
 	}
 
 	@Override
 	public boolean getRollbackOnly() {
-		checkIsActive();        
+		assertIsActive();        
 		return rollbackOnly;
 	}
 
@@ -139,9 +139,15 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 		return active;
 	}
 
-	private void checkIsActive() {
-		if (isActive()) {
+	private void assertIsActive() {
+		if (!isActive()) {
 			throw new IllegalStateException("Transaction is not active");
+		}
+	}
+	
+	private void assertNotActive() {
+		if (isActive()) {
+			throw new IllegalStateException("Transaction is already active");
 		}
 	}
 	
@@ -160,15 +166,15 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 
 
 	@Override
-	public <E> void addDirtyEntity(E entity, FieldMetadata<E, Object, Object> fmd) {
+	public <E> void addDirtyEntity(final E entity, final FieldMetadata<E, Object, Object> fmd) {
 		@SuppressWarnings("unchecked")
-		E existingEntity = (E) dirtyEntities.get(entity);
+		final E existingEntity = (E) dirtyEntities.get(entity);
 		if (existingEntity != null) {
-			PropertyAccessor<E, Object> accessor = fmd.getAccessor();
+			final PropertyAccessor<E, Object> accessor = fmd.getAccessor();
 			accessor.setValue(existingEntity, accessor.getValue(entity));
 		} else {
-			Class<E> clazz = fmd.getClassType();
-			E newEntity = ClassAccessor.newInstance(clazz);
+			final Class<E> clazz = fmd.getClassType();
+			final E newEntity = ClassAccessor.newInstance(clazz);
 			context.getEntityMetadata(clazz).copy(entity, newEntity);
 			dirtyEntities.put(newEntity, newEntity);
 		}
@@ -176,7 +182,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 
 
 	@Override
-	public <E> void removeDirtyEntity(E entity) {
+	public <E> void removeDirtyEntity(final E entity) {
 		dirtyEntities.remove(entity);	
 	}
 
