@@ -19,6 +19,8 @@ package org.mestor.query;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class ClauseInfo {
 	private final String field;
@@ -29,61 +31,77 @@ public class ClauseInfo {
 		/**
 		 * ==
 		 */
-		EQ,
+		EQ("="),
 		/**
 		 * !=
 		 */
-		NE,
+		NE("<>"),
 		/**
 		 * >
 		 */
-		GT,
+		GT(">"),
 		/**
 		 * >=
 		 */
-		GE,
+		GE(">="),
 		/**
 		 * <
 		 */
-		LT,
+		LT("<"),
 		/**
 		 * <=
 		 */
-		LE,
+		LE("<="),
 		/**
 		 * like
 		 */
-		LIKE,
+		LIKE("LIKE"),
 		/**
 		 * not like
 		 */
-		NOT_LIKE,
+		NOT_LIKE("NOT LIKE"),
 		/**
 		 * in
 		 */
-		IN(Object[].class),
+		IN(Object[].class, "IN"),
 		/**
 		 * not
 		 */
-		NOT,
+		NOT("NOT"),
 
-		AND(Object[].class),
-		OR(Object[].class),
+		AND(Object[].class, "AND"),
+		OR(Object[].class, "OR"),
 		;
 
 
 		private final Class<?> paramType;
+		private final String symbol;
+		private final static Map<String, Operand> symbol2operand = new TreeMap<String, Operand>(String.CASE_INSENSITIVE_ORDER) {{
+			for (final Operand o : Operand.values()) {
+				put(o.symbol(), o);
+			}
+		}};
 
-		private Operand(final Class<?> paramType) {
+		private Operand(final Class<?> paramType, final String symbol) {
 			this.paramType = paramType;
+			this.symbol = symbol;
+
 		}
 
-		private Operand() {
-			this(Object.class);
+		private Operand(final String symbol) {
+			this(Object.class, symbol);
 		}
 
 		public boolean isArrayParameter() {
 			return paramType.isArray();
+		}
+
+		public String symbol() {
+			return symbol;
+		}
+
+		public static Operand bySymbol(final String symbol) {
+			return symbol2operand.get(symbol);
 		}
 	}
 

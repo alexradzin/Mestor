@@ -45,7 +45,6 @@ import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import javax.persistence.StoredProcedureQuery;
 import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CommonAbstractCriteria;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaDelete;
 import javax.persistence.criteria.CriteriaQuery;
@@ -66,6 +65,7 @@ import org.mestor.metadata.jpa.JpaAnnotatedClassScanner;
 import org.mestor.metadata.jpa.NamingStrategy;
 import org.mestor.persistence.metamodel.MetamodelImpl;
 import org.mestor.persistence.query.CriteriaBuilderImpl;
+import org.mestor.persistence.query.JpqlParser;
 import org.mestor.persistence.query.QueryImpl;
 import org.mestor.wrap.ObjectWrapperFactory;
 
@@ -77,6 +77,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	private final EntityManagerFactory entityManagerFactory;
 	private final Map<String, Object> properties;
 	private final Map<Class<?>, EntityMetadata<?>> entityClasses;
+	private final Map<String, EntityMetadata<?>> entityNames;
 	private final Map<String, String> namedQueries = new HashMap<>();
 	private boolean open = false;
 
@@ -94,6 +95,10 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		final Map<String, Object> allParams = getAllParameters(info, properties);
 
 		this.entityClasses = entityClasses == null ? new HashMap<Class<?>, EntityMetadata<?>>() : new HashMap<Class<?>, EntityMetadata<?>>(entityClasses);
+		this.entityNames = new HashMap<String, EntityMetadata<?>>();
+		for (final EntityMetadata<?> emd : this.entityClasses.values()) {
+			entityNames.put(emd.getEntityName(), emd);
+		}
 		open = true;
 		persistor = createPersistor(info, properties, allParams);
 
@@ -534,6 +539,13 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
+	public <T> EntityMetadata<T> getEntityMetadata(final String entityName) {
+		return (EntityMetadata<T>)entityNames.get(entityName);
+	}
+
+
+	@Override
 	public Persistor getPersistor() {
 		return persistor;
 	}
@@ -543,45 +555,6 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		return EntityTransactionImpl.getDirtyEntityManager();
 	}
 
-//<<<<<<< HEAD
-//	@Override
-//	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> properties) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public <T> T find(final Class<T> entityClass, final Object primaryKey, final LockModeType lockMode, final Map<String, Object> properties) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public void lock(final Object entity, final LockModeType lockMode, final Map<String, Object> properties) {
-//		// TODO Auto-generated method stub
-//
-//	}
-//
-//	@Override
-//	public void refresh(final Object entity, final Map<String, Object> properties) {
-//		// TODO Auto-generated method stub
-//
-//	}
-//
-//	@Override
-//	public void refresh(final Object entity, final LockModeType lockMode) {
-//		// TODO Auto-generated method stub
-//
-//	}
-
-//=======
-//>>>>>>> Added criteria builder and some tests. Tests TBD
 	@Override
 	public <T> T find(final Class<T> entityClass, final Object primaryKey, final Map<String, Object> props) {
 		return find(entityClass, primaryKey, LockModeType.NONE, props);
@@ -626,7 +599,6 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public void detach(final Object entity) {
-		// TODO Auto-generated method stub
 		throw new UnsupportedOperationException("Detach entity is not implemented yet");
 	}
 
@@ -634,17 +606,6 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	public LockModeType getLockMode(final Object entity) {
 		return LockModeType.NONE;
 	}
-
-//	@Override
-//	public void setProperty(final String propertyName, final Object value) {
-//		// TODO Auto-generated method stub
-//
-//	}
-
-//	@Override
-//	public <T> TypedQuery<T> createQuery(final CriteriaQuery<T> criteriaQuery) {
-//
-//	}
 
 	@Override
 	public void setProperty(final String name, final Object value) {
@@ -659,35 +620,17 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public Query createQuery(@SuppressWarnings("rawtypes") final CriteriaUpdate updateQuery) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Update query is not supported right now. TBD");
 	}
 
 	@Override
 	public Query createQuery(@SuppressWarnings("rawtypes") final CriteriaDelete deleteQuery) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Delete query is not supported right now. TBD");
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public <T> TypedQuery<T> createQuery(final String qlString, final Class<T> resultClass) {
-		final CommonAbstractCriteria criteria = createCriteria(qlString, resultClass);
-
-
-		if(criteria instanceof CriteriaQuery) {
-			return createQuery((CriteriaQuery<T>)criteria);
-		}
-
-		if(criteria instanceof CriteriaDelete) {
-			return (TypedQuery<T>)createQuery((CriteriaDelete<T>)criteria);
-		}
-
-		if(criteria instanceof CriteriaUpdate) {
-			return (TypedQuery<T>)createQuery((CriteriaUpdate<T>)criteria);
-		}
-
-		throw new IllegalArgumentException("Unsupported query type " + criteria);
+		return new QueryImpl<T>(new JpqlParser().createCriteria(qlString, resultClass), this);
 	}
 
 	@Override
@@ -779,14 +722,6 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	public <T> List<EntityGraph<? super T>> getEntityGraphs(final Class<T> entityClass) {
 		throw new UnsupportedOperationException("EntityGraphs are not supported right now");
 	}
-
-
-	//TODO: implement this!!!
-	private <T> CommonAbstractCriteria createCriteria(final String qlString, final Class<T> resultClass) {
-		return null;
-	}
-
-
 
 
 	@Override

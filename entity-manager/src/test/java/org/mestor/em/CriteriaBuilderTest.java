@@ -17,12 +17,9 @@
 
 package org.mestor.em;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -47,6 +44,7 @@ import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
+import org.mestor.query.QueryInfoAssert;
 
 import com.google.common.base.Function;
 
@@ -198,7 +196,7 @@ public class CriteriaBuilderTest {
 
 					switch(operand) {
 						case EQ:
-							predicate = builder .equal(path, fieldValue);
+							predicate = builder.equal(path, fieldValue);
 							break;
 						case GT: {
 							@SuppressWarnings("unchecked")
@@ -238,7 +236,7 @@ public class CriteriaBuilderTest {
 		final QueryInfo queryInfo = queryImpl.getQueryInfo();
 		assertNotNull(queryInfo);
 
-		assertQueryInfo(expected, queryInfo);
+		QueryInfoAssert.assertQueryInfo(expected, queryInfo);
 	}
 
 
@@ -263,51 +261,6 @@ public class CriteriaBuilderTest {
 		return builder;
 	}
 
-
-	private void assertQueryInfo(final QueryInfo expected, final QueryInfo actual) {
-		assertEquals(expected.getType(), actual.getType());
-		assertEquals(expected.getWhat(), actual.getWhat());
-		assertEquals(expected.getFrom(), actual.getFrom());
-		assertClauseInfo(expected.getWhere(), actual.getWhere());
-
-		assertEquals(expected.getOrders(), actual.getOrders());
-		assertEquals(expected.getStart(), actual.getStart());
-		assertEquals(expected.getLimit(), actual.getLimit());
-	}
-
-	private void assertClauseInfo(final ClauseInfo expected, final ClauseInfo actual) {
-		if (expected == null) {
-			assertNull(actual);
-			return;
-		}
-
-		final Object expectedExpression = expected.getExpression();
-		final Object actualExpression = actual.getExpression();
-
-		if (expectedExpression instanceof ClauseInfo) {
-			assertClauseInfo((ClauseInfo)expectedExpression, (ClauseInfo)actualExpression);
-		} else if (expectedExpression != null && expectedExpression.getClass().isArray()) {
-			final int expectedLength = Array.getLength(expectedExpression);
-			final int actualLength = Array.getLength(actualExpression);
-			assertEquals(expectedLength, actualLength);
-			for (int i = 0; i < expectedLength; i++) {
-				final Object e = Array.get(expectedExpression, i);
-				final Object a = Array.get(actualExpression, i);
-				if (e instanceof ClauseInfo) {
-					assertClauseInfo((ClauseInfo)e, (ClauseInfo)a);
-				} else if (e != null && e.getClass().isArray()) {
-					assertArrayEquals((Object[])e, (Object[])a);
-				} else {
-					assertEquals(e, a);
-				}
-			}
-		} else {
-			assertEquals(expectedExpression, actualExpression);
-		}
-
-		assertEquals(expected.getField(), actual.getField());
-		assertEquals(expected.getOperand(), actual.getOperand());
-	}
 
 	private static <T> T notNull(final T value) {
 		assertNotNull(value);

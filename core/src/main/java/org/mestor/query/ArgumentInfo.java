@@ -15,21 +15,38 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.query;
 
-import java.util.Collection;
-import java.util.Map;
+public class ArgumentInfo<T> {
+	private final String name;
+	private final Integer position;
+	private final T value;
 
-import org.mestor.metadata.EntityMetadata;
 
-public interface EntityContext {
-	public Map<String, Object> getProperties();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public <T> EntityMetadata<T> getEntityMetadata(String entityName);
-	public String getNamedQuery(String name);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
+	public ArgumentInfo(final String name, final T value) {
+		this(name, null, value);
+	}
+
+	public ArgumentInfo(final Integer position, final T value) {
+		this(null, position, value);
+	}
+
+	public ArgumentInfo(final String name, final Integer position, final T value) {
+		super();
+		this.name = name;
+		this.position = position;
+		this.value = value;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public Integer getPosition() {
+		return position;
+	}
+
+	public T getValue() {
+		return value;
+	}
 }

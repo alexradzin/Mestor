@@ -27,7 +27,7 @@ public class QueryInfo {
 	private final QueryType type;
 	// alias-to-name map. If alias is undefined name-to-name is used, i.e. name plays role of alias
 	private final Map<String, String> from;
-	// contains affected fields. for select and delete statements values are null. what==null means "all"
+	// contains affected fields. for 'select *' and 'delete' statements values are null. what==null means "all"
 	private final Map<String, Object> what;
 	private final ClauseInfo where;
 	private final Integer start;

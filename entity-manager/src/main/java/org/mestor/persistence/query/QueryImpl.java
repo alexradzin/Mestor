@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import javax.annotation.Nullable;
@@ -44,6 +45,7 @@ import javax.persistence.criteria.Selection;
 
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
+import org.mestor.metadata.EntityMetadata;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
@@ -53,12 +55,14 @@ import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
 public class QueryImpl<T> implements TypedQuery<T> {
+	private final static int DEFAULT_LIMIT = Integer.MAX_VALUE;
+
 	private final Class<T> resultType;
 	private final EntityContext context;
 	private final Persistor persistor;
 
 	private int firstResult = 0;
-	private int limit = Integer.MAX_VALUE;
+	private int limit = DEFAULT_LIMIT;
 
 	private FlushModeType flushMode = FlushModeType.AUTO;
 
@@ -116,18 +120,51 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		queryInfo = new QueryInfo(QueryType.SELECT, what, from, where, null);
 	}
 
+	public QueryImpl(final QueryInfo queryInfo, final EntityContext context) {
+		this.resultType = getResultType(queryInfo, context);
+		this.context = context;
+		this.persistor = context.getPersistor();
+		this.queryInfo = queryInfo;
+	}
+
+
+	/**
+	 * Retrieves result type from {@code queryInfo} utilizing provided {@code context}.
+	 * Can throw various {@link RuntimeException}s if specified {@code queryInfo} is wrong.
+	 * @param queryInfo
+	 * @param context
+	 * @return query result type
+	 * @throws NullPointerException if {@code queryInfo} or {@link QueryInfo#getFrom()} are {@code null}.
+	 * @throws NullPointerException if entity metadata cannot be found in context by name extracted from {@link QueryInfo#getFrom()}.
+	 * @throws NoSuchElementException if {@link QueryInfo#getFrom()} is empty
+	 */
+	private Class<T> getResultType(final QueryInfo queryInfo, final EntityContext context) {
+		final String entityName = queryInfo.getFrom().entrySet().iterator().next().getValue();
+		final EntityMetadata<T> emd = context.getEntityMetadata(entityName);
+		return emd.getEntityType();
+	}
+
 
 	@Override
 	public List<T> getResultList() {
-		// TODO create copy of queryInfo with new limit if it is initiallized
-		return persistor.selectQuery(queryInfo);
+		return getResultList(limit);
 	}
 
 	@Override
 	public T getSingleResult() {
-		//TODO create copy of queryInfo and call persistor.selectQuery();
-		return null;
+		final List<T> list = getResultList(1);
+		return list == null || list.isEmpty() ? null : list.get(0);
 	}
+
+	private List<T> getResultList(final int curentLimit) {
+		QueryInfo qi = queryInfo;
+		if (curentLimit != DEFAULT_LIMIT) {
+			qi = new QueryInfo(queryInfo.getType(), queryInfo.getWhat(), queryInfo.getFrom(), queryInfo.getWhere(), queryInfo.getOrders(), queryInfo.getStart(), curentLimit);
+		}
+
+		return persistor.selectQuery(qi);
+	}
+
 
 	@Override
 	public int executeUpdate() {
