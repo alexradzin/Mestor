@@ -26,8 +26,12 @@ import org.mestor.benchmarks.queries.SelectCallable;
 
 public class FullCycleBenchmark extends BenchmarkBase {
 
-	public static void main(final String[] args) throws Exception {
-		new FullCycleBenchmark().fullCycleBenchmark();
+	public static void main(final String[] args) {
+		try {
+			new FullCycleBenchmark().fullCycleBenchmark();
+		} catch (final Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void fullCycleBenchmark() throws Exception {

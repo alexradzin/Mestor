@@ -16,14 +16,15 @@
 /******************************************************************************************************/
 package org.mestor.benchmarks;
 
-import org.mestor.benchmarks.entities.SimpleFieldsObject;
+import org.mestor.benchmarks.entities.ObjectWithRandomBytesArray;
 
 public enum Parameters {
-	ENTITY_CLASS("benchmark.entity_class", SimpleFieldsObject.class), 
+	ENTITY_CLASS("benchmark.entity_class", ObjectWithRandomBytesArray.class),
+	PERSISTENCE_UNIT("benchmark.pu", "benchmarks"),
 	OUTPUT_DIR("benchmark.output_dir", "/tmp/"),
 	CLEAR_SELECTS_CACHE("benchmark.clear_selects_cache", false),
 
-	ITERATIONS_COUNT("benchmark.iterations", 1000), 
+	ITERATIONS_COUNT("benchmark.iterations", 10), 
 	INSERTS_PER_ITERATION("benchmark.inserts_per_iteration", 1000), 
 	SELECTS_PER_ITERATION("benchmark.selects_per_iteration", 1000), 
 

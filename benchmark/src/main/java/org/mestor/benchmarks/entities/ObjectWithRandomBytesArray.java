@@ -18,16 +18,21 @@ package org.mestor.benchmarks.entities;
 /******************************************************************************************************/
 
 import java.util.Date;
+import java.util.Random;
 
 import javax.persistence.Cacheable;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
+import javax.persistence.Transient;
 
 @Entity
 @Cacheable(value = false)
-public class SimpleFieldsObject extends IdObject {
+public class ObjectWithRandomBytesArray extends IdObject {
+	
+	@Transient
+	private transient static Random r = new Random();
 	
 	@Column
 	private String name;
@@ -36,13 +41,18 @@ public class SimpleFieldsObject extends IdObject {
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date date;
 	
-	public SimpleFieldsObject(final long id) {
+	@Column
+	private byte[] bytes;
+
+	public ObjectWithRandomBytesArray(final long id) {
 		super(id);
 		this.date = new Date();
 		this.name = this.id.toString();
+		this.bytes = new byte[1000];
+		r.nextBytes(bytes);
 	}
 
-	public SimpleFieldsObject() {
+	public ObjectWithRandomBytesArray() {
 		super();
 	}
 

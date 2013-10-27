@@ -6,6 +6,7 @@
 	<persistence-unit name="benchmarks">
 
 		<class>org.mestor.benchmarks.entities.SimpleFieldsObject</class>
+		<class>org.mestor.benchmarks.entities.ObjectWithRandomBytesArray</class>
 		
 		<shared-cache-mode>NONE</shared-cache-mode>
 		

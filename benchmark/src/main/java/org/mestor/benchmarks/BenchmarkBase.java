@@ -79,7 +79,7 @@ public abstract class BenchmarkBase {
 		}
 	}
 
-	protected EntityManager getEntityManager() {
+	private EntityManager getEntityManager() {
 		// final String persistenceXmlLocation = "persistence.xml";
 		/*
 		 * if (System.getProperty("javax.persistence.jdbc.driver") == null) {
@@ -94,9 +94,7 @@ public abstract class BenchmarkBase {
 		if (System.getProperty("org.mestor.cassandra.hosts") == null) {
 			System.setProperty("org.mestor.cassandra.hosts", DEFAULT_CASSANDRA_HOST);
 		}
-		//System.setProperty("org.mestor.cassandra.keyspace.properties", "{replication: {class:SimpleStrategy, replication_factor:4}}");
-		final String puName = "benchmarks";
-		return Persistence.createEntityManagerFactory(puName).createEntityManager();
+		return Persistence.createEntityManagerFactory(Parameters.PERSISTENCE_UNIT.getString()).createEntityManager();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -108,19 +106,22 @@ public abstract class BenchmarkBase {
 		final String outDirectory = Parameters.OUTPUT_DIR.getString();
 
 		final EntityManager em = getEntityManager();
-
-		beforeBenchmarks(em);
-
-		System.out.print("Start: ");
-		System.out.println(new Date());
-		try (final FileWriter insertsFw = new FileWriter(outDirectory + "inserts");
-				final FileWriter selectsFw = new FileWriter(outDirectory + "selects");
-				final FileWriter deletesFw = new FileWriter(outDirectory + "deletes");) {
-
-			benchmarks(em, insertsFw, selectsFw, deletesFw);
+		try {
+			beforeBenchmarks(em);
+	
+			System.out.print("Start: ");
+			System.out.println(new Date());
+			try (final FileWriter insertsFw = new FileWriter(outDirectory + "inserts");
+					final FileWriter selectsFw = new FileWriter(outDirectory + "selects");
+					final FileWriter deletesFw = new FileWriter(outDirectory + "deletes");) {
+	
+				benchmarks(em, insertsFw, selectsFw, deletesFw);
+			}
+			System.out.print("Finish: ");
+			System.out.println(new Date());
+		} finally {
+			em.close();
 		}
-		System.out.print("Finish: ");
-		System.out.println(new Date());
 	}
 
 	protected void beforeBenchmarks(final EntityManager em) throws Exception {
