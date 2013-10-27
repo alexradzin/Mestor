@@ -119,10 +119,12 @@ public class ClauseInfo {
 				this.expression = expression;
 			}
 		} else {
-			if (expression.getClass().isArray()) {
+			if (expression == null) {
+				this.expression = expression;
+			} else if (expression.getClass().isArray()) {
 				this.expression = Array.get(expression, 0);
 			} else if (expression instanceof Collection) {
-				this.expression = ((Collection<?>)expression).iterator().next();
+				this.expression = ((Collection<?>) expression).iterator().next();
 			} else {
 				this.expression = expression;
 			}

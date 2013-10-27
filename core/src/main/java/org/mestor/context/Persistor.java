@@ -12,6 +12,7 @@ import org.mestor.wrap.ObjectWrapperFactory;
 public interface Persistor extends Closeable {
 	public <T> void store(T entity);
 	public <T, P> T fetch(Class<T> entityClass, P primaryKey);
+	@Deprecated
 	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria);
 	public <T> List<T> selectQuery(QueryInfo queryInfo);
 

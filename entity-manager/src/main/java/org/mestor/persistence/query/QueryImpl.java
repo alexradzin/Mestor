@@ -17,6 +17,9 @@
 
 package org.mestor.persistence.query;
 
+import static org.mestor.query.OrderByInfo.Order.ASC;
+import static org.mestor.query.OrderByInfo.Order.DSC;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -38,6 +41,7 @@ import javax.persistence.TemporalType;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.Order;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Predicate.BooleanOperator;
 import javax.persistence.criteria.Root;
@@ -48,6 +52,7 @@ import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
+import org.mestor.query.OrderByInfo;
 import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
 
@@ -72,11 +77,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 	private final List<String> parameterNames = new ArrayList<>();
 	private final Map<String, Object> parameterInfo = new LinkedHashMap<>();
 
-
 	private final QueryInfo queryInfo;
-
-
-
 
 	public QueryImpl(final CriteriaQuery<T> criteriaQuery, final EntityContext context) {
 		this.resultType = criteriaQuery.getResultType();
@@ -88,15 +89,43 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		Map<String, Object> what = null;
 		final Selection<T> selection = criteriaQuery.getSelection();
 		if (selection != null) {
-			if(selection.isCompoundSelection()) {
+			if (selection.isCompoundSelection()) {
 				what = new LinkedHashMap<>();
 				for (final Selection<?> s : selection.getCompoundSelectionItems()) {
 					final String alias = s.getAlias();
 					what.put(alias, alias);
 				}
 			} else {
-				final String alias = selection.getAlias();
-				what = Collections.<String, Object>singletonMap(alias, alias);
+				String alias = selection.getAlias();
+				final Object field;
+				if (selection instanceof FunctionExpressionImpl) {
+					final FunctionExpressionImpl<?> funcExp = (FunctionExpressionImpl<?>)selection;
+					final String function = funcExp.getFunction();
+					switch(function){
+						case "count":
+							field = "count(*)";
+							break;
+						case "max":
+						case "min":
+						case "sum":
+						case "upper":
+							field = function + "(" + alias + ")";
+							break;
+						default:
+							throw new UnsupportedOperationException(function);
+					}
+				} else if (selection instanceof ConstantExpresion) {
+					final ConstantExpresion<?> ce = (ConstantExpresion<?>) selection;
+					final Object value = ce.getValue();
+					if(alias == null){
+						alias = String.valueOf(value);
+					}
+					field = value;
+				} else {
+					field = alias;
+				}
+				
+				what = Collections.<String, Object> singletonMap(alias, field);
 			}
 		}
 
@@ -112,12 +141,11 @@ public class QueryImpl<T> implements TypedQuery<T> {
 			}
 		}
 
+		final ClauseInfo where = createClauseInfo(criteriaQuery.getRestriction());
 
-		final Predicate restriction = criteriaQuery.getRestriction();
-		//restriction.isCompoundSelection();
-		final ClauseInfo where = createClauseInfo(restriction);
+		final Collection<OrderByInfo> order = createOrderBy(criteriaQuery.getOrderList());
 
-		queryInfo = new QueryInfo(QueryType.SELECT, what, from, where, null);
+		queryInfo = new QueryInfo(QueryType.SELECT, what, from, where, order);
 	}
 
 	public QueryImpl(final QueryInfo queryInfo, final EntityContext context) {
@@ -144,6 +172,19 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		return emd.getEntityType();
 	}
 
+	private Collection<OrderByInfo> createOrderBy(final List<Order> orderList) {
+		if (orderList == null || orderList.isEmpty()) {
+			return null;
+		}
+		final Collection<OrderByInfo> res = new ArrayList<>(orderList.size());
+		for(final Order o : orderList){
+			final Expression<?> exp = o.getExpression();
+			final String field = exp.getAlias();
+			final OrderByInfo obi = new OrderByInfo(field, o.isAscending() ? ASC : DSC);
+			res.add(obi);
+		}
+		return res;
+	}
 
 	@Override
 	public List<T> getResultList() {
@@ -262,8 +303,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 	@Override
 	public <P> Parameter<P> getParameter(final String name, final Class<P> type) {
 		@SuppressWarnings("unchecked")
-		final
-		Parameter<P> parameter = (Parameter<P>)getParameter(name);
+		final Parameter<P> parameter = (Parameter<P>) getParameter(name);
 		checkType(parameter.getParameterType(), type);
 		return parameter;
 	}
@@ -286,7 +326,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <P> P getParameterValue(final Parameter<P> param) {
-		return (P)parameterValues.get(checkBound(param));
+		return (P) parameterValues.get(checkBound(param));
 	}
 
 	@Override
@@ -325,17 +365,15 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	@Override
 	public <C> C unwrap(final Class<C> cls) {
-        if (cls.isAssignableFrom(this.getClass())) {
-            // unwraps any proxy to Query, JPAQuery or EJBQueryImpl
-        	@SuppressWarnings("unchecked")
-			final
-			C unwrapped = (C) this;
-            return unwrapped;
-        }
+		if (cls.isAssignableFrom(this.getClass())) {
+			// unwraps any proxy to Query, JPAQuery or EJBQueryImpl
+			@SuppressWarnings("unchecked")
+			final C unwrapped = (C) this;
+			return unwrapped;
+		}
 
-        throw new PersistenceException("Could not unwrap query to: " + cls);
+		throw new PersistenceException("Could not unwrap query to: " + cls);
 	}
-
 
 	private <P> TypedQuery<T> setParameter(final Parameter<P> param, final P value, final Object info) {
 		final String name = param.getName();
@@ -347,8 +385,6 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		}
 		return this;
 	}
-
-
 
 	private <R, V> TypedQuery<T> setReferencedParameter(final Function<R, Parameter<V>> accessor, final R ref, final V value, final Object info) {
 		final Parameter<V> param = notNull(accessor.apply(ref), ref);
@@ -378,9 +414,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	private <V, C> void checkType(final Class<V> valueType, final Class<C> type) {
 		if (!type.isAssignableFrom(valueType)) {
-			throw new IllegalArgumentException(
-					"Type of query parameter " + type +
-					" is not compatible with value of type " + valueType);
+			throw new IllegalArgumentException("Type of query parameter " + type + " is not compatible with value of type " + valueType);
 		}
 	}
 
@@ -395,19 +429,17 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public Parameter<P> apply(final String name) {
-			return (Parameter<P>)parameters.get(name);
+			return (Parameter<P>) parameters.get(name);
 		}
 	}
-
 
 	private class IndexedParameter<P> implements Function<Integer, Parameter<P>> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public Parameter<P> apply(final Integer index) {
-			return (Parameter<P>)parameters.get(parameterNames.get(index));
+			return (Parameter<P>) parameters.get(parameterNames.get(index));
 		}
 	}
-
 
 	public QueryInfo getQueryInfo() {
 		return queryInfo;
@@ -418,51 +450,62 @@ public class QueryImpl<T> implements TypedQuery<T> {
 			return null;
 		}
 		final List<Expression<Boolean>> expressions = restriction.getExpressions();
+
 		if (expressions == null || expressions.isEmpty()) {
 			return null;
 		}
-//		final Predicate expression = (Predicate)expressions.get(0); //TODO: add support of several expressions
+		// final Predicate expression = (Predicate)expressions.get(0); //TODO:
+		// add support of several expressions
 
-
-		final List<ClauseInfo> clauses = new ArrayList<>();
-
-		for (final Expression<Boolean> expression : expressions) {
-			if (expression instanceof FunctionExpressionImpl) {
-				final FunctionExpressionImpl<Boolean> function = ((FunctionExpressionImpl<Boolean>)expression);
-				// if function is unsupported IllegalArgumentException will be thrown
-				final Operand operand = Operand.valueOf(function.getFunction().toUpperCase());
-				final Collection<Object> values = Collections2.transform(Collections2.filter(
-						function.getArguments(), new com.google.common.base.Predicate<Expression<?>>() {
-							@Override
-							public boolean apply(@Nullable final Expression<?> expr) {
-								return expr instanceof ConstantExpresion;
-							}
-						}
-					),
-					new Function<Expression<?>, Object>() {
-						@Override
-						public Object apply(@Nullable final Expression<?> expr) {
-							if (expr instanceof ConstantExpresion) {
-								return ((ConstantExpresion<?>)expr).getValue();
-							}
-							throw new UnsupportedOperationException(expr.getClass() + " TBD");
-						}
-				});
-				clauses.add(new ClauseInfo(expression.getAlias(), operand, values));
-				continue;
-			}
-			throw new UnsupportedOperationException("Cannot create ClauseInfo from " + expression.getClass() + ": TBD");
-		}
+		final List<ClauseInfo> clauses = createClauses(expressions);
 
 		if (clauses.size() == 1) {
 			return clauses.get(0);
 		}
-
 
 		final BooleanOperator operator = restriction.getOperator();
 		final Operand operand = Operand.valueOf(operator.name());
 		return new ClauseInfo(restriction.getAlias(), operand, clauses.toArray(new ClauseInfo[0]));
 
 		// TODO: add support of In statement
+	}
+
+	private List<ClauseInfo> createClauses(final List<Expression<Boolean>> expressions) {
+		final List<ClauseInfo> clauses = new ArrayList<>();
+
+		for (final Expression<Boolean> expression : expressions) {
+			if (expression instanceof FunctionExpressionImpl) {
+				final FunctionExpressionImpl<Boolean> function = ((FunctionExpressionImpl<Boolean>) expression);
+				// if function is unsupported IllegalArgumentException will be
+				// thrown
+				final Operand operand = Operand.valueOf(function.getFunction().toUpperCase());
+				final Collection<Object> values = Collections2.transform(Collections2.filter(function.getArguments(), new com.google.common.base.Predicate<Expression<?>>() {
+					@Override
+					public boolean apply(@Nullable final Expression<?> expr) {
+						return expr instanceof ConstantExpresion;
+					}
+				}), new Function<Expression<?>, Object>() {
+					@Override
+					public Object apply(@Nullable final Expression<?> expr) {
+						if (expr instanceof ConstantExpresion) {
+							return ((ConstantExpresion<?>) expr).getValue();
+						}
+						throw new UnsupportedOperationException(expr.getClass() + " TBD");
+					}
+				});
+				clauses.add(new ClauseInfo(expression.getAlias(), operand, values));
+			} else if (expression instanceof CompoundExpressionImpl) {
+				final CompoundExpressionImpl cExpr = (CompoundExpressionImpl) expression;
+				final List<Expression<Boolean>> subClosesList = cExpr.getExpressions();
+				if (!subClosesList.isEmpty()) {
+					final ClauseInfo[] subCloses = createClauses(subClosesList).toArray(new ClauseInfo[0]);
+					final Operand operand = Operand.valueOf(cExpr.getOperator().name());
+					clauses.add(new ClauseInfo(expression.getAlias(), operand, subCloses));
+				}
+			} else {
+				throw new UnsupportedOperationException("Cannot create ClauseInfo from " + expression.getClass() + ": TBD");
+			}
+		}
+		return clauses;
 	}
 }

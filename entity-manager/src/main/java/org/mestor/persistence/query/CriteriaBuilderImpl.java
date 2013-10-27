@@ -263,13 +263,15 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Predicate isNull(final Expression<?> x) {
-		return new BooleanFunctionExpressionImpl(entityContext, "null", x, new ConstantExpresion<>(null));
+		return compare("eq", x, new ConstantExpresion<>(Boolean.class, null));
+		//return new BooleanFunctionExpressionImpl(entityContext, "null", x, new ConstantExpresion<>(Boolean.class, null));
 	}
 
 	@Override
 	public Predicate isNotNull(final Expression<?> x) {
+		return compare("ne", x, new ConstantExpresion<>(Boolean.class, null));
 		// TODO should be null but negated.
-		return new BooleanFunctionExpressionImpl(entityContext, "not null", x, new ConstantExpresion<>(null));
+		//return new BooleanFunctionExpressionImpl(entityContext, "not null", x, new ConstantExpresion<>(Boolean.class, null));
 	}
 
 	@Override
@@ -384,7 +386,7 @@ public class CriteriaBuilderImpl implements CriteriaBuilder {
 
 	@Override
 	public Predicate le(final Expression<? extends Number> x, final Number y) {
-		return ge(x, new ConstantExpresion<Number>(y));
+		return le(x, new ConstantExpresion<Number>(y));
 	}
 
 	@Override
