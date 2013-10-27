@@ -18,60 +18,95 @@
 package org.mestor.persistence.cql.query;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Arrays;
-
+import java.util.List;
 
 import org.junit.Test;
+import org.mestor.context.EntityContext;
+import org.mestor.entities.Person;
+import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
+import org.mestor.util.Pair;
+import org.mockito.Mockito;
 
 public class CqlQueryFactoryTest {
 	private final static String KEYSPACE = "TestKeySpace";
 
+	final EntityContext ctx = Mockito.mock(EntityContext.class);
+
+	public CqlQueryFactoryTest() {
+		final EntityMetadata<Person> emd = new EntityMetadata<Person>();
+		emd.setSchemaName(KEYSPACE);
+
+		final FieldMetadata<Person, String, String> fieldName = new FieldMetadata<Person, String, String>(Person.class, String.class, "name");
+		fieldName.setColumn("name");
+
+		final FieldMetadata<Person, String, String> fieldFirstName = new FieldMetadata<Person, String, String>(Person.class, String.class, "firstName");
+		fieldFirstName.setColumn("first_name");
+
+		final FieldMetadata<Person, String, String> fieldLastName = new FieldMetadata<Person, String, String>(Person.class, String.class, "lastName");
+		fieldLastName.setColumn("last_name");
+
+		emd.addAllFields(Arrays.<FieldMetadata<Person, ?, ?>>asList(fieldName, fieldFirstName, fieldLastName));
+
+		doReturn(emd).when(ctx).getEntityMetadata("person");
+		doReturn(emd).when(ctx).getEntityMetadata("Person");
+	}
+
+
 	@Test
 	public void testSimpleSelectAll() {
-		test(new QueryInfo(QueryType.SELECT, null, "person"), "SELECT * FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, null, "person"), "SELECT * FROM \"TestKeySpace\".person;");
 	}
 
 	@Test
 	public void testSimpleSelectAllMixedCaseTable() {
-		test(new QueryInfo(QueryType.SELECT, null, "Person"), "SELECT * FROM \"TestKeySpace\".\"Person\";");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, null, "Person"), "SELECT * FROM \"TestKeySpace\".\"Person\";");
 	}
 
 	@Test
 	public void testSimpleSelectOneField() {
-		test(new QueryInfo(QueryType.SELECT, Collections.singletonMap("name", null), "person"), "SELECT name FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonMap("name", null), "person"), "SELECT name FROM \"TestKeySpace\".person;");
 	}
 
-	@Test
+	@Test(expected = IllegalArgumentException.class) // Field and class names are case sensitive
 	public void testSimpleSelectOneFieldMixedCase() {
-		test(new QueryInfo(QueryType.SELECT, Collections.singletonMap("FirstName", null), "person"), "SELECT \"FirstName\" FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonMap("FirstName", null), "person"), "SELECT \"FirstName\" FROM \"TestKeySpace\".person;");
+	}
+
+	@Test(expected = IllegalArgumentException.class) // Field and class names are case sensitive
+	public void testSimpleSelectOneWrongField() {
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonMap("DoesNotExist", null), "person"), "SELECT \"DoesNotExist\" FROM \"TestKeySpace\".person;");
 	}
 
 	@Test
 	public void testSimpleSelectSeveralFields() {
-		test(new QueryInfo(QueryType.SELECT, Arrays.asList("first_name", "last_name"), "person", null, null, null), "SELECT first_name,last_name FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Arrays.asList("name", "lastName"), "person", null, null, null), "SELECT name,last_name FROM \"TestKeySpace\".person;");
 	}
 
 	@Test
 	public void testSimpleSelectOneField1() {
-		test(new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person", null, null, null), "SELECT name FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person", null, null, null), "SELECT name FROM \"TestKeySpace\".person;");
 	}
 
 	@Test
 	public void testSimpleSelectOneFieldWithLimit() {
-		test(new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person", null, null, 345), "SELECT name FROM \"TestKeySpace\".person LIMIT 345;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person", null, null, 345), "SELECT name FROM \"TestKeySpace\".person LIMIT 345;");
 	}
 
 	@Test
 	public void testCountSelect() {
-		test(new QueryInfo(QueryType.SELECT, Collections.singletonList("count(*)"), "person", null, null, null), "SELECT count(*) FROM \"TestKeySpace\".person;");
-		test(new QueryInfo(QueryType.SELECT, Collections.singletonList("count(1)"), "person", null, null, null), "SELECT count(1) FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonList("count(*)"), "person", null, null, null), "SELECT count(*) FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonList("count(1)"), "person", null, null, null), "SELECT count(1) FROM \"TestKeySpace\".person;");
 	}
 
 
@@ -130,11 +165,11 @@ public class CqlQueryFactoryTest {
 
 	@Test
 	public void testSelectWhere2FieldAnd() {
-		test(new QueryInfo(QueryType.SELECT,
+		testCreateQuery(new QueryInfo(QueryType.SELECT,
 				null, "person",
 				new ClauseInfo(null, Operand.AND, new ClauseInfo[] {
-						new ClauseInfo("first_name", Operand.EQ, "John"),
-						new ClauseInfo("last_name", Operand.EQ, "Lennon")
+						new ClauseInfo("firstName", Operand.EQ, "John"),
+						new ClauseInfo("lastName", Operand.EQ, "Lennon")
 				}),
 				null, null),
 				"SELECT * FROM \"TestKeySpace\".person WHERE first_name='John' AND last_name='Lennon';");
@@ -142,7 +177,7 @@ public class CqlQueryFactoryTest {
 
 	@Test(expected=UnsupportedOperationException.class)
 	public void testSelectWhere2FieldOr() {
-		test(new QueryInfo(QueryType.SELECT,
+		testCreateQuery(new QueryInfo(QueryType.SELECT,
 				null, "person",
 				new ClauseInfo(null, Operand.OR, new ClauseInfo[] {
 						new ClauseInfo("first_name", Operand.EQ, "John"),
@@ -155,7 +190,7 @@ public class CqlQueryFactoryTest {
 
 
 	private void testSimpleSelectOneFieldWhereIn(final Object values, final String exectedIn) {
-		test(
+		testCreateQuery(
 				new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person",
 				new ClauseInfo("name", Operand.IN, values),
 				null,
@@ -176,7 +211,7 @@ public class CqlQueryFactoryTest {
 
 
 	private void testSimpleSelectOneFieldWhere(final Operand operand, final String op, final String value, final String expectedQl) {
-		test(
+		testCreateQuery(
 				new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person",
 				new ClauseInfo("name", operand, value),
 				null,
@@ -185,13 +220,73 @@ public class CqlQueryFactoryTest {
 	}
 
 
-	private void test(final QueryInfo query, final String ... expected) {
-		test(query, Arrays.asList(expected));
+	private void testCreateQuery(final QueryInfo query, final String ... expected) {
+		testCreateQuery(query, Arrays.asList(expected));
 	}
 
-	private void test(final QueryInfo query, final Collection<String> expected) {
-		final CqlQueryFactory factory = new CqlQueryFactory(KEYSPACE);
-		final Collection<String> actual = factory.createQuery(query);
-		assertEquals(expected, actual);
+	private void testCreateQuery(final QueryInfo query, final Collection<String> expected) {
+		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
+		final Collection<Pair<String, QueryInfo>> queries = factory.createQuery(query);
+		final Collection<String> queryStatements = new ArrayList<String>();
+		for (final Pair<String, QueryInfo> q : queries) {
+			queryStatements.add(q.getKey());
+		}
+		assertEquals(expected, queryStatements);
+	}
+
+
+	@Test
+	public void testGetSubqueryIndexesNoSubquery() {
+		testGetSubqueryIndexes("select identifier from \"People\" where year=1940;", Collections.<Pair<String, Integer>>emptyList());
+	}
+
+	@Test
+	public void testGetSubqueryIndexesOneSubqueryInLike() {
+		for (final String in : new String[] {"in", "IN", "In", "iN", "like", "LIKE", "LiKe"}) {
+			final String query = "select * from \"People\" where identifier " + in + " (subquery(0))";
+			testGetSubqueryIndexes(query, Arrays.asList(new Pair<String, Integer>("identifier", 0)));
+		}
+	}
+
+	@Test
+	public void testGetSubqueryIndexesOneSubqueryGtLt() {
+		for (final String op : new String[] {">", ">=", "<", "<="}) {
+			final String query = "select * from \"People\" where identifier " + op + " (subquery(0))";
+			testGetSubqueryIndexes(query, Arrays.asList(new Pair<String, Integer>("identifier", 0)));
+		}
+	}
+
+
+	@Test
+	public void testGetSubqueryIndexesManySubqueries() {
+		final String query =
+				"select * from \"People\" where " +
+				"id in (subquery(0)) and " +
+				"name=subquery(1) and " +
+				"lastName>=subquery(2) " +
+				"and age>subquery(3) and " +
+				"age<subquery(4) and " +
+				"year<=subquery(5)" +
+				"bigindex < subquery(12345)"
+				;
+
+		testGetSubqueryIndexes(query, Arrays.asList(
+				new Pair<String, Integer>("id", 0),
+				new Pair<String, Integer>("name", 1),
+				new Pair<String, Integer>("lastName", 2),
+				new Pair<String, Integer>("age", 3),
+				new Pair<String, Integer>("age", 4),
+				new Pair<String, Integer>("year", 5),
+				new Pair<String, Integer>("bigindex", 12345)
+			)
+		);
+	}
+
+
+
+	private void testGetSubqueryIndexes(final String query, final List<Pair<String, Integer>> expected) {
+		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
+		final List<Pair<String, Integer>> actual = factory.getSubqueryIndexes(query);
+		assertEquals("Query: " + query, expected, actual);
 	}
 }

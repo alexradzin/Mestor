@@ -31,25 +31,24 @@ import org.mockito.Mockito;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 
 public class CqlPersistorTest {
-	
-	@SuppressWarnings("unused")
+
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateNullContext() throws IOException {
 		new CqlPersistor(null);
 	}
-	
+
 	/**
-	 * This test creates instance of {@link CqlPersistor} that automatically connects to 
-	 * Cassandra using default configuration, i.e. to Cassandra running on localhost. 
-	 * The test result depends on the fact whether Cassandra is running on localhost. 
+	 * This test creates instance of {@link CqlPersistor} that automatically connects to
+	 * Cassandra using default configuration, i.e. to Cassandra running on localhost.
+	 * The test result depends on the fact whether Cassandra is running on localhost.
 	 * If Cassandra is running the test succeeds otherwise it fails with {@link NoHostAvailableException}.
-	 * To make this test stable it handles both cases safely. 
+	 * To make this test stable it handles both cases safely.
 	 */
 	@Test
 	public void testCreateAndConnectNullProperties() {
 		safelyCreateAndConnect(null);
 	}
-	
+
 	@Test
 	public void testCreateAndConnectNullHostAndPort() {
 		safelyCreateAndConnect(Collections.<String, Object>emptyMap());
@@ -65,27 +64,28 @@ public class CqlPersistorTest {
 	public void testCreateAndConnectWrongHost() {
 		safelyCreateAndConnect(Collections.<String, Object>singletonMap(CqlPersistorProperties.CASSANDRA_HOSTS.property(), "doesnotexist"));
 	}
-	
-	@Test(expected = IOException.class) 
+
+	@Test(expected = IOException.class)
 	public void testCreateAndConnectToLocalhostWrongPort() throws IOException {
 		createAndConnect(Collections.<String, Object>singletonMap(CqlPersistorProperties.CASSANDRA_PORT.property(), 12345));
 	}
 
-	private void safelyCreateAndConnect(Map<String, Object> props) {
+	private void safelyCreateAndConnect(final Map<String, Object> props) {
 		try {
 			createAndConnect(props);
 			// if we are here cassandra is not running on localhost
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			// check that this is indeed exception thrown when cassandra is not running on localhost
 			assertEquals(NoHostAvailableException.class, e.getCause().getClass());
 		}
 	}
-	
-	private void createAndConnect(Map<String, Object> props) throws IOException {
-		EntityContext ctx = Mockito.mock(EntityContext.class);
+
+	private void createAndConnect(final Map<String, Object> props) throws IOException {
+		final EntityContext ctx = Mockito.mock(EntityContext.class);
 		doReturn(props).when(ctx).getProperties();
 		@SuppressWarnings("unused")
+		final
 		CqlPersistor cqlPersistor = new CqlPersistor(ctx);
 	}
-	
+
 }

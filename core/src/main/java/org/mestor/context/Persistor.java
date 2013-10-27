@@ -1,5 +1,6 @@
 package org.mestor.context;
 
+import java.io.Closeable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +9,7 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.query.QueryInfo;
 import org.mestor.wrap.ObjectWrapperFactory;
 
-public interface Persistor {
+public interface Persistor extends Closeable {
 	public <T> void store(T entity);
 	public <T, P> T fetch(Class<T> entityClass, P primaryKey);
 	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria);

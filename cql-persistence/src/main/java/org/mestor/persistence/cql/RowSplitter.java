@@ -25,22 +25,21 @@ import com.datastax.driver.core.Row;
 
 class RowSplitter extends RowFunctionAdapter<Map<String, Object>> /*implements Function<Row, Map<String, Object>>*/ {
 	private final Map<String, Class<?>[]> fields;
-	
-	RowSplitter(Map<String, Class<?>[]> fields) {
+
+	RowSplitter(final Map<String, Class<?>[]> fields) {
 		this.fields = fields;
 	}
 
 	@Override
-	public Map<String, Object> apply(Row row) {
-		Map<String, Object> data = new LinkedHashMap<>();
-		
-		
-		for (Entry<String, Class<?>[]> field : fields.entrySet()) {
-			String fieldName = field.getKey();
-			Class<?>[] fieldType = field.getValue();
+	public Map<String, Object> apply(final Row row) {
+		final Map<String, Object> data = new LinkedHashMap<>();
+
+		for (final Entry<String, Class<?>[]> field : fields.entrySet()) {
+			final String fieldName = field.getKey();
+			final Class<?>[] fieldType = field.getValue();
 			data.put(fieldName, getValue(row, fieldName, fieldType));
 		}
-		
+
 		return data;
 	}
 }

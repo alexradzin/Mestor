@@ -17,6 +17,7 @@
 
 package org.mestor.em;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -145,6 +146,12 @@ public class DummyPersistor implements Persistor {
 	@Override
 	public Collection<Class<?>> getNativeTypes() {
 		return nativeTypes;
+	}
+
+	@Override
+	public void close() throws IOException {
+		// TODO Auto-generated method stub
+
 	}
 
 }

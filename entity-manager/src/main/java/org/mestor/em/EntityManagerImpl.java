@@ -23,6 +23,7 @@ import static org.mestor.em.MestorProperties.METADATA_FACTORY_CLASS;
 import static org.mestor.em.MestorProperties.NAMING_STRATEGY;
 import static org.mestor.em.MestorProperties.PERSISTOR_CLASS;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.util.Collection;
@@ -68,11 +69,15 @@ import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.persistence.query.JpqlParser;
 import org.mestor.persistence.query.QueryImpl;
 import org.mestor.wrap.ObjectWrapperFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Primitives;
 
 public class EntityManagerImpl implements EntityManager, EntityContext {
+	private final static Logger logger = LoggerFactory.getLogger(EntityManagerImpl.class);
+
 	private final PersistenceUnitInfo info;
 	private final EntityManagerFactory entityManagerFactory;
 	private final Map<String, Object> properties;
@@ -117,7 +122,13 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public void close() {
 		open = false;
-		//TODO close persistor (?)
+		if (persistor != null) {
+			try {
+				persistor.close();
+			} catch (final IOException e) {
+				logger.error("Failed to close persistor " + persistor, e);
+			}
+		}
 	}
 
 

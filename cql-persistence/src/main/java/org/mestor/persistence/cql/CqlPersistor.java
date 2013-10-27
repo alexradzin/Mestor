@@ -58,9 +58,11 @@ import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CommandHelper;
 import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
+import org.mestor.persistence.cql.query.CqlQueryFactory;
 import org.mestor.query.QueryInfo;
 import org.mestor.reflection.ClassAccessor;
 import org.mestor.util.CollectionUtils;
+import org.mestor.util.Pair;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
 
@@ -72,6 +74,7 @@ import com.datastax.driver.core.Query;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.querybuilder.Clause;
@@ -83,8 +86,11 @@ import com.datastax.driver.core.querybuilder.Select.Where;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Primitives;
 
 public class CqlPersistor implements Persistor {
 	private final EntityContext context;
@@ -116,7 +122,7 @@ public class CqlPersistor implements Persistor {
 	}
 
 
-	@SuppressWarnings({ "cast", "unchecked" })
+	@SuppressWarnings("unchecked")
 	public CqlPersistor(final EntityContext context) throws IOException {
 		if (context == null) {
 			throw new IllegalArgumentException(
@@ -223,7 +229,7 @@ public class CqlPersistor implements Persistor {
 				insert.value(quote(name), value);
 			}
 		}
-		
+
 		insert.setConsistencyLevel(ConsistencyLevel.ONE);
 		session.execute(insert);
 
@@ -348,7 +354,7 @@ public class CqlPersistor implements Persistor {
         EntityMetadata<E> emd = requestedEntityMetadata;
 
         Map<String, Class<?>[]> fieldTypes = new HashMap<>();
-        Select.Selection select = selectFields(emd, fieldTypes);
+        Select.Selection select = selectFields(emd, fieldTypes, null);
         final List<Row> allResult = doSelectAll(emd, primaryKey).all();
 
         Iterator<Map<String, Object>> result = transform(allResult, new RowSplitter(fieldTypes)).iterator();
@@ -359,7 +365,7 @@ public class CqlPersistor implements Persistor {
         		final Class<?> c = e.getEntityType();
         		if (clazz.isAssignableFrom(c) && !clazz.equals(c) && e.getFieldByName(emd.getPrimaryKey().getName()) != null) {
         	        fieldTypes = new HashMap<>();
-        	        select = selectFields(e, fieldTypes);
+        	        select = selectFields(e, fieldTypes, null);
 
         	        final String column = e.getFieldByName(requestedEntityPkFieldName).getColumn();
 
@@ -392,7 +398,7 @@ public class CqlPersistor implements Persistor {
 			final
 			EntityMetadata<E> leafMeta = (EntityMetadata<E>)context.getEntityMetadata(leafClazz);
             final Map<String, Class<?>[]> leafFieldTypes = new HashMap<>();
-            selectFields(leafMeta, leafFieldTypes);
+            selectFields(leafMeta, leafFieldTypes, null);
 
 
             final Map<String, Class<?>[]> allFieldTypes = new HashMap<>(fieldTypes);
@@ -439,7 +445,7 @@ public class CqlPersistor implements Persistor {
 	        Object pk = data.get(emd.getJoiner().getName());
 	        for (final EntityMetadata<?> e : downUpChain) {
 	            fieldTypes = new HashMap<>();
-	            select = selectFields(e, fieldTypes);
+	            select = selectFields(e, fieldTypes, null);
 	            result = doSelect(select, e, pk, fieldTypes).iterator();
 
 	            if (!result.hasNext()) {
@@ -459,7 +465,7 @@ public class CqlPersistor implements Persistor {
         Object key = primaryKey;
         for (final EntityMetadata<?> e : upDownChain) {
             fieldTypes = new HashMap<>();
-            select = selectFields(e, fieldTypes);
+            select = selectFields(e, fieldTypes, null);
             final String jc = getJoinerColumn(e);
             if (jc == null) {
             	break;
@@ -508,13 +514,13 @@ public class CqlPersistor implements Persistor {
         return joiner == null ? null : joiner.getColumn();
 	}
 
-    private <E>  Select.Selection selectFields(final EntityMetadata<E> emd, final Map<String, Class<?>[]> fieldTypes) {
+    private <E>  Select.Selection selectFields(final EntityMetadata<E> emd, final Map<String, Class<?>[]> fieldTypes, final Collection<String> requestedFields) {
 		return selectFor(
 				emd,
 				new Predicate<FieldMetadata<E, Object, Object>>(){
 					@Override
 					public boolean apply(final FieldMetadata<E, Object, Object> fmd) {
-						return fmd.getColumn() != null && !fmd.isLazy();
+						return fmd.getColumn() != null && !fmd.isLazy() && (requestedFields == null || requestedFields.contains(fmd.getName()));
 					}
 				},
 				fieldTypes);
@@ -1285,7 +1291,153 @@ public class CqlPersistor implements Persistor {
 
 	@Override
 	public <T> List<T> selectQuery(final QueryInfo queryInfo) {
-		// TODO Auto-generated method stub
-		return null;
+		final String entityName = queryInfo.getFrom().entrySet().iterator().next().getValue();
+		final EntityMetadata<T> emd = context.getEntityMetadata(entityName);
+		if (emd == null) {
+			throw new IllegalArgumentException("Entity " + entityName + " does not exist");
+		}
+		final CqlQueryFactory cqlQueryFactory = new CqlQueryFactory(context);
+
+		@SuppressWarnings("unchecked")
+		final Pair<String, QueryInfo>[] queries = cqlQueryFactory.createQuery(queryInfo).toArray(new Pair[0]);
+
+        final List<Iterable<Map<String, Object>>> allResults = new ArrayList<>();
+
+		for (int i = 0; i < queries.length; i++) {
+			final QueryInfo currentQueryInfo = queries[i].getValue();
+
+			final String currentEntityName = currentQueryInfo.getFrom().entrySet().iterator().next().getValue();
+			final EntityMetadata<T> currentEmd = context.getEntityMetadata(currentEntityName);
+			if (currentEmd == null) {
+				throw new IllegalArgumentException("Entity " + currentEntityName + " does not exist");
+			}
+
+
+
+	        final Map<String, Class<?>[]> fieldTypes = new HashMap<>();
+	        final Map<String, Object> what = currentQueryInfo.getWhat();
+	        final Collection<String> requestedFields = what == null ? null : what.keySet();
+	        @SuppressWarnings("unused") // return value of this method indeed is not used. But it populates values into fieldTypes
+			final Select.Selection select = selectFields(emd, fieldTypes, requestedFields);
+
+
+			final String cql = queries[i].getKey();
+			final String nextCql = fixCql(cqlQueryFactory, currentEmd, cql, allResults);
+			final Iterable<Map<String, Object>> result = execute(new SimpleStatement(nextCql), fieldTypes);
+			allResults.add(result);
+		}
+
+
+
+		final Collection<Iterable<Map<String, Object>>> allMainResults =  Collections2.filter(allResults, Predicates.notNull());
+
+
+		if (allMainResults.size() != 1) {
+			throw new UnsupportedOperationException("Join and OR are not supported. TBD");
+		}
+
+
+		final Iterable<Map<String, Object>> queryResults = allMainResults.iterator().next();
+		final Class<T> clazz = emd.getEntityType();
+
+
+		final Iterable<T> r = Iterables.transform(queryResults, new Function<Map<String, Object>, T>() {
+			@Override
+			public T apply(final Map<String, Object> data) {
+				final T entity = ClassAccessor.newInstance(clazz);
+
+		        // create fetch context lazily
+		        boolean fetchContextOriginator = false;
+		        if (fetchContext.get() == null) {
+		            fetchContext.set(new TreeMap<Object, Object>(new EntityComparator<Object>(context)));
+		            fetchContextOriginator = true;
+		        }
+
+		        // store the just created instance of entity into fetchContext BEFORE populating of all its properties
+		        // to prevent possible infinite recursion if entity refers to itself either directly or indirectly.
+		        fetchContext.get().put(entity, entity);
+
+		        try {
+		        	populateData(entity, emd, data);
+		        } finally {
+		            if (fetchContextOriginator) {
+		            	fetchContext.remove();
+		            }
+		        }
+
+
+		        return getObjectWrapperFactory(clazz).wrap(entity);
+			}
+		});
+
+
+		return Lists.newLinkedList(r);
 	}
+
+
+	String fixCql(final CqlQueryFactory cqlQueryFactory, final EntityMetadata<?> emd, final String cql, final List<Iterable<Map<String, Object>>> allResults) {
+		final List<Pair<String, Integer>> subqueryIndexes = cqlQueryFactory.getSubqueryIndexes(cql);
+
+
+		String readyCql = cql;
+
+		if (subqueryIndexes.size() > 0) {
+			for (final Pair<String, Integer> index : subqueryIndexes) {
+				final String columnName = index.getKey(); // this is column name because it is extracted from raw result of previous query
+				final Class<Object> type = emd.getField(columnName).getType();
+
+				final List<Object> values = new ArrayList<>();
+				for(final Map<String, Object> row : allResults.get(index.getValue())) {
+					if (row.size() != 1) {
+						throw new IllegalStateException("Wrong number of columnes in sub query");
+					}
+					final Entry<String, Object> entry = row.entrySet().iterator().next();
+					final String rowFieldName = entry.getKey();
+					final Object rowValue = entry.getValue();
+
+					if (!rowFieldName.equals(columnName)) {
+						throw new IllegalStateException("Wrong field in query result " + rowFieldName);
+					}
+
+					if (rowValue != null && !type.isAssignableFrom(rowValue.getClass())) {
+						throw new ClassCastException("Cannot cast " + rowValue.getClass() + " to " + type);
+					}
+
+					values.add(rowValue);
+				}
+
+				// put null to this position. This indicates that the query is used.
+				allResults.set(index.getValue(), null);
+
+				final String subqueryValues = formatSubqueryResult(type, values);
+
+				readyCql = cqlQueryFactory.formatSubquery(readyCql, index.getValue(), subqueryValues);
+			}
+		}
+
+		return readyCql;
+	}
+
+	private <T> String formatSubqueryResult(final Class<T> type, final Collection<T> values) {
+		if (Number.class.isAssignableFrom(Primitives.wrap(type))) {
+			return Joiner.on(',').join(values);
+		}
+		if (CharSequence.class.isAssignableFrom(type)) {
+			return Joiner.on(',').join(Collections2.transform(values, new Function<T, String>() {
+				@Override
+				public String apply(final T value) {
+					return "'" + value + "'";
+				}
+			}));
+		}
+
+		throw new IllegalArgumentException("Type " + type + " is illegal for subqueries");
+	}
+
+
+    @Override
+	public void close() throws IOException {
+    	session.shutdown();
+    	cluster.shutdown();
+    }
 }
