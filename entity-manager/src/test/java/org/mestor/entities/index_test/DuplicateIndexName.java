@@ -5,9 +5,10 @@ import javax.persistence.Index;
 import javax.persistence.Table;
 
 @Entity
-@Table(indexes = { 
+@Table(indexes = {
 	@Index(name = "index1", columnList = "column1"),
-	@Index(name = "index1", columnList = "column2") 
+	@Index(name = "index1", columnList = "column2")
 })
 public class DuplicateIndexName extends IndexBase {
+	// This class does not contain code. It is used for testing of annotation parsing.
 }

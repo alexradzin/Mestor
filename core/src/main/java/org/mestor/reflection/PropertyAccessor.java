@@ -36,43 +36,43 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	private final Field field;
 	private final Method getter;
 	private final Method setter;
-	
+
 	private final Access<T, P, ? extends AccessibleObject> readAccess;
 	private final Access<T, P, ? extends AccessibleObject> writeAccess;
 
 
-	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter, Access<T, P, ? extends AccessibleObject> readAccess, Access<T, P, ? extends AccessibleObject> writeAccess) {
+	public PropertyAccessor(final Class<T> type, final Class<P> fieldType, final String name, final Field field, final Method getter, final Method setter, final Access<T, P, ? extends AccessibleObject> readAccess, final Access<T, P, ? extends AccessibleObject> writeAccess) {
 		this.type = type;
 		this.propertyType = fieldType;
 		this.name = name;
 		this.field = field;
 		this.getter = getter;
 		this.setter = setter;
-		
+
 		this.readAccess = readAccess;
 		this.writeAccess = writeAccess;
 	}
-	
-	
-	
-	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter, Class<? extends Access<T, P, AccessibleObject>> readAccessType, Class<? extends Access<T, P, AccessibleObject>> writeAccessType) {
+
+
+
+	public PropertyAccessor(final Class<T> type, final Class<P> fieldType, final String name, final Field field, final Method getter, final Method setter, final Class<? extends Access<T, P, AccessibleObject>> readAccessType, final Class<? extends Access<T, P, AccessibleObject>> writeAccessType) {
 		this.type = type;
 		this.propertyType = fieldType;
 		this.name = name;
 		this.field = field;
 		this.getter = getter;
 		this.setter = setter;
-		
+
 		try {
 			this.readAccess = readAccessType.newInstance();
 			this.writeAccess = writeAccessType.newInstance();
-		} catch (ReflectiveOperationException e) {
+		} catch (final ReflectiveOperationException e) {
 			throw new IllegalArgumentException(e);
 		}
 	}
 
 
-	public PropertyAccessor(Class<T> type, Class<P> fieldType, String name, Field field, Method getter, Method setter) {
+	public PropertyAccessor(final Class<T> type, final Class<P> fieldType, final String name, final Field field, final Method getter, final Method setter) {
 		this.type = type;
 		this.propertyType = fieldType;
 		this.name = name;
@@ -81,11 +81,11 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 		this.setter = setter;
 
 		// discover access mode automatically
-		
+
 		final MethodAccess<T, P> methodAccess = new MethodAccess<T, P>(getter, setter);
 		final FieldAccess<T, P> fieldAccess = new FieldAccess<T, P>(field);
-		
-		
+
+
 		if (getter != null) {
 			this.readAccess = methodAccess;
 		} else if (field != null ) {
@@ -93,7 +93,7 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 		} else {
 			this.readAccess = null;
 		}
-		
+
 		if (setter != null) {
 			this.writeAccess = methodAccess;
 		} else if (field != null ) {
@@ -102,19 +102,19 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 			this.writeAccess = null;
 		}
 	}
-	
-	
-	
-	
-	public P getValue(T instance) {
+
+
+
+
+	public P getValue(final T instance) {
 		return readAccess.get(instance);
 	}
-	
-	public void setValue(T instance, P value) {
+
+	public void setValue(final T instance, final P value) {
 		writeAccess.set(instance, value);
 	}
 
-	
+
 	public Class<T> getType() {
 		return type;
 	}
@@ -122,6 +122,8 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	public Class<P> getPropertyType() {
 		return propertyType;
 	}
+
+	@Override
 	public String getName() {
 		return name;
 	}
@@ -154,19 +156,19 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 
 
 	@Override
-	public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+	public boolean isAnnotationPresent(final Class<? extends Annotation> annotationClass) {
 		return getAnnotation(annotationClass) != null;
 	}
 
 
 
 	@Override
-	public <A extends Annotation> A getAnnotation(Class<A> annotationClass) {
-		for (AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
+	public <A extends Annotation> A getAnnotation(final Class<A> annotationClass) {
+		for (final AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
 			if (ae == null) {
 				continue;
 			}
-			A a = ae.getAnnotation(annotationClass);
+			final A a = ae.getAnnotation(annotationClass);
 			if (a != null) {
 				return a;
 			}
@@ -178,8 +180,8 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 
 	@Override
 	public Annotation[] getAnnotations() {
-		List<Annotation> annotations = new ArrayList<>();
-		for (AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
+		final List<Annotation> annotations = new ArrayList<>();
+		for (final AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
 			annotations.addAll(Arrays.asList(ae.getAnnotations()));
 		}
 		return annotations.toArray(new Annotation[annotations.size()]);
@@ -189,8 +191,8 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 
 	@Override
 	public Annotation[] getDeclaredAnnotations() {
-		List<Annotation> annotations = new ArrayList<>();
-		for (AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
+		final List<Annotation> annotations = new ArrayList<>();
+		for (final AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
 			annotations.addAll(Arrays.asList(ae.getDeclaredAnnotations()));
 		}
 		return annotations.toArray(new Annotation[annotations.size()]);
@@ -199,14 +201,14 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	public Type getGenericType() {
 		Type genericType = null;
 		if (field != null) {
-			Type fieldType = field.getGenericType();
+			final Type fieldType = field.getGenericType();
 			if (fieldType instanceof ParameterizedType) {
 				return fieldType;
 			}
 			genericType = fieldType;
 		}
 		if (getter != null) {
-			Type getterType = getter.getGenericReturnType();
+			final Type getterType = getter.getGenericReturnType();
 			if (getterType instanceof ParameterizedType) {
 				return getterType;
 			}
@@ -238,5 +240,5 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 		// TODO Auto-generated method stub
 		return false;
 	}
-	
+
 }

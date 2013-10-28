@@ -52,35 +52,36 @@ public class CommandHelper {
 	static {
 		cassandraTypes = Collections.unmodifiableMap(initTypeMapping());
 	}
-	
+
 	public static Map<Class<?>, AbstractType<?>> getCassandraTypes() {
 		return cassandraTypes;
 	}
-	
+
 	private static Map<Class<?>, AbstractType<?>> initTypeMapping() {
 		final Map<Class<?>, AbstractType<?>> cassandraTypesTmp = new HashMap<>();
 		for (final Native nativeType : Native.values()) {
 			final AbstractType<?> cassandraType = nativeType.getType();
-			
+
 			Class<?> type = cassandraType.getClass();
-			while(type != null && !AbstractType.class.equals(type.getSuperclass())){ 
+			while(type != null && !AbstractType.class.equals(type.getSuperclass())){
 				type = type.getSuperclass();
 			}
-			// if type is null here NullPointerException will be thrown. 
-			final Type abstractType = type.getGenericSuperclass(); 
-			
+			// if type is null here NullPointerException will be thrown.
+			@SuppressWarnings("null")
+			final Type abstractType = type.getGenericSuperclass();
+
 			final Class<?> clazz = (Class<?>)((ParameterizedType)abstractType).getActualTypeArguments()[0];
 			cassandraTypesTmp.put(clazz, cassandraType);
 		}
 
-		// define some mappings explicitly to avoid ambiguity.   
+		// define some mappings explicitly to avoid ambiguity.
 		cassandraTypesTmp.put(UUID.class, Native.UUID.getType());
 		cassandraTypesTmp.put(String.class, Native.TEXT.getType());
 		cassandraTypesTmp.put(Long.class, Native.BIGINT.getType());
 		cassandraTypesTmp.put(BigInteger.class, Native.BIGINT.getType());
 		cassandraTypesTmp.put(BigDecimal.class, Native.DECIMAL.getType());
-		
-		
+
+
 		cassandraTypesTmp.put(byte[].class, Native.BLOB.getType());
 		cassandraTypesTmp.put(Byte[].class, Native.BLOB.getType());
 
@@ -98,17 +99,17 @@ public class CommandHelper {
 			}
 		}
 
-		// define array as list. 
+		// define array as list.
 		cassandraTypesTmp.put(Object[].class, ListType.getInstance((AbstractType<?>)null));
 		return cassandraTypesTmp;
 	}
-	
+
 	// quote
 	public static String fullname(final String keyspace, final String name) {
 		return keyspace == null ? name : quote(keyspace) + "." + quote(name);
 	}
-	
-	
+
+
 	static String createQueryString(final String[] tokens, final Map<String, Object> with) {
 		final StringBuilder buf = new StringBuilder();
 		Joiner.on(" ").skipNulls().appendTo(buf, tokens);
@@ -127,12 +128,12 @@ public class CommandHelper {
 		return buf.toString();
 	}
 
-	
+
 //	static String createIndex(String indexName, String tableName, String columnName) {
 //		return Joiner.on(" ").join("CREATE INDEX", indexName, "ON", tableName, "(", columnName, ")");
 //	}
-	
-	
+
+
 	private static String formatValue(final Object value) {
 		if (value == null) {
 			return null;
@@ -151,7 +152,7 @@ public class CommandHelper {
 		throw new IllegalArgumentException(String.valueOf(value));
 	}
 
-	
+
 	private static String formatValue(final Map<?,?> mapvalue) {
 		try {
 			// use JSON format but replace " by ' as it is required by CQL syntax.
@@ -160,30 +161,30 @@ public class CommandHelper {
 			throw new IllegalArgumentException(String.valueOf(mapvalue), e);
 		}
 	}
-	
-	
+
+
 	@SuppressWarnings("unchecked")
 	public static <T> AbstractType<T> toCassandraType(final Class<?> clazz) {
-		// first try to find the direct mapping 
+		// first try to find the direct mapping
 		final AbstractType<T> cassandraType = (AbstractType<T>)cassandraTypes.get(clazz);
 
 		if (cassandraType != null) {
 			return cassandraType;
 		}
-		
-		
+
+
 		// direct mapping is not found. Try to find mapping of base class or interface
 		for (final Entry<Class<?>, AbstractType<?>> entry : cassandraTypes.entrySet()) {
 			final Class<?> mappedClass = entry.getKey();
 			if (mappedClass.isAssignableFrom(clazz)) {
-				return (AbstractType<T>)entry.getValue(); 
+				return (AbstractType<T>)entry.getValue();
 			}
 		}
-	
+
 		// if we are here no mapping between java class and cassandra type is found.
 		throw new IllegalArgumentException(clazz == null ? null : clazz.getName());
 	}
-	
+
 	public static CQL3Type toCqlType(final Class<?> clazz, final Class<?> ... generics) {
 		AbstractType<?> cassandraType = toCassandraType(clazz);
 
@@ -191,8 +192,8 @@ public class CommandHelper {
 			return null;
 		}
 
-		// Here is a special patch for collections. 
-		// Fortunately only lists, sets and maps are supported. 
+		// Here is a special patch for collections.
+		// Fortunately only lists, sets and maps are supported.
 		if (cassandraType.isCollection()) {
 			if (cassandraType instanceof ListType) {
 				// since for convenience we treat arrays as lists we need a little patch here.
@@ -206,25 +207,25 @@ public class CommandHelper {
 			} else if (cassandraType instanceof MapType) {
 				cassandraType = MapType.getInstance(toCassandraType(generics[0]), toCassandraType(generics[1]));
 			} else {
-				// Just in case. To be on the safe side. 
+				// Just in case. To be on the safe side.
 				throw new IllegalArgumentException("Unsupported cassandra collection type " + cassandraType);
 			}
 		}
-		
+
 		return cassandraType.asCQL3Type();
 	}
 
 	/**
 	 * Quotes given string if it contains at least one capital latter.
 	 * This is needed to preserve given case of identifiers when using Cassandra.
-	 * For lower case identifiers quoting is redundant.   
+	 * For lower case identifiers quoting is redundant.
 	 * @param name
 	 * @return quoted name if needed
 	 */
 	public static String quote(final String name) {
 		return capitalLetter.matcher(name).find() ? "\"" + name + "\"" : name;
 	}
-	
+
 	public static Collection<String> quote(final Collection<String> strings) {
 		return Collections2.transform(strings, new Function<String, String>() {
 			@Override

@@ -34,7 +34,7 @@ public class CqlPersistorTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateNullContext() throws IOException {
-		new CqlPersistor(null);
+		createAndConnect((EntityContext)null);
 	}
 
 	/**
@@ -83,9 +83,16 @@ public class CqlPersistorTest {
 	private void createAndConnect(final Map<String, Object> props) throws IOException {
 		final EntityContext ctx = Mockito.mock(EntityContext.class);
 		doReturn(props).when(ctx).getProperties();
-		@SuppressWarnings("unused")
-		final
-		CqlPersistor cqlPersistor = new CqlPersistor(ctx);
+		createAndConnect(ctx);
+	}
+
+	private void createAndConnect(final EntityContext ctx) throws IOException {
+		try (
+				final CqlPersistor cqlPersistor = new CqlPersistor(ctx);
+		) {
+			// try block is needed here because Persistor implements Cloasable.
+			// this is a way to guarantee that it will be closed.
+		}
 	}
 
 }

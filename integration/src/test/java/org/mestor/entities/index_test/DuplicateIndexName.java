@@ -6,9 +6,10 @@ import org.eclipse.persistence.annotations.Index;
 import org.eclipse.persistence.annotations.Indexes;
 
 @Entity
-@Indexes({ 
+@Indexes({
 	@Index(name = "index1", columnNames = { "column1" }),
-	@Index(name = "index1", columnNames = "column2") 
+	@Index(name = "index1", columnNames = "column2")
 })
 public class DuplicateIndexName extends IndexBase {
+	// This class does not contain code. It is used for testing of annotation parsing.
 }

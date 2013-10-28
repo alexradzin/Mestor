@@ -7,4 +7,5 @@ import javax.persistence.Table;
 @Entity
 @Table(indexes = { @Index(name = "index1", columnList = "column1"), })
 public class OneColumnIndex extends IndexBase {
+	// This class does not contain code. It is used for testing of annotation parsing.
 }
