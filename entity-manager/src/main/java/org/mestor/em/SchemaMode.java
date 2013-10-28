@@ -43,7 +43,7 @@ public enum SchemaMode {
 	*/
 	CREATE {
 		@Override
-		public void init(EntityContext ctx) {
+		public void init(final EntityContext ctx) {
 			dropSchema(ctx);
 			createSchema(ctx);
 		}
@@ -53,12 +53,12 @@ public enum SchemaMode {
 	 */
 	CREATE_DROP {
 		@Override
-		public void init(EntityContext ctx) {
+		public void init(final EntityContext ctx) {
 			CREATE.init(ctx);
 		}
 		
 		@Override
-		public void destroy(EntityContext ctx) {
+		public void destroy(final EntityContext ctx) {
 			dropSchema(ctx);
 		}
 	},
@@ -67,7 +67,7 @@ public enum SchemaMode {
 	 */
 	VALIDATE {
 		@Override
-		public void init(EntityContext ctx) {
+		public void init(final EntityContext ctx) {
 			validateSchema(ctx);
 		}
 	},
@@ -77,14 +77,14 @@ public enum SchemaMode {
 	 */
 	UPDATE {
 		@Override
-		public void init(EntityContext ctx) {
+		public void init(final EntityContext ctx) {
 			updateSchema(ctx);
 		}
 	},
 	
 	NONE {
 		@Override
-		public void init(EntityContext ctx) {
+		public void init(final EntityContext ctx) {
 			// do nothing. None mean nothing.
 		}
 	},
@@ -103,53 +103,56 @@ public enum SchemaMode {
 		return property;
 	}
 	
-	public static SchemaMode forProperty(String property) {
+	public static SchemaMode forProperty(final String property) {
 		return SchemaMode.valueOf(property.toUpperCase().replace('-', '_'));
 	}
 	
 	public abstract void init(EntityContext ctx);
-	public void destroy(EntityContext ctx) {
+	public void destroy(final EntityContext ctx) {
 		// Empty implementation. Most modes do not destroy entity context.
 	}
 	
-	protected void dropSchema(EntityContext ctx) {
-		Persistor persistor = ctx.getPersistor();
-		Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
+	protected void dropSchema(final EntityContext ctx) {
+		@SuppressWarnings("resource")
+		final Persistor persistor = ctx.getPersistor();
+		final Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
 		
-		for (String schema : getEntitySchemas(ctx)) {
+		for (final String schema : getEntitySchemas(ctx)) {
 			if (existingSchemas.contains(schema)) {
 				persistor.dropSchema(schema);
 			}
 		}
 	}
 	
-	protected void createSchema(EntityContext ctx) {
-		Persistor persistor = ctx.getPersistor();
+	protected void createSchema(final EntityContext ctx) {
+		@SuppressWarnings("resource")
+		final Persistor persistor = ctx.getPersistor();
 		
-		for (String schema : getEntitySchemas(ctx)) {
+		for (final String schema : getEntitySchemas(ctx)) {
 			persistor.createSchema(schema, CollectionUtils.subMap(ctx.getProperties(), CASSANDRA_KEYSPACE_PROPERTY));
 		}
 
-		for (EntityMetadata<?> emd : ctx.getEntityMetadata()) {
+		for (final EntityMetadata<?> emd : ctx.getEntityMetadata()) {
 			persistor.createTable(emd, null);
 		}
 	}
 
-	protected void updateSchema(EntityContext ctx) {
-		Persistor persistor = ctx.getPersistor();
-		Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
+	protected void updateSchema(final EntityContext ctx) {
+		@SuppressWarnings("resource")
+		final Persistor persistor = ctx.getPersistor();
+		final Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
 
 		
-		for (String schema : getEntitySchemas(ctx)) {
+		for (final String schema : getEntitySchemas(ctx)) {
 			if (!existingSchemas.contains(schema)) {
 				persistor.createSchema(schema, CollectionUtils.subMap(ctx.getProperties(), CASSANDRA_KEYSPACE_PROPERTY));
 			} else {
 				// TODO: update schema: alter keyspace is not currently supported by persistor.
 			}
 
-			Set<String> existingTables = Sets.newHashSet(ctx.getPersistor().getTableNames(schema));
+			final Set<String> existingTables = Sets.newHashSet(persistor.getTableNames(schema));
 			
-			for (EntityMetadata<?> emd : ctx.getEntityMetadata()) {
+			for (final EntityMetadata<?> emd : ctx.getEntityMetadata()) {
 				if (!schema.equals(emd.getSchemaName())) {
 					continue;
 				}
@@ -162,28 +165,28 @@ public enum SchemaMode {
 		}
 	}
 	
-	protected void validateSchema(EntityContext ctx) {
-		SchemaViolationHandler schemaViolationHandler = new DefaultSchemaViolationHandler();
+	protected void validateSchema(final EntityContext ctx) {
+		final SchemaViolationHandler schemaViolationHandler = new DefaultSchemaViolationHandler();
 		
-		
-		Persistor persistor = ctx.getPersistor();
-		Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
+		@SuppressWarnings("resource")
+		final Persistor persistor = ctx.getPersistor();
+		final Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
 
 		
-		for (String schema : getEntitySchemas(ctx)) {
+		for (final String schema : getEntitySchemas(ctx)) {
 			if (!existingSchemas.contains(schema)) {
 				schemaViolationHandler.handle(ViolationLevel.FATAL, "Schema " + schema + " does not exist");
 			} else {
 				// TODO: validate schema: alter keyspace is not currently supported by persistor.
 			}
 
-			Set<String> existingTables = Sets.newHashSet(ctx.getPersistor().getTableNames(schema));
+			final Set<String> existingTables = Sets.newHashSet(persistor.getTableNames(schema));
 			
-			for (EntityMetadata<?> emd : ctx.getEntityMetadata()) {
+			for (final EntityMetadata<?> emd : ctx.getEntityMetadata()) {
 				if (!schema.equals(emd.getSchemaName())) {
 					continue;
 				}
-				String table = emd.getTableName();
+				final String table = emd.getTableName();
 				if (!existingTables.contains(table)) {
 					schemaViolationHandler.handle(ViolationLevel.FATAL, "Table " + table + " does not exist");
 				} else {
@@ -194,10 +197,10 @@ public enum SchemaMode {
 	}
 	
 	
-	protected Collection<String> getEntitySchemas(EntityContext ctx) {
+	protected Collection<String> getEntitySchemas(final EntityContext ctx) {
 		return new HashSet<String>(Collections2.transform(ctx.getEntityMetadata(), new Function<EntityMetadata<?>, String>() {
 			@Override
-			public String apply(@Nullable EntityMetadata<?> emd) {
+			public String apply(@Nullable final EntityMetadata<?> emd) {
 				return emd.getSchemaName();
 			}
 		}));

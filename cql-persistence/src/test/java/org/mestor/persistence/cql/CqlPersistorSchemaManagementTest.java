@@ -103,12 +103,13 @@ public class CqlPersistorSchemaManagementTest {
 	@Test
 	public void testCreateSchemaWithReplicationAsString() throws IOException {
 		final String schemaName = "test2";
-		final Persistor persistor = helper.createAndConnect(Collections.<String, Object>singletonMap("org.mestor.cassandra.keyspace.properties", "replication = {'class':'NetworkTopologyStrategy'}"));
-		assertFalse(Iterables.contains(persistor.getSchemaNames(), schemaName));
-		persistor.createSchema(schemaName, null);
-		assertTrue(Iterables.contains(persistor.getSchemaNames(), schemaName));
-		assertEquals(NetworkTopologyStrategy.class.getName(), ((CqlPersistor)persistor).getCluster().getMetadata().getKeyspace(schemaName).getReplication().get("class"));
-		persistor.dropSchema(schemaName);
+		try(final Persistor persistor = helper.createAndConnect(Collections.<String, Object>singletonMap("org.mestor.cassandra.keyspace.properties", "replication = {'class':'NetworkTopologyStrategy'}"))){
+			assertFalse(Iterables.contains(persistor.getSchemaNames(), schemaName));
+			persistor.createSchema(schemaName, null);
+			assertTrue(Iterables.contains(persistor.getSchemaNames(), schemaName));
+			assertEquals(NetworkTopologyStrategy.class.getName(), ((CqlPersistor)persistor).getCluster().getMetadata().getKeyspace(schemaName).getReplication().get("class"));
+			persistor.dropSchema(schemaName);
+		}
 	}
 	
 	

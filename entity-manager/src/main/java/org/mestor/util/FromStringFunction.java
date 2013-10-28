@@ -41,13 +41,13 @@ public class FromStringFunction<T> implements Function<String, T> {
 		init();
 	}
 
-	public FromStringFunction(Class<T> type) {
+	public FromStringFunction(final Class<T> type) {
 		this.type = type;
 	}
 	
 	
 	@Override
-	public T apply(@Nullable String input) {
+	public T apply(@Nullable final String input) {
 		final Class<?>[] stringParamType = new Class[] {String.class};
 		
 		
@@ -57,7 +57,7 @@ public class FromStringFunction<T> implements Function<String, T> {
 	
 		java.lang.reflect.Method factoryMethod = classToFactoryMethod.get(type);
 		if (factoryMethod == null) {
-			for (Entry<Class<?>, java.lang.reflect.Method> c2f : classToFactoryMethod.entrySet()) {
+			for (final Entry<Class<?>, java.lang.reflect.Method> c2f : classToFactoryMethod.entrySet()) {
 				if (c2f.getKey().isAssignableFrom(type)) {
 					factoryMethod = c2f.getValue();
 				}
@@ -74,24 +74,23 @@ public class FromStringFunction<T> implements Function<String, T> {
 
 	// TODO: should it look for all available fromstring.properties files and merge them?
 	private static void init() {
-		ClassLoader cl = Thread.currentThread().getContextClassLoader();
-		InputStream init = cl.getResourceAsStream(FROM_STRING_FACTORY_METHOD_DEF);
-		if (init == null) {
-			return;
-		}
-		try {
-			Properties classNameToFactoryMethod = new Properties();
+		final ClassLoader cl = Thread.currentThread().getContextClassLoader();
+		try (InputStream init = cl.getResourceAsStream(FROM_STRING_FACTORY_METHOD_DEF)) {
+			if (init == null) {
+				return;
+			}
+			final Properties classNameToFactoryMethod = new Properties();
 			classNameToFactoryMethod.load(init);
 			
-			for (Entry<Object, Object> entry : classNameToFactoryMethod.entrySet()) {
-				String className = (String)entry.getKey();
-				String factoryMethodName = (String)entry.getValue();
+			for (final Entry<Object, Object> entry : classNameToFactoryMethod.entrySet()) {
+				final String className = (String)entry.getKey();
+				final String factoryMethodName = (String)entry.getValue();
 				
-				Class<?> clazz = cl.loadClass(className);
+				final Class<?> clazz = cl.loadClass(className);
 				
 				// look for the static method that accepts String or CharSequence and returns instance of given class
 				java.lang.reflect.Method factoryMethod = null;
-				for (Class<?> paramType : new Class[] {String.class, CharSequence.class}) {
+				for (final Class<?> paramType : new Class[] {String.class, CharSequence.class}) {
 					try {
 						factoryMethod = clazz.getMethod(factoryMethodName, paramType);
 						if (!Modifier.isStatic(factoryMethod.getModifiers())) {
@@ -101,7 +100,7 @@ public class FromStringFunction<T> implements Function<String, T> {
 							continue; // wrong return type
 						}
 						
-					} catch (NoSuchMethodException e) {
+					} catch (final NoSuchMethodException e) {
 						continue;
 					}
 				}
@@ -113,9 +112,9 @@ public class FromStringFunction<T> implements Function<String, T> {
 				classToFactoryMethod.put(clazz, factoryMethod);
 			}
 			
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			throw new IllegalStateException(e);
-		} catch (ClassNotFoundException e) {
+		} catch (final ClassNotFoundException e) {
 			throw new IllegalStateException(e);
 		}
 	}

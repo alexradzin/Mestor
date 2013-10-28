@@ -246,6 +246,7 @@ public class CqlQueryFactory {
 						return Collections.singleton(eq(column, expression));
 					}
 				}
+			//$FALL-THROUGH$ - likes except "%..." and "...%" are not supported
 			case NE:
 			case NOT_LIKE:
 			case NOT:
