@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,10 @@ import org.junit.Test;
 import org.mestor.entities.Country;
 import org.mestor.entities.annotated.AbstractEntity;
 import org.mestor.entities.annotated.Address;
+import org.mestor.entities.annotated.DuplicateNamedQueriesEntity;
+import org.mestor.entities.annotated.DuplicateNamedQueriesEntity_2;
 import org.mestor.entities.annotated.EmailAddress;
+import org.mestor.entities.annotated.NamedQueriesEntity;
 import org.mestor.entities.annotated.Person;
 import org.mestor.entities.annotated.Person.Gender;
 import org.mestor.entities.annotated.SimpleProperty;
@@ -61,15 +65,15 @@ public class MetadataFactoryTest {
 		assertTrue(MetadataFactoryTestUtils.testJpaAnnotations(AbstractEntity.class).isEmpty());
 	}
 
-	
 	@Test
 	public void testOneSimpleEntityClass() {
-		Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(SimpleProperty.class);
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(SimpleProperty.class);
 
 		assertFalse(entityClasses.isEmpty());
 		assertEquals(1,  entityClasses.size());
 		
 		@SuppressWarnings("unchecked")
+		final
 		EntityMetadata<SimpleProperty> emd = (EntityMetadata<SimpleProperty>)entityClasses.get(SimpleProperty.class);
 		assertNotNull(emd);
 		
@@ -84,7 +88,7 @@ public class MetadataFactoryTest {
 	
 	@Test
 	public void testPersonIndexes() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
 				"name", new String[] { "name" },
 				"age", new String[] { "age" },
 				"full_name", new String[] { "name", "lastName" });
@@ -93,7 +97,7 @@ public class MetadataFactoryTest {
 
 	@Test
 	public void testUserClass() {
-		Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(User.class, Person.class);
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(User.class, Person.class);
 
 		assertFalse(entityClasses.isEmpty());
 		assertEquals(2,  entityClasses.size());
@@ -106,14 +110,14 @@ public class MetadataFactoryTest {
 	
 	@Test
 	public void testPersonClass() {
-		Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(Person.class, User.class, Address.class, StreetAddress.class, EmailAddress.class);
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(Person.class, User.class, Address.class, StreetAddress.class, EmailAddress.class);
 
 		assertFalse(entityClasses.isEmpty());
 		assertEquals(5,  entityClasses.size());
 		
-		Set<String> tables = new HashSet<>();
-		for (EntityMetadata<?> emd : entityClasses.values()) {
-			String tableName = emd.getTableName();
+		final Set<String> tables = new HashSet<>();
+		for (final EntityMetadata<?> emd : entityClasses.values()) {
+			final String tableName = emd.getTableName();
 			if (tableName != null) {
 				tables.add(emd.getTableName());
 			}
@@ -129,8 +133,8 @@ public class MetadataFactoryTest {
 		assertStreetAddressMetadata(entityClasses);
 	}
 	
-	private void assertAddressMetadata(Map<Class<?>, EntityMetadata<?>> entityClasses) {
-		EntityMetadata<Address> addressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Address.class);
+	private void assertAddressMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
+		final EntityMetadata<Address> addressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Address.class);
 		assertNotNull(addressMeta);
 		
 		MetadataFactoryTestUtils.assertEntityMetadata(addressMeta, Address.class, "address", null);
@@ -143,8 +147,8 @@ public class MetadataFactoryTest {
 	}
 
 	
-	private void assertEmailMetadata(Map<Class<?>, EntityMetadata<?>> entityClasses) {
-		EntityMetadata<EmailAddress> emailMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, EmailAddress.class);
+	private void assertEmailMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
+		final EntityMetadata<EmailAddress> emailMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, EmailAddress.class);
 		assertNotNull(emailMeta);
 		
 		MetadataFactoryTestUtils.assertEntityMetadata(emailMeta, EmailAddress.class, "email", "email");
@@ -157,8 +161,8 @@ public class MetadataFactoryTest {
 	}
 
 
-	private void assertStreetAddressMetadata(Map<Class<?>, EntityMetadata<?>> entityClasses) {
-		EntityMetadata<StreetAddress> streetAddressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, StreetAddress.class);
+	private void assertStreetAddressMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
+		final EntityMetadata<StreetAddress> streetAddressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, StreetAddress.class);
 		assertNotNull(streetAddressMeta);
 		
 		MetadataFactoryTestUtils.assertEntityMetadata(streetAddressMeta, StreetAddress.class, "street_address", "address");
@@ -171,8 +175,8 @@ public class MetadataFactoryTest {
 	}
 
 	// Assert utilities for individual entity types
-	static void assertUserMetadata(Map<Class<?>, EntityMetadata<?>> entityClasses) {
-		EntityMetadata<User> userMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, User.class);
+	static void assertUserMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
+		final EntityMetadata<User> userMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, User.class);
 		assertNotNull(userMeta);
 		
 		MetadataFactoryTestUtils.assertEntityMetadata(userMeta, User.class, "user", "user");
@@ -184,8 +188,8 @@ public class MetadataFactoryTest {
 				new Class[] {int.class, long.class,   String.class, String.class, String.class, Set.class, int.class});
 	}
 
-	static void assertPersonMetadata(Map<Class<?>, EntityMetadata<?>> entityClasses) {
-		EntityMetadata<Person> personMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Person.class);
+	static void assertPersonMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
+		final EntityMetadata<Person> personMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Person.class);
 		assertNotNull(personMeta);
 		
 		MetadataFactoryTestUtils.assertEntityMetadata(personMeta, Person.class, "person", "person");
@@ -196,4 +200,34 @@ public class MetadataFactoryTest {
 				new String[] {"identifier", "last_modified", "name", "last_name", "age", "gender", "addresses", "accounts"}, 
 				new Class[] {int.class, long.class, String.class, String.class, int.class, String.class, List.class, List.class});
 	}
+
+	@Test
+	public void testNoNamedQueries() {
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(SimpleProperty.class);
+		final EntityMetadata<SimpleProperty> md = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, SimpleProperty.class);
+		assertTrue(md.getNamedQueries().isEmpty());
+	}
+	
+	@Test
+	public void testNamedQueries() {
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(NamedQueriesEntity.class);
+		final EntityMetadata<NamedQueriesEntity> md = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, NamedQueriesEntity.class);
+		final Map<String, String> mapQueries = md.getNamedQueries();
+		final Map<String, String> expectedMapQueries = new HashMap<>();
+		expectedMapQueries.put("selectSorted", "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC");
+		expectedMapQueries.put("selectAfterId", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > ? ORDER BY e.identifier ASC");
+		expectedMapQueries.put("selectOlderThan", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ? ORDER BY e.identifier ASC");
+		assertEquals(expectedMapQueries, mapQueries);
+	}
+	
+	@Test(expected = IllegalArgumentException.class)
+	public void testDuplicateNamedQueries() {
+		MetadataFactoryTestUtils.testJpaAnnotations(DuplicateNamedQueriesEntity.class);
+	}
+	
+	@Test(expected = IllegalArgumentException.class)
+	public void testDuplicateNamedQueries_2() {
+		MetadataFactoryTestUtils.testJpaAnnotations(DuplicateNamedQueriesEntity_2.class);
+	}
+
 }
