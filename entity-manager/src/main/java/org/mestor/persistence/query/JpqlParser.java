@@ -162,6 +162,9 @@ public class JpqlParser {
 		return capture;
 	}
 
+	private boolean isParameter(final String arg){
+		return arg.startsWith(":") || arg.startsWith("?");
+	}
 
 	private Object createArgument(final Operand op, final String spec) {
 		if (spec.startsWith(":")) {
@@ -267,14 +270,24 @@ public class JpqlParser {
 			final String[] conditions = logicalOpSplit.split(parts[nextBlockIndex + 1]);
 
 			for (final String condition : conditions) {
-				final String[] conditionOperands = splitCondition(condition);
-				if (conditionOperands.length == 3) {
-					final Operand op = Operand.bySymbol(conditionOperands[1]);
-
+				final String[] conditionOperators = splitCondition(condition);
+				if (conditionOperators.length == 3) {
+					String arg1 = conditionOperators[0];
+					Operand op = Operand.bySymbol(conditionOperators[1]);
+					String arg2 = conditionOperators[2];
+					if(isParameter(arg1) && isParameter(arg2)){
+						throw new UnsupportedOperationException("Double-parameter expressions are not supported");
+					}
+					if(isParameter(arg1)) {
+						final String t = arg1;
+						arg1 = arg2;
+						arg2 = t;
+						op = changeDirection(op);
+					}
 					final ClauseInfo clause = new ClauseInfo(
-							getFieldName(conditionOperands[0]),
+							getFieldName(arg1),
 							op,
-							createArgument(op, conditionOperands[2]));
+							createArgument(op, arg2));
 					clauses.add(clause);
 				}
 				//TODO: add validation and exceptions if needed.
@@ -285,6 +298,20 @@ public class JpqlParser {
 		}
 		return nextBlockIndex;
 	}
+
+	private Operand changeDirection(final Operand op) {
+		switch(op){
+			case EQ:	return Operand.EQ;
+			case NE:	return Operand.NE;
+			case GE:	return Operand.LE;
+			case LE:	return Operand.GE;
+			case GT:	return Operand.LT;
+			case LT:	return Operand.GT;
+			default:
+				throw new IllegalArgumentException();
+		}
+	}
+
 
 	private ClauseInfo createWhereClause(final List<ClauseInfo> clauses) {
 		final ClauseInfo where =

@@ -26,8 +26,8 @@ import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.OrderByInfo;
-import org.mestor.query.QueryInfo;
 import org.mestor.query.OrderByInfo.Order;
+import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
 import org.mestor.query.QueryInfoAssert;
 
@@ -332,6 +332,19 @@ public class JpqlParserTest {
 	@Test
 	public void testDeleteAllFromPersonWhereIdGtNamedParameter() {
 		test("DELETE FROM Person WHERE id > :id",
+				new QueryInfo(
+						QueryType.DELETE,
+						null,
+						Collections.singletonMap("Person", "Person"),
+						new ClauseInfo("id", Operand.GT, new ArgumentInfo<Integer>("id", null)),
+						null
+				)
+		);
+	}
+	
+	@Test
+	public void testDeleteAllFromPersonWhereIdGtNamedParameterYodaStyle() {
+		test("DELETE FROM Person WHERE :id < id",
 				new QueryInfo(
 						QueryType.DELETE,
 						null,

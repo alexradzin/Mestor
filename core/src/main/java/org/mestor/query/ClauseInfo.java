@@ -24,7 +24,7 @@ import java.util.TreeMap;
 
 public class ClauseInfo {
 	private final String field;
-	private final Operand operand;
+	private final Operand operator;
 	private final Object expression;
 
 	public static enum Operand {
@@ -108,7 +108,7 @@ public class ClauseInfo {
 
 	public ClauseInfo(final String field, final Operand operand, final Object expression) {
 		this.field = field;
-		this.operand = operand;
+		this.operator = operand;
 
 		if (operand.isArrayParameter()) {
 			if (expression.getClass().isArray()) {
@@ -137,8 +137,8 @@ public class ClauseInfo {
 	}
 
 
-	public Operand getOperand() {
-		return operand;
+	public Operand getOperator() {
+		return operator;
 	}
 
 

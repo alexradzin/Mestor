@@ -15,11 +15,13 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.entities.annotated;
+package org.mestor.entities.queries;
 
 import javax.persistence.Entity;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
+
+import org.mestor.entities.annotated.AbstractEntity;
 
 @Entity
 @NamedQueries({ 

@@ -15,19 +15,20 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.entities.annotated;
+package org.mestor.entities.queries;
 
 import javax.persistence.Entity;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 
+import org.mestor.entities.annotated.AbstractEntity;
+
 @Entity
 @NamedQueries({ 
 	@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectAfterId", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > ? ORDER BY e.identifier ASC")
 })
-@NamedQuery(name = "selectOlderThan", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ? ORDER BY e.identifier ASC")
-public class NamedQueriesEntity extends AbstractEntity {
+@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > ? ORDER BY e.identifier ASC")
+public class DuplicateNamedQueriesEntity_2 extends AbstractEntity {
 	private String name;
 
 	public String getName() {

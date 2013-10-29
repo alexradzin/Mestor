@@ -50,11 +50,13 @@ import javax.persistence.criteria.Selection;
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.OrderByInfo;
 import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
+import org.mestor.util.TypeUtil;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -146,6 +148,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		final Collection<OrderByInfo> order = createOrderBy(criteriaQuery.getOrderList());
 
 		queryInfo = new QueryInfo(QueryType.SELECT, what, from, where, order);
+		initParams();
 	}
 
 	public QueryImpl(final QueryInfo queryInfo, final EntityContext context) {
@@ -153,6 +156,25 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		this.context = context;
 		this.persistor = context.getPersistor();
 		this.queryInfo = queryInfo;
+		initParams();
+	}
+	
+	private void initParams(){
+		final ClauseInfo where = queryInfo.getWhere();
+		if(where == null){
+			return;
+		}
+		
+		if(where.getExpression() instanceof ArgumentInfo) {
+			final EntityMetadata<T> emd = context.getEntityMetadata(resultType);
+			final String name = where.getField();
+			
+			final Class<?> fieldType = emd.getFieldByName(name).getType();
+			
+			parameterNames.add(name);
+			parameters.put(name, new ParameterExpressionImpl<>(name, fieldType));
+		}
+		
 	}
 
 
@@ -202,8 +224,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		if (curentLimit != DEFAULT_LIMIT) {
 			qi = new QueryInfo(queryInfo.getType(), queryInfo.getWhat(), queryInfo.getFrom(), queryInfo.getWhere(), queryInfo.getOrders(), queryInfo.getStart(), curentLimit);
 		}
-
-		return persistor.selectQuery(qi);
+		return persistor.selectQuery(qi, parameterValues);
 	}
 
 
@@ -413,7 +434,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 	}
 
 	private <V, C> void checkType(final Class<V> valueType, final Class<C> type) {
-		if (!type.isAssignableFrom(valueType)) {
+		if (!TypeUtil.compareTypes(type, valueType)) {
 			throw new IllegalArgumentException("Type of query parameter " + type + " is not compatible with value of type " + valueType);
 		}
 	}

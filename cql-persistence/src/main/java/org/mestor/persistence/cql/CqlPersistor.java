@@ -1290,7 +1290,8 @@ public class CqlPersistor implements Persistor {
 
 
 	@Override
-	public <T> List<T> selectQuery(final QueryInfo queryInfo) {
+	public <T> List<T> selectQuery(final QueryInfo queryInfo,
+			final Map<String, Object> parameterValues) {
 		final String entityName = queryInfo.getFrom().entrySet().iterator().next().getValue();
 		final EntityMetadata<T> emd = context.getEntityMetadata(entityName);
 		if (emd == null) {
@@ -1299,7 +1300,7 @@ public class CqlPersistor implements Persistor {
 		final CqlQueryFactory cqlQueryFactory = new CqlQueryFactory(context);
 
 		@SuppressWarnings("unchecked")
-		final Pair<String, QueryInfo>[] queries = cqlQueryFactory.createQuery(queryInfo).toArray(new Pair[0]);
+		final Pair<String, QueryInfo>[] queries = cqlQueryFactory.createQuery(queryInfo, parameterValues).toArray(new Pair[0]);
 
         final List<Iterable<Map<String, Object>>> allResults = new ArrayList<>();
 

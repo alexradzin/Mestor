@@ -65,16 +65,19 @@ public class CqlQueryFactory {
 	}
 
 
-	public Collection<Pair<String, QueryInfo>> createQuery(final QueryInfo query) {
-		return createQuery(query, new ArrayList<Pair<String, QueryInfo>>());
+	public Collection<Pair<String, QueryInfo>> createQuery(final QueryInfo query,
+			final Map<String, Object> parameterValues) {
+		return createQuery(query, new ArrayList<Pair<String, QueryInfo>>(), parameterValues);
 	}
 
 
 
-	private Collection<Pair<String, QueryInfo>> createQuery(final QueryInfo query, final Collection<Pair<String, QueryInfo>> qls) {
+	private Collection<Pair<String, QueryInfo>> createQuery(final QueryInfo query, final Collection<Pair<String, QueryInfo>> qls,
+			final Map<String, Object> parameterValues) {
 		final ClauseInfo where = query.getWhere();
 		final String entityName = getSingleFrom(query);
 		final EntityMetadata<?> emd = context.getEntityMetadata(entityName);
+		final String tableName = emd.getTableName();
 		final String keyspace = emd.getSchemaName();
 		Statement statement;
 		switch(query.getType()) {
@@ -89,10 +92,10 @@ public class CqlQueryFactory {
 						delete.column(getColumnName(emd, w.getKey()));
 					}
 				}
-				final Delete.Where cqlWhere = delete.from(quote(keyspace), quote(getSingleFrom(query))).where();
+				final Delete.Where cqlWhere = delete.from(quote(keyspace), quote(tableName)).where();
 
 
-				final Collection<Clause> clauses = createClause(emd, where, qls);
+				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
 				if (clauses != null) {
 					for (final Clause clause : clauses) {
 						cqlWhere.and(clause);
@@ -104,7 +107,7 @@ public class CqlQueryFactory {
 				break;
 			}
  			case INSERT: {
- 				final Insert insert = insertInto(quote(keyspace), quote(getSingleFrom(query)));
+ 				final Insert insert = insertInto(quote(keyspace), quote(tableName));
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
  					insert.value(getColumnName(emd, v.getKey()), v.getValue());
  				}
@@ -127,8 +130,8 @@ public class CqlQueryFactory {
 					selection.all();
 				}
 
-
-				final Select select = selection.from(quote(keyspace), quote(getSingleFrom(query)));
+				
+				final Select select = selection.from(quote(keyspace), quote(tableName));
 				final Integer limit = query.getLimit();
 				if (limit != null) {
 					select.limit(limit);
@@ -137,7 +140,7 @@ public class CqlQueryFactory {
 
 				final Select.Where selectWhere = select.where();
 
-				final Collection<Clause> clauses = createClause(emd, where, qls);
+				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
 				if (clauses != null) {
 					for (final Clause clause : clauses) {
 						selectWhere.and(clause);
@@ -148,14 +151,14 @@ public class CqlQueryFactory {
 				break;
 			}
 			case UPDATE: {
-				final Update update = update(quote(keyspace), quote(getSingleFrom(query)));
+				final Update update = update(quote(keyspace), quote(tableName));
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
  					update.with(set(getColumnName(emd, v.getKey()), v.getValue()));
  				}
 				statement = update;
 
 				final Update.Where updateWhere = update.where();
-				final Collection<Clause> clauses = createClause(emd, where, qls);
+				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
 				if (clauses != null) {
 					for (final Clause clause : clauses) {
 						updateWhere.and(clause);
@@ -195,55 +198,64 @@ public class CqlQueryFactory {
 
 
 
-	private Collection<Clause> createClause(final EntityMetadata<?> emd, final ClauseInfo where, final Collection<Pair<String, QueryInfo>> qls) {
+	private Collection<Clause> createClause(final EntityMetadata<?> emd, 
+			final ClauseInfo where, 
+			final Collection<Pair<String, QueryInfo>> qls,
+			final Map<String, Object> parameterValues) {
 		if (where == null) {
 			return null;
 		}
 		Object expression = where.getExpression();
 
 		if (expression instanceof ClauseInfo) {
-			return createClause(emd, (ClauseInfo)expression, qls);
+			return createClause(emd, (ClauseInfo)expression, qls, parameterValues);
 		} else if (expression.getClass().isArray() && ClauseInfo.class.equals(expression.getClass().getComponentType())) {
-			if (Operand.AND.equals(where.getOperand())) {
+			if (Operand.AND.equals(where.getOperator())) {
 				final Collection<Clause> clauses = new ArrayList<>();
 				for ( final Object expr : (Object[])expression) {
-					clauses.addAll(createClause(emd, (ClauseInfo)expr, qls));
+					clauses.addAll(createClause(emd, (ClauseInfo)expr, qls, parameterValues));
 				}
 				return clauses;
 			}
-			throw new UnsupportedOperationException("Operator " + where.getOperand() + " is not supported now");
+			throw new UnsupportedOperationException("Operator " + where.getOperator() + " is not supported now");
 		} else if (expression instanceof QueryInfo) {
-			createQuery((QueryInfo)expression, qls);
+			createQuery((QueryInfo)expression, qls, parameterValues);
 			expression = "subquery(" + (qls.size() - 1) + ")";
 		}
 
-		final String column = getColumnName(emd, where.getField());
-		final Operand op = where.getOperand();
+		Object value = expression;
+		final String field = where.getField();
+		if(parameterValues != null && parameterValues.containsKey(field)){
+			value = parameterValues.get(field);
+		}
+		
+		final String column = getColumnName(emd, field);
+		final Operand op = where.getOperator();
 		switch(op) {
 			case EQ:
-				return Collections.singleton(eq(column, expression));
+				return Collections.singleton(eq(column, value));
 			case GE:
-				return Collections.singleton(gte(column, expression));
+				return Collections.singleton(gte(column, value));
 			case GT:
-				return Collections.singleton(gt(column, expression));
+				return Collections.singleton(gt(column, value));
 			case LE:
-				return Collections.singleton(lte(column, expression));
+				return Collections.singleton(lte(column, value));
 			case LT:
-				return Collections.singleton(lt(column, expression));
+				return Collections.singleton(lt(column, value));
 			case IN:
-				if (expression.getClass().isArray()) {
-					return Collections.singleton(in(column, (Object[])expression));
-				} else if (expression instanceof Collection) {
-					return Collections.singleton(in(column, ((Collection<?>)expression).toArray()));
+				if (value.getClass().isArray()) {
+					return Collections.singleton(in(column, (Object[])value));
+				} else if (value instanceof Collection) {
+					return Collections.singleton(in(column, ((Collection<?>)value).toArray()));
 				}
-				return Collections.singleton(in(column, expression));
+				return Collections.singleton(in(column, value));
 			case LIKE:
-				if (expression instanceof String) {
-					final String str = (String)expression;
+				if (value instanceof String) {
+					final String str = (String)value;
 					if (!str.startsWith("%") && str.endsWith("%")) {
-						return Collections.singleton(gte(column, expression));
+						return Collections.singleton(gte(column, value));
 					} else if(!str.startsWith("%") && !str.endsWith("%")) {
-						return Collections.singleton(eq(column, expression));
+						return Collections.singleton(eq(column, value));
 					}
 				}
 			//$FALL-THROUGH$ - likes except "%..." and "...%" are not supported

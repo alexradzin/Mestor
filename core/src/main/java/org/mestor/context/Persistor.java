@@ -14,7 +14,8 @@ public interface Persistor extends Closeable {
 	public <T, P> T fetch(Class<T> entityClass, P primaryKey);
 	@Deprecated
 	public <T, P> T fetch(Class<T> entityClass, Map<String, Object> criteria);
-	public <T> List<T> selectQuery(QueryInfo queryInfo);
+	public <T> List<T> selectQuery(QueryInfo queryInfo,
+			final Map<String, Object> parameterValues);
 
 
 	public <T> void remove(T entity);

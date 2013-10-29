@@ -61,7 +61,7 @@ public class CqlPersistorSelectTest {
 		final String schemaName = "test1";
 		try {
 			initPersonMetadata(schemaName);
-			final List<Person> people = persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("People", "People")));
+			final List<Person> people = persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("People", "People")), null);
 			assertNotNull(people);
 			assertTrue(people.isEmpty());
 		} finally {
@@ -74,7 +74,7 @@ public class CqlPersistorSelectTest {
 		final String schemaName = "test1";
 		try {
 			initPersonMetadata(schemaName);
-			persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("DoesNotExist", "DoesNotExist")));
+			persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("DoesNotExist", "DoesNotExist")), null);
 		} finally {
 			persistor.dropSchema(schemaName);
 		}
@@ -91,7 +91,7 @@ public class CqlPersistorSelectTest {
 
 			persistor.store(person);
 
-			final List<Person> people = persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("People", "People")));
+			final List<Person> people = persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("People", "People")), null);
 			assertNotNull(people);
 			assertFalse(people.isEmpty());
 
@@ -117,7 +117,7 @@ public class CqlPersistorSelectTest {
 			}
 
 
-			final List<Person> people = persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("People", "People")));
+			final List<Person> people = persistor.selectQuery(new QueryInfo(QueryType.SELECT, null, Collections.singletonMap("People", "People")), null);
 			assertNotNull(people);
 			assertFalse(people.isEmpty());
 
@@ -163,7 +163,7 @@ public class CqlPersistorSelectTest {
 							Collections.singletonMap("People", "People"),
 							new ClauseInfo("year", Operand.EQ, 1996),
 							null
-					)
+					), null
 			);
 			assertNotNull(people);
 			assertFalse(people.isEmpty());
@@ -223,7 +223,7 @@ public class CqlPersistorSelectTest {
 									)
 							),
 							null
-					)
+					), null
 			);
 			assertNotNull(people);
 			assertFalse(people.isEmpty());

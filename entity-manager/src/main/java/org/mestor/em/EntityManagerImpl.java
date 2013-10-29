@@ -68,12 +68,12 @@ import org.mestor.persistence.metamodel.MetamodelImpl;
 import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.persistence.query.JpqlParser;
 import org.mestor.persistence.query.QueryImpl;
+import org.mestor.util.TypeUtil;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
-import com.google.common.primitives.Primitives;
 
 public class EntityManagerImpl implements EntityManager, EntityContext {
 	private final static Logger logger = LoggerFactory.getLogger(EntityManagerImpl.class);
@@ -100,14 +100,15 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		final Map<String, Object> allParams = getAllParameters(info, properties);
 
 		this.entityClasses = entityClasses == null ? new HashMap<Class<?>, EntityMetadata<?>>() : new HashMap<Class<?>, EntityMetadata<?>>(entityClasses);
-		this.entityNames = new HashMap<String, EntityMetadata<?>>();
-		for (final EntityMetadata<?> emd : this.entityClasses.values()) {
-			entityNames.put(emd.getEntityName(), emd);
-		}
+
 		open = true;
 		persistor = createPersistor(info, properties, allParams);
 
 		fillEntityClasses(info, properties, allParams);
+		this.entityNames = new HashMap<String, EntityMetadata<?>>();
+		for (final EntityMetadata<?> emd : this.entityClasses.values()) {
+			entityNames.put(emd.getEntityName(), emd);
+		}
 		open = true;
 		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
 
@@ -356,13 +357,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 	}
 
-	static boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
-		if(declaredType.isAssignableFrom(actualType)){
-			return true;
-		}
-		return declaredType.isPrimitive() && declaredType.equals(Primitives.unwrap(actualType));
+	private boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
+		return TypeUtil.compareTypes(declaredType, actualType);
 	}
-
 
 	private void checkLockMode(final LockModeType lockMode) {
 		if (!LockModeType.NONE.equals(lockMode)) {

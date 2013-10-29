@@ -44,8 +44,20 @@ public class CqlQueryFactoryTest {
 	final EntityContext ctx = Mockito.mock(EntityContext.class);
 
 	public CqlQueryFactoryTest() {
+		final EntityMetadata<Person> emd1 = createEmd();
+		emd1.setTableName("person");
+		doReturn(emd1).when(ctx).getEntityMetadata("person");
+		
+		final EntityMetadata<Person> emd2 = createEmd();
+		emd2.setTableName("Person");
+		doReturn(emd2).when(ctx).getEntityMetadata("Person");
+	}
+
+
+	private EntityMetadata<Person> createEmd() {
 		final EntityMetadata<Person> emd = new EntityMetadata<Person>();
 		emd.setSchemaName(KEYSPACE);
+		
 
 		final FieldMetadata<Person, String, String> fieldName = new FieldMetadata<Person, String, String>(Person.class, String.class, "name");
 		fieldName.setColumn("name");
@@ -57,9 +69,7 @@ public class CqlQueryFactoryTest {
 		fieldLastName.setColumn("last_name");
 
 		emd.addAllFields(Arrays.<FieldMetadata<Person, ?, ?>>asList(fieldName, fieldFirstName, fieldLastName));
-
-		doReturn(emd).when(ctx).getEntityMetadata("person");
-		doReturn(emd).when(ctx).getEntityMetadata("Person");
+		return emd;
 	}
 
 
@@ -226,7 +236,7 @@ public class CqlQueryFactoryTest {
 
 	private void testCreateQuery(final QueryInfo query, final Collection<String> expected) {
 		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
-		final Collection<Pair<String, QueryInfo>> queries = factory.createQuery(query);
+		final Collection<Pair<String, QueryInfo>> queries = factory.createQuery(query, null);
 		final Collection<String> queryStatements = new ArrayList<String>();
 		for (final Pair<String, QueryInfo> q : queries) {
 			queryStatements.add(q.getKey());

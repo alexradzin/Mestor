@@ -137,7 +137,7 @@ public class DummyPersistor implements Persistor {
 	}
 
 	@Override
-	public <T> List<T> selectQuery(final QueryInfo queryInfo) {
+	public <T> List<T> selectQuery(final QueryInfo queryInfo, final Map<String, Object> parameterValues) {
 		// TODO Auto-generated method stub
 		return null;
 	}

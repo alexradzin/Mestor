@@ -82,4 +82,14 @@ public class TypeUtil {
 
 		return leftCompIndex < rightCompIndex;
 	}
+	
+	public static boolean compareTypes(final Class<?> declaredType, final Class<?> actualType){
+		return isCompatibleTo(declaredType, actualType);
+		/*
+		if(declaredType.isAssignableFrom(actualType)){
+			return true;
+		}
+		return declaredType.isPrimitive() && declaredType.equals(Primitives.unwrap(actualType));
+		*/
+	}
 }

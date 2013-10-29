@@ -36,15 +36,15 @@ import org.junit.Test;
 import org.mestor.entities.Country;
 import org.mestor.entities.annotated.AbstractEntity;
 import org.mestor.entities.annotated.Address;
-import org.mestor.entities.annotated.DuplicateNamedQueriesEntity;
-import org.mestor.entities.annotated.DuplicateNamedQueriesEntity_2;
 import org.mestor.entities.annotated.EmailAddress;
-import org.mestor.entities.annotated.NamedQueriesEntity;
 import org.mestor.entities.annotated.Person;
 import org.mestor.entities.annotated.Person.Gender;
 import org.mestor.entities.annotated.SimpleProperty;
 import org.mestor.entities.annotated.StreetAddress;
 import org.mestor.entities.annotated.User;
+import org.mestor.entities.queries.DuplicateNamedQueriesEntity;
+import org.mestor.entities.queries.DuplicateNamedQueriesEntity_2;
+import org.mestor.entities.queries.NamedQueriesEntity;
 import org.mestor.metadata.EntityMetadata;
 
 /**
@@ -77,7 +77,7 @@ public class MetadataFactoryTest {
 		EntityMetadata<SimpleProperty> emd = (EntityMetadata<SimpleProperty>)entityClasses.get(SimpleProperty.class);
 		assertNotNull(emd);
 		
-		MetadataFactoryTestUtils.assertEntityMetadata(emd, SimpleProperty.class, "simple_property", "simple_property");
+		MetadataFactoryTestUtils.assertEntityMetadata(emd, SimpleProperty.class, SimpleProperty.class.getSimpleName(), "simple_property");
 		MetadataFactoryTestUtils.assertEntityMetadataFields(
 				emd.getFields(), 
 				new String[] {"name", "type", "value"}, 
@@ -137,7 +137,7 @@ public class MetadataFactoryTest {
 		final EntityMetadata<Address> addressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Address.class);
 		assertNotNull(addressMeta);
 		
-		MetadataFactoryTestUtils.assertEntityMetadata(addressMeta, Address.class, "address", null);
+		MetadataFactoryTestUtils.assertEntityMetadata(addressMeta, Address.class, Address.class.getSimpleName(), null);
 		MetadataFactoryTestUtils.assertEntityMetadataFields(
 				addressMeta.getFields(), 
 				new String[] {"identifier", "lastModified", "people"}, 
@@ -165,7 +165,7 @@ public class MetadataFactoryTest {
 		final EntityMetadata<StreetAddress> streetAddressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, StreetAddress.class);
 		assertNotNull(streetAddressMeta);
 		
-		MetadataFactoryTestUtils.assertEntityMetadata(streetAddressMeta, StreetAddress.class, "street_address", "address");
+		MetadataFactoryTestUtils.assertEntityMetadata(streetAddressMeta, StreetAddress.class, StreetAddress.class.getSimpleName(), "address");
 		MetadataFactoryTestUtils.assertEntityMetadataFields(
 				streetAddressMeta.getFields(), 
 				new String[] {"identifier", "lastModified", "people", "streetNumber", "street", "zip", "country"}, 
@@ -179,7 +179,7 @@ public class MetadataFactoryTest {
 		final EntityMetadata<User> userMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, User.class);
 		assertNotNull(userMeta);
 		
-		MetadataFactoryTestUtils.assertEntityMetadata(userMeta, User.class, "user", "user");
+		MetadataFactoryTestUtils.assertEntityMetadata(userMeta, User.class, User.class.getSimpleName(), "user");
 		MetadataFactoryTestUtils.assertEntityMetadataFields(
 				userMeta.getFields(), 
 				new String[] {"identifier", "lastModified", "site", "username", "password", "roles", "person"}, 
@@ -192,7 +192,7 @@ public class MetadataFactoryTest {
 		final EntityMetadata<Person> personMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Person.class);
 		assertNotNull(personMeta);
 		
-		MetadataFactoryTestUtils.assertEntityMetadata(personMeta, Person.class, "person", "person");
+		MetadataFactoryTestUtils.assertEntityMetadata(personMeta, Person.class,  Person.class.getSimpleName(), "person");
 		MetadataFactoryTestUtils.assertEntityMetadataFields(
 				personMeta.getFields(), 
 				new String[] {"identifier", "lastModified", "name", "lastName", "age", "gender", "addresses", "accounts"}, 
@@ -215,8 +215,9 @@ public class MetadataFactoryTest {
 		final Map<String, String> mapQueries = md.getNamedQueries();
 		final Map<String, String> expectedMapQueries = new HashMap<>();
 		expectedMapQueries.put("selectSorted", "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC");
-		expectedMapQueries.put("selectAfterId", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > ? ORDER BY e.identifier ASC");
-		expectedMapQueries.put("selectOlderThan", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ? ORDER BY e.identifier ASC");
+		expectedMapQueries.put("selectAfterId", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC");
+		expectedMapQueries.put("selectOlderThan", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC");
+		expectedMapQueries.put("selectById", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC");
 		assertEquals(expectedMapQueries, mapQueries);
 	}
 	

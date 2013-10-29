@@ -70,7 +70,7 @@ public class QueryInfoAssert {
 		}
 
 		assertEquals(expected.getField(), actual.getField());
-		assertEquals(expected.getOperand(), actual.getOperand());
+		assertEquals(expected.getOperator(), actual.getOperator());
 	}
 
 

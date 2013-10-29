@@ -53,7 +53,8 @@
 					</excludes>
 				</configuration>
 			</plugin>
-
+<!-- Uncomment if you need a jar with dependencies or run like "mvn clean compile assembly:single" -->
+<!--
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<configuration>
@@ -61,8 +62,8 @@
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
 				</configuration>
-<!-- Uncomment if you need a jar with dependencies or run like "mvn clean compile assembly:single" --> 
- 				<executions>
+ 
+ 				 <executions>
 					<execution>
 						<id>make-assembly</id>
 						<phase>package</phase>
@@ -70,8 +71,9 @@
 							<goal>single</goal>
 						</goals>
 					</execution>
-				</executions> 
+				</executions>
 			</plugin>
+-->
 		</plugins>
 	</build>
 

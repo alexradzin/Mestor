@@ -91,6 +91,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		for(final NamableItem i : NamableItem.values()) {
 			put(i, StandardNamingStrategy.LOWER_CASE_UNDERSCORE);
 		}
+		put(NamableItem.ENTITY, StandardNamingStrategy.UPPER_CAMEL_CASE);
 	}};
 	private EntityContext entityContext;
 
