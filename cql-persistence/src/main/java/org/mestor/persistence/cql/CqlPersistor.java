@@ -862,8 +862,16 @@ public class CqlPersistor implements Persistor {
 
 	private <E> void createTable(final Function<Query, Void> queryHandler,
 			final EntityMetadata<E> entityMetadata, final Map<String, Object> properties) {
+
+		final String tableName = entityMetadata.getTableName();
+		if (tableName == null) {
+			// This entity does not have its own table. It is legal for example for base class when TABLE_PER_CLASS strategy is used.
+			return;
+		}
+
+
 		final CreateTable table = CommandBuilder.createTable()
-				.named(entityMetadata.getTableName())
+				.named(tableName)
 				.in(entityMetadata.getSchemaName()).with(properties);
 
 		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
@@ -883,7 +891,6 @@ public class CqlPersistor implements Persistor {
 		queryHandler.apply(table);
 
 		final String keyspaceName = entityMetadata.getSchemaName();
-		final String tableName = entityMetadata.getTableName();
 
 		// Index creation statement does not support specification of keyspace
 		// as a part of index identifier using dot-notation.
@@ -1232,7 +1239,7 @@ public class CqlPersistor implements Persistor {
 			if (c.isAssignableFrom(clazz) && !clazz.equals(c)) {
 				final FieldMetadata<?, ?, ?> parentForeignKey = entityMetadata.getFieldByName(fpk.getName());
 				final String fkColumn = parentForeignKey.getColumn();
-				if (fkColumn == null) {
+				if (fkColumn == null || parentForeignKey.isKey()) {
 					continue;
 				}
 				requiredIndexes.add(pkColumn);

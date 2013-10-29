@@ -370,7 +370,6 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 
 	private void fillEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
-//	private Map<Class<?>, EntityMetadata<?>> getEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> allParams) {
 		ClassLoader cl = info.getClassLoader();
 		final List<URL> jarFiles = info.getJarFileUrls();
 		final String puName = info.getPersistenceUnitName();
@@ -415,14 +414,12 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 
 
-		final Map<Class<?>, EntityMetadata<?>> class2metadata = new HashMap<>();
 		for (final Class<?> c : cs.scan()) {
 			final EntityMetadata<?> md = mdf.create(c);
 			if (md == null) {
 				throw new IllegalArgumentException("Class " + c + " is not a JPA entity");
 			}
 			entityClasses.put(c, md);
-			class2metadata.put(c, md);
 
 			for (final Entry<String, String> query : md.getNamedQueries().entrySet()) {
 				final String name = query.getKey();
@@ -435,9 +432,6 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		}
 
 		mdf.update(entityClasses);
-		mdf.update(class2metadata);
-
-//		return class2metadata;
 	}
 
 

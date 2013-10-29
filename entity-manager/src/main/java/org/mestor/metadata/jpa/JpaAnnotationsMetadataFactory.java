@@ -256,12 +256,16 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	}
 
 
-	private <T, F, C> void setCollectionConverter(final FieldMetadata<T, F, C> fmd) {
-		final AttributeConverter<F, C> converter = fmd.isKey() ?
-				new PrimaryKeyConverter<F, C>(fmd.getType(), entityContext) :
-				new IndexedFieldConverter<F, C>(fmd.getType(), fmd.getName(), entityContext);
+	private <E, T, F, C> void setCollectionConverter(final FieldMetadata<E, F, C> foreignKey, final FieldMetadata<T, F, C> collectionField) {
+		@SuppressWarnings("unchecked")
+		final
+		Class<F> type = (Class<F>)collectionField.getGenericTypes().iterator().next();
 
-		fmd.setConverter(
+		final AttributeConverter<F, C> converter = foreignKey.isKey() ?
+				new PrimaryKeyConverter<F, C>(type, entityContext) :
+				new IndexedFieldConverter<F, C>(type, foreignKey.getName(), entityContext);
+
+		collectionField.setConverter(
 				new DummyValueConverter<F, C>(),
 				new ValueAttributeConverter<F, C>(converter)
 		);
@@ -340,20 +344,22 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		AttributeConverter<P, C> converter = null;
 
 		if (oneToMany != null || manyToMany != null) {
-			final FieldMetadata<T, ?, ?> filterField = getCollectionElementBackReferenceField(metadata, emd, fmd);
-			setCollectionConverter(filterField);
+			final FieldMetadata<T, P, C> filterField = (FieldMetadata<T, P, C>)getCollectionElementBackReferenceField(metadata, emd, fmd);
+			setCollectionConverter(filterField, fmd);
 
-			converter = fmd.isKey() ?
-					new PrimaryKeyConverter<P, C>(fmd.getType(), entityContext) :
-					new IndexedFieldConverter<P, C>(fmd.getType(), fmd.getName(), entityContext);
+			fmd.setColumnGenericTypes(Collections.<Class<?>>singleton(Primitives.wrap(filterField.getType())));
+
+			return;
 		}
 
 		if (elementCollection != null) {
-			final List<AttributeConverter<?, ?>> converters = findConverters(fmd);
+			@SuppressWarnings("unchecked")
+			final
+			Class<P> elementClass = (Class<P>)elementType;
+			final List<AttributeConverter<?, ?>> converters = findConverters(fmd, elementClass);
 			if (converters != null && !converters.isEmpty()) {
 				@SuppressWarnings("unchecked")
-				final
-				AttributeConverter<P, C> castConv = (AttributeConverter<P, C>)converters.get(0);
+				final AttributeConverter<P, C> castConv = (AttributeConverter<P, C>)converters.get(0);
 				converter = castConv;
 			}
 		}
@@ -361,6 +367,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 		if (converter != null) {
 			fmd.setConverter(new DummyValueConverter<P, C>(), new ValueAttributeConverter<>(converter));
+			fmd.setColumnGenericTypes(getColumnGenericTypes(Collections.<AttributeConverter<?, ?>>singleton(converter)));
 		}
 	}
 
@@ -475,8 +482,6 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			if (!converters.isEmpty()) {
 				fmeta.setColumnGenericTypes(getColumnGenericTypes(converters));
 			}
-		} else {
-			//fill generics
 		}
 	}
 
@@ -538,6 +543,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		for (final EntityMetadata<?> emd : metadata.values()) {
 			updateInheritance(metadata, emd);
 			updateRelationships(metadata, emd);
+			emd.updateFields();
 		}
 	}
 
@@ -590,6 +596,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			emd.setTableName(null); // abstract base classes in TABLE_PER_CLASS hierarchy do not need their table.
 		}
 
+		for (Class<?> c = clazz.getSuperclass(); !Object.class.equals(c); c = c.getSuperclass()) {
+			final EntityMetadata<?> superEmd = metadata.get(c);
+			if (superEmd != null) {
+				@SuppressWarnings("unchecked")
+				final
+				EntityMetadata<? super E> supertype = (EntityMetadata<? super E>)superEmd;
+				emd.setSupertype(supertype);
+			}
+		}
 
 		final DiscriminatorValue discriminatorValue = clazz.getAnnotation(DiscriminatorValue.class);
 		if (discriminatorValue == null) {
@@ -626,16 +641,6 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		if (InheritanceType.JOINED.equals(inheritenceType) && isSubClass) {
 			final FieldMetadata<E, Object, Object> joiner = createJoiner(metadata, clazz);
 			emd.addField(joiner);
-		}
-
-		for (Class<?> c = clazz.getSuperclass(); !Object.class.equals(c); c = c.getSuperclass()) {
-			final EntityMetadata<?> superEmd = metadata.get(c);
-			if (superEmd != null) {
-				@SuppressWarnings("unchecked")
-				final
-				EntityMetadata<? super E> supertype = (EntityMetadata<? super E>)superEmd;
-				emd.setSupertype(supertype);
-			}
 		}
 	}
 
@@ -775,7 +780,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 		//TODO: throw exception?
-		//TODO: change the method to return 1 type or use this method for collections and maps: in this case it will return collection of 2 elements and 3 elements respetidly
+		//TODO: change the method to return 1 type or use this method for collections and maps: in this case it will return collection of 2 elements and 3 elements respectively
 		return null;
 	}
 

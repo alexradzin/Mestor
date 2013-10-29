@@ -16,6 +16,7 @@
 /******************************************************************************************************/
 package org.mestor.metadata.jpa;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -35,41 +36,42 @@ import org.mockito.Mockito;
 
 public class MetadataFactoryTestUtils {
 
-	static Map<Class<?>, EntityMetadata<?>> testJpaAnnotations(Class<?> ... classes) {
+	static Map<Class<?>, EntityMetadata<?>> testJpaAnnotations(final Class<?> ... classes) {
 		final EntityContext ctx = Mockito.mock(EntityContext.class);
-		JpaAnnotationsMetadataFactory factory = new JpaAnnotationsMetadataFactory();
+		final JpaAnnotationsMetadataFactory factory = new JpaAnnotationsMetadataFactory();
 		factory.setEntityContext(ctx);
-		
-		Map<Class<?>, EntityMetadata<?>> entityClasses = new LinkedHashMap<Class<?>, EntityMetadata<?>>() {
+
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = new LinkedHashMap<Class<?>, EntityMetadata<?>>() {
 		    @Override
-			public EntityMetadata<?> put(Class<?> clazz, EntityMetadata<?> emd) {
+			public EntityMetadata<?> put(final Class<?> clazz, final EntityMetadata<?> emd) {
 		    	if (emd == null) {
 		    		return null;
 		    	}
 		    	return super.put(clazz, emd);
 		    }
-			
+
 		};
-		for (Class<?> clazz : classes) {
-			EntityMetadata<?>  emd = factory.create(clazz);
+		for (final Class<?> clazz : classes) {
+			final EntityMetadata<?>  emd = factory.create(clazz);
 			entityClasses.put(clazz, emd);
 			doReturn(emd).when(ctx).getEntityMetadata(clazz);
 		}
-		
-		
+
+
 		factory.update(entityClasses);
-		
-		
+
+
 		return entityClasses;
 	}
 
-	static <E> void assertEntityMetadataFields(Collection<FieldMetadata<E, Object, Object>> fields, String[] names, Class<?>[] types, String[] columns, Class<?>[] columnTypes) {
-		assertEquals(names.length, fields.size()); 
+	static <E> void assertEntityMetadataFields(final Collection<FieldMetadata<E, Object, Object>> fields, final String[] names, final Class<?>[] types, final String[] columns, final Class<?>[] columnTypes) {
+		assertEquals(names.length, fields.size());
 		assertEquals(names.length, columns.length);
 		assertEquals(columns.length, columnTypes.length);
-		
-		int n = fields.size();
+
+		final int n = fields.size();
 		@SuppressWarnings("unchecked")
+		final
 		FieldMetadata<E, Object, Object>[] fieldsArray = fields.toArray(new FieldMetadata[0]);
 		for (int i = 0; i < n; i++) {
 			assertEquals(names[i], fieldsArray[i].getName());
@@ -79,48 +81,81 @@ public class MetadataFactoryTestUtils {
 		}
 	}
 
-	static <E> void assertEntityMetadata(EntityMetadata<E> emd, Class<E> expectedType, String expectedEntityName, String expectedTableName) {
+
+	static <E> void assertEntityMetadataFields(final Collection<FieldMetadata<E, Object, Object>> fields,
+			final String[] names,
+			final Class<?>[][] fieldGenerics,
+			final Class<?>[][] columnGenerics) {
+
+		final Map<String, Class<?>[]> fieldNameToGenerics = createNameToGenericsMapping(names, fieldGenerics);
+		final Map<String, Class<?>[]> fieldNameToColumnGenerics = createNameToGenericsMapping(names, columnGenerics);
+
+		for (final FieldMetadata<E, Object, Object> fmd : fields) {
+			final String name = fmd.getName();
+			final Class<?>[] currentFieldGenerics = getGenericsByName(fieldNameToGenerics, name);
+			final Class<?>[] currentColumnGenerics = getGenericsByName(fieldNameToColumnGenerics, name);
+			assertArrayEquals(currentFieldGenerics, fmd.getGenericTypes().toArray(new Class[0]));
+			assertArrayEquals(currentColumnGenerics, fmd.getColumnGenericTypes().toArray(new Class[0]));
+		}
+	}
+
+
+	private static Map<String, Class<?>[]> createNameToGenericsMapping(final String[] names, final Class<?>[][] fieldGenerics) {
+		final Map<String, Class<?>[]> nameToGenerics = new HashMap<>();
+		for (int i = 0; i < names.length; i++) {
+			nameToGenerics.put(names[i], fieldGenerics[i]);
+		}
+		return nameToGenerics;
+	}
+
+	private static Class<?>[] getGenericsByName(final Map<String, Class<?>[]> mapping, final String name) {
+		final Class<?>[] generics = mapping.get(name);
+		return generics == null ? new Class[0] : generics;
+	}
+
+	static <E> void assertEntityMetadata(final EntityMetadata<E> emd, final Class<E> expectedType, final String expectedEntityName, final String expectedTableName) {
 		assertNotNull(emd);
 		assertEquals(expectedType, emd.getEntityType());
-		assertEquals(expectedEntityName, emd.getEntityName()); 
+		assertEquals(expectedEntityName, emd.getEntityName());
 		assertEquals(expectedTableName, emd.getTableName());
 	}
 
-	static <E> void assertEntityMetadataIndexes(Collection<IndexMetadata<E>> indexes, Map<String, String[]> namesToFieldNamesMap) {
-		assertEquals("wrong index count", namesToFieldNamesMap.size(), indexes.size()); 
-		
-		for(IndexMetadata<E> index : indexes) {
+	static <E> void assertEntityMetadataIndexes(final Collection<IndexMetadata<E>> indexes, final Map<String, String[]> namesToFieldNamesMap) {
+		assertEquals("wrong index count", namesToFieldNamesMap.size(), indexes.size());
+
+		for(final IndexMetadata<E> index : indexes) {
 			assertTrue("extra index found: " + index.getName(), namesToFieldNamesMap.containsKey(index.getName()));
-			String[] fieldNames = namesToFieldNamesMap.remove(index.getName());
+			final String[] fieldNames = namesToFieldNamesMap.remove(index.getName());
 			Assert.assertArrayEquals("field names don't match", fieldNames, index.getFieldNames());
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	static <E> EntityMetadata<E> getEntityMetadata(Map<Class<?>, EntityMetadata<?>> entityClasses, Class<E> clazz) {
+	static <E> EntityMetadata<E> getEntityMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses, final Class<E> clazz) {
 		return (EntityMetadata<E>)entityClasses.get(clazz);
 	}
 
-	
-	static Map<String, String[]> buildStringToStringArrayMap(Object ...objects){
-		Map<String, String[]> res = new HashMap<>();
+
+	static Map<String, String[]> buildStringToStringArrayMap(final Object ...objects){
+		final Map<String, String[]> res = new HashMap<>();
 		for (int i = 0; i < objects.length; i += 2) {
-			String key = (String)objects[i];
-			String[] value = (String[])objects[i+1];
+			final String key = (String)objects[i];
+			final String[] value = (String[])objects[i+1];
 			res.put(key, value);
 		}
-		
+
 		return res;
 	}
 
-	static< T> void testIndexes(Class<T> clazz, Map<String, String[]> expected) {
+	static< T> void testIndexes(final Class<T> clazz, final Map<String, String[]> expected) {
 		if(clazz == null) {
 			return;
 		}
-		Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(clazz);
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(clazz);
 		@SuppressWarnings("unchecked")
+		final
 		EntityMetadata<T> md = (EntityMetadata<T>) entityClasses.get(clazz);
-		Collection<IndexMetadata<T>> indexes = md.getIndexes();
+		final Collection<IndexMetadata<T>> indexes = md.getIndexes();
 		assertEntityMetadataIndexes(indexes, expected);
 	}
 }

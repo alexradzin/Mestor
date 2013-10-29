@@ -27,7 +27,7 @@ public class ToStringConverter<T> implements AttributeConverter<T, String> {
 	private final Class<T> clazz;
 	private final Method factoryMethod;
 	private final Constructor<T> constructor;
-	
+
 	public ToStringConverter(final Class<T> clazz) {
 		this.clazz = clazz;
 		this.factoryMethod = findFactoryMethod("valueOf", "fromString");
@@ -35,15 +35,15 @@ public class ToStringConverter<T> implements AttributeConverter<T, String> {
 			try {
 				constructor = clazz.getConstructor(String.class);
 			} catch (NoSuchMethodException | SecurityException e) {
-				throw new IllegalArgumentException("Class " + clazz + 
-						" does not have neigher suitable factory method nore constructor " + 
+				throw new IllegalArgumentException("Class " + clazz +
+						" does not have neigher suitable factory method nore constructor " +
 						clazz.getSimpleName() + "(String)");
 			}
 		} else {
 			constructor = null;
 		}
 	}
-	
+
 	@Override
 	public String convertToDatabaseColumn(final T attribute) {
 		return attribute == null ? null : attribute.toString();
@@ -54,18 +54,19 @@ public class ToStringConverter<T> implements AttributeConverter<T, String> {
 		try {
 			if (factoryMethod != null) {
 				@SuppressWarnings("unchecked")
+				final
 				T result = (T)factoryMethod.invoke(null, dbData);
 				return result;
 			}
-			return constructor.newInstance();
-		} catch (ReflectiveOperationException e) {
+			return constructor.newInstance(dbData);
+		} catch (final ReflectiveOperationException e) {
 			throw new IllegalArgumentException(e);
 		}
 	}
 
 
 	private Method findFactoryMethod(final String ... names) {
-		for (String name : names) {
+		for (final String name : names) {
 			Method m;
 			try {
 				m = clazz.getMethod(name, String.class);

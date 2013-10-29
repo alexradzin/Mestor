@@ -22,6 +22,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -35,47 +36,47 @@ public class FieldMetadata<T, F, C> {
 	private String name;
 	private String column;
 	private boolean nullable;
-	private Set<FieldRole> role = EnumSet.noneOf(FieldRole.class);
+	private final Set<FieldRole> role = EnumSet.noneOf(FieldRole.class);
 	private boolean lazy = false;
 	private Collection<Class<?>> genericTypes = new ArrayList<Class<?>>();
 	private Collection<Class<?>> columnGenericTypes = new ArrayList<Class<?>>();
-	private List<ValueConverter<?, ?>> converters = new ArrayList<>();
+	private final List<ValueConverter<?, ?>> converters = new ArrayList<>();
 	private F defaultValue;
 
 	private PropertyAccessor<T, F> accessor;
 
-	public FieldMetadata(Class<T> classType, Class<F> type, String name) {
+	public FieldMetadata(final Class<T> classType, final Class<F> type, final String name) {
 		this(classType, type, name, null, null, null);
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	public FieldMetadata(Class<T> classType, Class<F> type, String name, Field field, Method getter, Method setter) {
+	public FieldMetadata(final Class<T> classType, final Class<F> type, final String name, final Field field, final Method getter, final Method setter) {
 		this(classType, type, (Class<C>)type, name, field, getter, setter, new DummyValueConverter<F, C>(), new DummyValueConverter<F, C>(), new DummyValueConverter<F, C>());
 	}
-	
+
 	@SafeVarargs
-	public FieldMetadata(Class<T> classType, Class<F> type, Class<C> columnType, String name, Field field, Method getter, Method setter, ValueConverter<F, C> ...converters) {
+	public FieldMetadata(final Class<T> classType, final Class<F> type, final Class<C> columnType, final String name, final Field field, final Method getter, final Method setter, final ValueConverter<F, C> ...converters) {
 		this(classType, type, columnType, new PropertyAccessor<T, F>(classType, type, name, field, getter, setter), converters);
 		this.name = name;
 	}
 
 	@SafeVarargs
-	public FieldMetadata(Class<T> classType, Class<F> type, Class<C> columnType, PropertyAccessor<T, F> accessor, ValueConverter<F, C> ...converters) {
+	public FieldMetadata(final Class<T> classType, final Class<F> type, final Class<C> columnType, final PropertyAccessor<T, F> accessor, final ValueConverter<F, C> ...converters) {
 		this.accessor = accessor;
 		this.classType = classType;
 		this.type = type;
 		this.columnType = columnType;
 		this.converters.addAll(Arrays.asList(converters));
 	}
-	
-	
+
+
 
 	public Class<T> getClassType() {
 		return classType;
 	}
 
 
-	public void setClassType(Class<T> classType) {
+	public void setClassType(final Class<T> classType) {
 		this.classType = classType;
 	}
 
@@ -84,7 +85,7 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setType(Class<F> type) {
+	public void setType(final Class<F> type) {
 		this.type = type;
 	}
 
@@ -93,7 +94,7 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setName(String name) {
+	public void setName(final String name) {
 		this.name = name;
 	}
 
@@ -103,7 +104,7 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setColumn(String column) {
+	public void setColumn(final String column) {
 		this.column = column;
 	}
 
@@ -113,17 +114,17 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setNullable(boolean nullable) {
+	public void setNullable(final boolean nullable) {
 		this.nullable = nullable;
 	}
 
-	
+
 	public boolean isKey() {
 		return isFieldInRole(FieldRole.PRIMARY_KEY);
 	}
 
 
-	public void setKey(boolean key) {
+	public void setKey(final boolean key) {
 		setFieldRole(FieldRole.PRIMARY_KEY, key);
 	}
 
@@ -133,7 +134,7 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setDiscriminator(boolean discriminator) {
+	public void setDiscriminator(final boolean discriminator) {
 		setFieldRole(FieldRole.DISCRIMINATOR, discriminator);
 	}
 
@@ -142,34 +143,34 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setJoiner(boolean discriminator) {
+	public void setJoiner(final boolean discriminator) {
 		setFieldRole(FieldRole.JOINER, discriminator);
 	}
-	
-	
-	private void setFieldRole(FieldRole fieldRole, boolean onoff) {
+
+
+	private void setFieldRole(final FieldRole fieldRole, final boolean onoff) {
 		if (onoff) {
 			role.add(fieldRole);
 		} else {
 			role.remove(fieldRole);
 		}
 	}
-	
-	private boolean isFieldInRole(FieldRole fieldRole) {
+
+	private boolean isFieldInRole(final FieldRole fieldRole) {
 		return role.contains(fieldRole);
 	}
-	
-	public void setField(Field field) {
+
+	public void setField(final Field field) {
 		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), field, accessor.getGetter(), accessor.getSetter());
 	}
 
 
-	public void setGetter(Method getter) {
+	public void setGetter(final Method getter) {
 		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), accessor.getField(), getter, accessor.getSetter());
 	}
 
 
-	public void setSetter(Method setter) {
+	public void setSetter(final Method setter) {
 		accessor = new PropertyAccessor<T, F>(accessor.getType(), accessor.getPropertyType(), accessor.getName(), accessor.getField(), accessor.getGetter(), setter);
 	}
 
@@ -179,7 +180,7 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setAccessor(PropertyAccessor<T, F> accessor) {
+	public void setAccessor(final PropertyAccessor<T, F> accessor) {
 		this.accessor = accessor;
 	}
 
@@ -189,7 +190,7 @@ public class FieldMetadata<T, F, C> {
 	}
 
 
-	public void setLazy(boolean lazy) {
+	public void setLazy(final boolean lazy) {
 		this.lazy = lazy;
 	}
 
@@ -198,11 +199,11 @@ public class FieldMetadata<T, F, C> {
 		return genericTypes;
 	}
 
-	public void setGenericTypes(Class<?> ... genericTypes) {
+	public void setGenericTypes(final Class<?> ... genericTypes) {
 		setGenericTypes(Arrays.asList(genericTypes));
 	}
 
-	public void setGenericTypes(Collection<Class<?>> genericTypes) {
+	public void setGenericTypes(final Collection<Class<?>> genericTypes) {
 		this.genericTypes = genericTypes;
 	}
 
@@ -210,48 +211,52 @@ public class FieldMetadata<T, F, C> {
 		return columnType;
 	}
 
-	public void setColumnType(Class<C> columnType) {
+	public void setColumnType(final Class<C> columnType) {
 		this.columnType = columnType;
 	}
 
-	
+
 	public Collection<Class<?>> getColumnGenericTypes() {
 		return columnGenericTypes;
 	}
 
 
-	public void setColumnGenericTypes(Collection<Class<?>> columnGenericTypes) {
+	public void setColumnGenericTypes(final Collection<Class<?>> columnGenericTypes) {
 		this.columnGenericTypes = columnGenericTypes;
 	}
-	
-	
-	
+
+
+
 	public ValueConverter<F, C> getConverter() {
 		return getConverter(0);
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	public <F1, C1> ValueConverter<F1, C1> getConverter(int i) {
+	public <F1, C1> ValueConverter<F1, C1> getConverter(final int i) {
 		return (ValueConverter<F1, C1>)converters.get(i);
 	}
 
-	public void setConverter(ValueConverter<F, C> primary, ValueConverter<?, ?> ... secondary) {
+	public void setConverter(final ValueConverter<F, C> primary, final ValueConverter<?, ?> ... secondary) {
 		converters.clear();
 		converters.add(primary);
 		if (secondary != null) {
 			converters.addAll(Arrays.asList(secondary));
 		}
 	}
-	
-	public void setDefaultValue(F defaultValue) {
+
+	public Collection<ValueConverter<?,?>> getConverters() {
+		return Collections.unmodifiableCollection(converters);
+	}
+
+	public void setDefaultValue(final F defaultValue) {
 		this.defaultValue = defaultValue;
 	}
-	
+
 	public <E> Object getDefaultValue() {
 		if (defaultValue != null) {
 			return defaultValue;
 		}
-		// default value was not explicitly defined, so we have to discover it. 
+		// default value was not explicitly defined, so we have to discover it.
 		if (!type.isPrimitive()) {
 			return null;
 		}
@@ -270,5 +275,5 @@ public class FieldMetadata<T, F, C> {
 		}
 		return null;
 	}
-	
+
 }

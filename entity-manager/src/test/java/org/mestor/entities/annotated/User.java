@@ -43,39 +43,50 @@ public class User extends AbstractEntity {
 
 	@ManyToOne
 	private Person person;
-	
-	
+
+
+	public User() {
+		// default constructor
+	}
+
+	public User(final URL site, final String username, final String password, final Set<UserRole> roles) {
+		this.site = site;
+		this.username = username;
+		this.password = password;
+		this.roles = roles;
+	}
+
 	public URL getSite() {
 		return site;
 	}
-	public void setSite(URL site) {
+	public void setSite(final URL site) {
 		this.site = site;
 	}
 	public String getUsername() {
 		return username;
 	}
-	public void setUsername(String username) {
+	public void setUsername(final String username) {
 		this.username = username;
 	}
 	public String getPassword() {
 		return password;
 	}
-	public void setPassword(String password) {
+	public void setPassword(final String password) {
 		this.password = password;
 	}
 	public Set<UserRole> getRoles() {
 		return roles;
 	}
-	public void setRoles(Set<UserRole> roles) {
+	public void setRoles(final Set<UserRole> roles) {
 		this.roles = roles;
 	}
 	public Person getPerson() {
 		return person;
 	}
-	public void setPerson(Person person) {
+	public void setPerson(final Person person) {
 		this.person = person;
 	}
-	
-	
-	
+
+
+
 }

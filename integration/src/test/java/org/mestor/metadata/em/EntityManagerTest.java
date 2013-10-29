@@ -21,30 +21,47 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
+import javax.persistence.metamodel.EntityType;
+import javax.persistence.metamodel.Metamodel;
 
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mestor.context.EntityContext;
 import org.mestor.em.MestorProperties;
 import org.mestor.entities.Child;
+import org.mestor.entities.Country;
 import org.mestor.entities.Human;
 import org.mestor.entities.Parent;
 import org.mestor.entities.annotated.AbstractEntity;
+import org.mestor.entities.annotated.Address;
+import org.mestor.entities.annotated.EmailAddress;
+import org.mestor.entities.annotated.Person;
+import org.mestor.entities.annotated.Person.Gender;
 import org.mestor.entities.annotated.SimpleProperty;
+import org.mestor.entities.annotated.StreetAddress;
+import org.mestor.entities.annotated.User;
+import org.mestor.entities.annotated.UserRole;
 import org.mestor.entities.queries.NamedQueriesEntity;
 
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 
 public class EntityManagerTest {
-	
+
 	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
 		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
 		return Persistence.createEntityManagerFactory(puName).createEntityManager();
@@ -60,11 +77,11 @@ public class EntityManagerTest {
 			sp.setValue("value");
 			em.persist(sp);
 			findAndCheckSimpleProperty(em, sp);
-	
+
 			sp.setValue("merge");
 			em.persist(sp);
 			findAndCheckSimpleProperty(em, sp);
-	
+
 			em.remove(sp);
 			final SimpleProperty spDb = em.find(SimpleProperty.class, sp.getName());
 			assertNull(spDb);
@@ -85,12 +102,12 @@ public class EntityManagerTest {
 	public void testWrongFile() {
 		getEntityManager("wrong_file.xml", "wrong");
 	}
-	
+
 	@Test(expected = IllegalArgumentException.class)
 	public void testWrongPu() {
 		getEntityManager("wrong.xml", "wrong_pu");
 	}
-	
+
 	@Test(expected = IllegalArgumentException.class)
 	public void testWrongClass() {
 		getEntityManager("wrong.xml", "wrong_class");
@@ -100,7 +117,7 @@ public class EntityManagerTest {
 	public void testWrongHost() {
 		getEntityManager("wrong.xml", "wrong_host");
 	}
-	
+
 	@Test
 	public void testGetEntityMetadataByEntityName(){
 		final EntityManager em = getEntityManager("simple_property.xml", "simple_property");
@@ -112,7 +129,7 @@ public class EntityManagerTest {
 			em.close();
 		}
 	}
-	
+
 	@Test
 	public void testNamedQueriesSelectAll() {
 		final EntityManager em = getEntityManager("named_queries.xml", "named_queries");
@@ -133,7 +150,7 @@ public class EntityManagerTest {
 			em.close();
 		}
 	}
-	
+
 	@Test
 	public void testNamedQueriesSelectWithWhere() {
 		final EntityManager em = getEntityManager("named_queries.xml", "named_queries");
@@ -158,7 +175,7 @@ public class EntityManagerTest {
 		assertEquals(expected.getLastModified(), actual.getLastModified());
 		assertEquals(expected.getName(), actual.getName());
 	}
-	
+
 	@Test
 	public void testNamedQueriesSelectWithWhereWrong() {
 		final EntityManager em = getEntityManager("named_queries.xml", "named_queries");
@@ -185,7 +202,7 @@ public class EntityManagerTest {
 			em.close();
 		}
 	}
-	
+
 	private void sortAbstractEntityList(final List<? extends AbstractEntity> list){
 		Collections.sort(list, new Comparator<AbstractEntity>() {
 			@Override
@@ -194,7 +211,7 @@ public class EntityManagerTest {
 			}
 		});
 	}
-	
+
 	private NamedQueriesEntity[] createNamedQueriesEntities(final int count, final EntityManager em) {
 		final NamedQueriesEntity[] res = new NamedQueriesEntity[count];
 		for (int i = 0; i < count; i++) {
@@ -207,7 +224,7 @@ public class EntityManagerTest {
 		}
 		return res;
 	}
-	
+
 	@Ignore
 	@Test
 	public void testCascade() {
@@ -221,7 +238,7 @@ public class EntityManagerTest {
 			em.close();
 		}
 	}
-	
+
 	private Parent createParent(final EntityManager em, final String name) {
 		final Parent parent = new Parent();
 		setHumanProps(parent, name);
@@ -234,7 +251,7 @@ public class EntityManagerTest {
 		parent.setIdentifier((int)idSequence.incrementAndGet());
 		parent.setName(name);
 	}
-	
+
 	private Child createChild(final EntityManager em, final String name, final Parent parent) {
 		final Child child = new Child();
 		setHumanProps(child, name);
@@ -243,11 +260,87 @@ public class EntityManagerTest {
 		return child;
 	}
 
-	@Ignore
 	@Test
 	public void testStartEntityManager() {
 		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
-		// TODO: finish him
+		assertNotNull(em);
+		final Metamodel metamodel = em.getMetamodel();
+		assertNotNull(metamodel);
+
+
+		assertEquals(
+				new HashSet<Class<?>>(Arrays.asList(Person.class, User.class, Address.class, EmailAddress.class, StreetAddress.class, SimpleProperty.class)),
+				new HashSet<Class<?>>(Collections2.transform(metamodel.getEntities(), new Function<EntityType<?>, Class<?>>() {
+					@Override
+					public Class<?> apply(final EntityType<?> et) {
+						return et.getJavaType();
+					}
+				})));
 	}
+
+
+	@Test
+	public void testCrudWithHierarchicalCollectionEntityManager() {
+		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
+		assertNotNull(em);
+		final Metamodel metamodel = em.getMetamodel();
+		assertNotNull(metamodel);
+
+		final Person jl = new Person("John", "Lennon", Gender.MALE);
+		jl.setIdentifier(1);
+		final StreetAddress jlHome = new StreetAddress(1, "251", "Menlove Avenue", "Liverpool", Country.GB);
+		final EmailAddress jlEmail = new EmailAddress();
+		jl.setAddresses(Arrays.<Address>asList(jlHome, jlEmail));
+
+		em.persist(jl);
+		em.persist(jlHome);
+		em.persist(jlEmail);
+
+
+		// The following does not work because addresses are inherited using TABLLE_PER_CLASS strategy
+		// that does not work well now even in Persister.fetch() because it assumes that table of base class exists.
+		// It also does not work when fetching lazy dependent collection because ObjectWrapperFactory tries to create instance of
+		// abstract class Address.
+		// Bottom line: the inheritance support should be reviewed and fixed, however we do not need it now, so this task is postponed.
+//		final Person foundJl = em.find(Person.class, 1);
+//		assertNotNull(foundJl);
+	}
+
+	@Test
+	public void testCrudWithCollectionEntityManager() throws MalformedURLException {
+		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
+		assertNotNull(em);
+		final Metamodel metamodel = em.getMetamodel();
+		assertNotNull(metamodel);
+
+		final Person jl = new Person("John", "Lennon", Gender.MALE);
+		jl.setIdentifier(1);
+
+
+		final User user = new User(new URL("http://www.thebeatles.com"), "john", "^John$", EnumSet.of(UserRole.ADMINISTRATOR));
+		jl.setAccounts(Collections.singletonList(user));
+		user.setPerson(jl);
+
+		em.persist(jl);
+		em.persist(user);
+
+		final Person foundJl = em.find(Person.class, 1);
+		assertNotNull(foundJl);
+
+		assertPerson(jl, foundJl);
+	}
+
+	//TODO: move this method to reusable utility
+	private void assertPerson(final Person expected, final Person actual) {
+		if (expected == null) {
+			assertNull(actual);
+			return;
+		}
+		assertNotNull(actual);
+		assertEquals(expected.getIdentifier(), actual.getIdentifier());
+		assertEquals(expected.getName(), actual.getName());
+		assertEquals(expected.getLastName(), actual.getLastName());
+	}
+
 
 }

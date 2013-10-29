@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.mestor.reflection.PropertyAccessor;
 
 public class EntityMetadata<E> {
@@ -39,19 +38,17 @@ public class EntityMetadata<E> {
 
 	private String tableName;
 	private String schemaName;
-	
+
 	private final Collection<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
 	private final Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
 	private final Map<String, FieldMetadata<E, ?, ?>> fieldNames = new LinkedHashMap<>();
-	private final Map<String, Class<?>[]> fieldTypes = new LinkedHashMap<>();
-	private final Map<String, Class<?>[]> columnTypes = new LinkedHashMap<>();
 	private final Collection<IndexMetadata<E>> indexes = new ArrayList<>();
-	
+
 	private final Map<Method, FieldMetadata<E, ?, ?>> getter2field = new HashMap<>();
 	private final Map<Method, FieldMetadata<E, ?, ?>> setter2field = new HashMap<>();
 
-	private Map<String, String> namedQueries = new HashMap<>();
-	
+	private final Map<String, String> namedQueries = new HashMap<>();
+
 	public EntityMetadata(final Class<E> entityClass) {
 		this.entityType = entityClass;
 	}
@@ -60,7 +57,7 @@ public class EntityMetadata<E> {
 		// default constructor
 	}
 
-	
+
 	public Class<E> getEntityType() {
 		return entityType;
 	}
@@ -71,8 +68,8 @@ public class EntityMetadata<E> {
 	}
 
 
-	
-	
+
+
 	public String getEntityName() {
 		return entityName;
 	}
@@ -85,7 +82,7 @@ public class EntityMetadata<E> {
 		return supertype;
 	}
 
-	public void setSupertype(EntityMetadata<? super E> supertype) {
+	public void setSupertype(final EntityMetadata<? super E> supertype) {
 		this.supertype = supertype;
 	}
 
@@ -106,7 +103,7 @@ public class EntityMetadata<E> {
 	public FieldMetadata<E, Object, Object> getJoiner() {
 		return this.joiner;
 	}
-	
+
 	public String getTableName() {
 		return tableName;
 	}
@@ -125,28 +122,30 @@ public class EntityMetadata<E> {
 	public void setSchemaName(final String schemaName) {
 		this.schemaName = schemaName;
 	}
-	
-	
+
+
 	public Collection<FieldMetadata<E, Object, Object>> getFields() {
 		return Collections.unmodifiableCollection(fields);
 	}
 
-	@SuppressWarnings("unchecked")
-	public <C> Class<C>[] getFieldTypes(final String columnName) {
-		return (Class<C>[])fieldTypes.get(columnName);
-	}
 
 	/**
-	 * Retrieves type of specified column. The type is typically identified by 
+	 * Retrieves type of specified column. The type is typically identified by
 	 * one class. However to identify list of set we need 2 classes (list and the list element).
-	 * For maps we need 3 classes (map itself, key and value). 
+	 * For maps we need 3 classes (map itself, key and value).
 	 * This is the reason that this method returns an array of {@link Class}.
 	 * @param columnName
 	 * @return array of {@link Class} objects that identify the column type
 	 */
 	@SuppressWarnings("unchecked")
 	public <C> Class<C>[] getColumnTypes(final String columnName) {
-		return (Class<C>[])columnTypes.get(columnName);
+		final FieldMetadata<E,?,?> fmeta = getField(columnName);
+
+		final List<Class<?>> cTypes = new ArrayList<>();
+		cTypes.add(fmeta.getColumnType());
+		cTypes.addAll(fmeta.getColumnGenericTypes());
+
+		return cTypes.toArray(new Class[0]);
 	}
 
 	public <F, C> void addField(final FieldMetadata<E, F, C> fmeta) {
@@ -159,27 +158,22 @@ public class EntityMetadata<E> {
 		if (setter != null) {
 			setter2field.put(setter, fmeta);
 		}
-		
+
 		final String column = fmeta.getColumn();
 		if(column != null){
-			final List<Class<?>> types = new ArrayList<>();
-			types.add(fmeta.getType());
-			types.addAll(fmeta.getGenericTypes());
-			fieldTypes.put(column, types.toArray(new Class[0]));
-			
 			final List<Class<?>> cTypes = new ArrayList<>();
 			cTypes.add(fmeta.getColumnType());
 			cTypes.addAll(fmeta.getColumnGenericTypes());
-			columnTypes.put(column, cTypes.toArray(new Class[0]));
-			
+//			columnTypes.put(column, cTypes.toArray(new Class[0]));
+
 			fieldColumns.put(column, fmeta);
 		}
 		fieldNames.put(fmeta.getName(), fmeta);
-		
+
 		@SuppressWarnings("unchecked")
 		final FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
 		fields.add(fmd);
-		
+
 		if (fmd.isDiscriminator()) {
 			discrimintor = fmd;
 		}
@@ -187,15 +181,37 @@ public class EntityMetadata<E> {
 			joiner = fmd;
 		}
 	}
-	
-	
+
+	/**
+	 * Some data of fields is unknown when field is added.
+	 * This information becomes available later because it depends on other entities and should be updated here.
+	 */
+	public void updateFields() {
+		for (final FieldMetadata<E, Object, Object> fmd : fields) {
+			if (fmd.isDiscriminator()) {
+				discrimintor = fmd;
+			}
+			if (fmd.isJoiner()) {
+				joiner = fmd;
+			}
+		}
+
+
+		// The column names have been probably updated since the field was added to EntityMetadata.
+		// The easiest way to make fieldColumns mapping up-to-data is to clear it and create again.
+		fieldColumns.clear();
+		for (final FieldMetadata<E, Object, Object> fmd : fields) {
+			fieldColumns.put(fmd.getColumn(), fmd);
+		}
+	}
+
 	public void addAllFields(final Collection<FieldMetadata<E, ?, ?>> fmetas) {
 		for(final FieldMetadata<E, ?, ?> fmeta : fmetas) {
 			addField(fmeta);
 		}
 	}
-	
-	
+
+
 	@SuppressWarnings("unchecked")
 	public <F, C> FieldMetadata<E, F, C> getFieldByGetter(final Method getter) {
 		return (FieldMetadata<E, F, C>)getter2field.get(getter);
@@ -217,8 +233,8 @@ public class EntityMetadata<E> {
 
 		return fieldNames;
 	}
-	
-	
+
+
 	@SuppressWarnings("unchecked")
 	public <F, C> FieldMetadata<E, F, C> getField(final String column) {
 		return (FieldMetadata<E, F, C>)this.fieldColumns.get(column);
@@ -238,12 +254,12 @@ public class EntityMetadata<E> {
 			addIndex(index);
 		}
 	}
-	
+
 	public void addIndex(final IndexMetadata<E> index) {
 		this.indexes.add(index);
 	}
-	
-	
+
+
 	public <F, C> void addIndex(final FieldMetadata<E, F, C> fmd) {
 		final String indexName = getTableName() + "_" + fmd.getColumn() + "_index";
 		addIndex(new IndexMetadata<>(fmd.getClassType(), indexName, fmd));
@@ -262,8 +278,8 @@ public class EntityMetadata<E> {
 	public Map<String, String> getNamedQueries() {
 		return Collections.unmodifiableMap(namedQueries);
 	}
-	
-	public void addNamedQuery(String name, String ql) {
+
+	public void addNamedQuery(final String name, final String ql) {
 		if (namedQueries.containsKey(name)) {
 			throw new IllegalArgumentException("Duplicate named query " + name + " in class " + entityType);
 		}

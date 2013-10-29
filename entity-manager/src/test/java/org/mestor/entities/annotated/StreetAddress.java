@@ -29,33 +29,55 @@ public class StreetAddress extends Address {
 	@Column(name = "number")
 	private String streetNumber;
 	private String street;
+	private String city;
 	@Column(name = "zipcode")
 	private int zip;
 	private Country country;
+
+	public StreetAddress() {
+		//default constructor
+	}
+
+	public StreetAddress(final int id, final String streetNumber, final String street, final String city, final Country country) {
+		this.identifier = id;
+		this.streetNumber = streetNumber;
+		this.street = street;
+		this.city = city;
+		this.country = country;
+	}
+
 	public String getStreetNumber() {
 		return streetNumber;
 	}
-	public void setStreetNumber(String streetNumber) {
+	public void setStreetNumber(final String streetNumber) {
 		this.streetNumber = streetNumber;
 	}
+	public String getCity() {
+		return city;
+	}
+
+	public void setCity(final String city) {
+		this.city = city;
+	}
+
 	public String getStreet() {
 		return street;
 	}
-	public void setStreet(String street) {
+	public void setStreet(final String street) {
 		this.street = street;
 	}
 	public int getZip() {
 		return zip;
 	}
-	public void setZip(int zip) {
+	public void setZip(final int zip) {
 		this.zip = zip;
 	}
 	public Country getCountry() {
 		return country;
 	}
-	public void setCountry(Country country) {
+	public void setCountry(final Country country) {
 		this.country = country;
 	}
-	
-	
+
+
 }
