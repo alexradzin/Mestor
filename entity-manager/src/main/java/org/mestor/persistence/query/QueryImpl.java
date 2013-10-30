@@ -224,6 +224,9 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		if (curentLimit != DEFAULT_LIMIT) {
 			qi = new QueryInfo(queryInfo.getType(), queryInfo.getWhat(), queryInfo.getFrom(), queryInfo.getWhere(), queryInfo.getOrders(), queryInfo.getStart(), curentLimit);
 		}
+		if(parameterValues.size() != parameters.size()){
+			throw new IllegalArgumentException("Not all parameters are bound");
+		}
 		return persistor.selectQuery(qi, parameterValues);
 	}
 

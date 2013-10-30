@@ -25,12 +25,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 import org.mestor.context.EntityContext;
 import org.mestor.entities.Person;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
@@ -135,23 +137,23 @@ public class CqlQueryFactoryTest {
 
 	@Test
 	public void testSimpleSelectOneFieldWhereLikeExact() {
-		testWhereLike("=", "John", "SELECT name FROM \"TestKeySpace\".person WHERE name='John';");
+		testWhereLike("=", "John");
 	}
 
 	@Test
 	public void testSimpleSelectOneFieldWhereLikeStartsWith() {
-		testWhereLike(">=", "John%", "SELECT name FROM \"TestKeySpace\".person WHERE name>='John';");
+		testWhereLike(">=", "John%");
 	}
 
 	//TODO: this case can be solved using column with reversed value
 	@Test(expected=UnsupportedOperationException.class)
 	public void testSimpleSelectOneFieldWhereLikeEndsWith() {
-		testWhereLike(">=", "%John", "SELECT name FROM \"TestKeySpace\".person WHERE name like '%John';");
+		testWhereLike(">=", "%John");
 	}
 
 	@Test(expected=UnsupportedOperationException.class)
 	public void testSimpleSelectOneFieldWhereLikeContains() {
-		testWhereLike(">=", "%John%", "SELECT name FROM \"TestKeySpace\".person WHERE name like '%John%';");
+		testWhereLike(">=", "%John%");
 	}
 
 	@Test(expected=UnsupportedOperationException.class)
@@ -214,32 +216,56 @@ public class CqlQueryFactoryTest {
 
 
 	private void testSimpleSelectOneFieldWhere(final Operand operand, final String op) {
-		testSimpleSelectOneFieldWhere(operand, op, "John", "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'John';");
+		testSimpleSelectOneFieldWhere(operand, "John", "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'John';");
 	}
 
-	private void testWhereLike(final String op, final String value, final String expectedQl) {
-		testSimpleSelectOneFieldWhere(Operand.LIKE, op, value, "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'" + value + "';");
+	private void testWhereLike(final String op, final String value) {
+		testSimpleSelectOneFieldWhere(Operand.LIKE, value, "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'" + value + "';");
 	}
 
+	@Test(expected=IllegalArgumentException.class)
+	public void testWhereParameterNotBound() {
+		testSimpleSelectOneFieldWhere(
+				Operand.EQ, 
+				new ArgumentInfo<String>("name", null), 
+				"SELECT name FROM \"TestKeySpace\".person WHERE name='';");
+	}
 
+	@Test
+	public void testWhereParameterBound() {
+		testCreateQuery(new QueryInfo(
+				QueryType.SELECT, 
+				Collections.singletonList("name"), 
+				"person", 
+				new ClauseInfo("name", Operand.EQ, new ArgumentInfo<String>("name", null)), 
+			null, 
+			null),
+			Arrays.asList(new String[]{"SELECT name FROM \"TestKeySpace\".person WHERE name='John';"}),
+			Collections.<String, Object>singletonMap("name", "John"));
+	}
 
-	private void testSimpleSelectOneFieldWhere(final Operand operand, final String op, final String value, final String expectedQl) {
+	private void testSimpleSelectOneFieldWhere(final Operand operand, final Object value, final String expectedQl) {
 		testCreateQuery(
-				new QueryInfo(QueryType.SELECT, Collections.singletonList("name"), "person",
-				new ClauseInfo("name", operand, value),
+				new QueryInfo(QueryType.SELECT, 
+						Collections.singletonList("name"), 
+						"person",
+						new ClauseInfo("name", operand, value),
 				null,
 				null),
 				expectedQl);
 	}
 
-
 	private void testCreateQuery(final QueryInfo query, final String ... expected) {
 		testCreateQuery(query, Arrays.asList(expected));
 	}
-
+	
 	private void testCreateQuery(final QueryInfo query, final Collection<String> expected) {
+		testCreateQuery(query, expected, null);
+	}
+	
+	private void testCreateQuery(final QueryInfo query, final Collection<String> expected, final Map<String, Object> paramValues) {
 		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
-		final Collection<CompiledQuery> queries = factory.createQuery(query, null);
+		final Collection<CompiledQuery> queries = factory.createQuery(query, paramValues);
 		final Collection<String> queryStatements = new ArrayList<String>();
 		for (final CompiledQuery q : queries) {
 			queryStatements.add(q.getCqlQuery());

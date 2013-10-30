@@ -50,6 +50,20 @@ public class HostClusterTest {
 			createHostCluster(em, id);
 		}
 		testSelectSorted(sortedIds, em);
+		testSelectCount(ids, em);
+		testSelectByName(ids, em);
+	}
+
+	private void testSelectByName(final Long[] ids, final EntityManager em) {
+		final TypedQuery<HostCluster> q = em.createNamedQuery("findHostClusterByName", HostCluster.class);
+		q.setParameter("name", String.valueOf(ids[2]));
+		final List<HostCluster> resultList = q.getResultList();
+		assertEquals(1, resultList.size());
+		final HostCluster hc = resultList.get(0);
+		assertEquals(ids[2], hc.getId());
+	}
+
+	private void testSelectCount(final Long[] ids, final EntityManager em) {
 		final TypedQuery<Long> q = em.createNamedQuery("countHostClusters", Long.class);
 		final List<Long> resultList = q.getResultList();
 		assertEquals(1, resultList.size());

@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
@@ -67,12 +68,14 @@ public class CqlQueryFactory {
 
 	public Collection<CompiledQuery> createQuery(final QueryInfo query,
 			final Map<String, Object> parameterValues) {
-		return createQuery(query, new ArrayList<CompiledQuery>(), parameterValues);
+		final List<CompiledQuery> res = new ArrayList<CompiledQuery>();
+		createQuery(query, res, parameterValues);
+		return res;
 	}
 
 
 
-	private Collection<CompiledQuery> createQuery(final QueryInfo query, final Collection<CompiledQuery> qls,
+	private void createQuery(final QueryInfo query, final Collection<CompiledQuery> qls,
 			final Map<String, Object> parameterValues) {
 		final ClauseInfo where = query.getWhere();
 		final String entityName = getSingleFrom(query);
@@ -175,7 +178,6 @@ public class CqlQueryFactory {
 		}
 
 		qls.add(new CompiledQuery(statement.getQueryString(), query, resultType));
-		return qls;
 	}
 
 
@@ -234,10 +236,17 @@ public class CqlQueryFactory {
 			expression = "subquery(" + (qls.size() - 1) + ")";
 		}
 
-		Object value = expression;
 		final String field = where.getField();
-		if(parameterValues != null && parameterValues.containsKey(field)){
-			value = parameterValues.get(field);
+		final Object value;
+		if(expression instanceof ArgumentInfo){
+			final ArgumentInfo<?> ai = (ArgumentInfo<?>)expression;
+			if(parameterValues != null && parameterValues.containsKey(field)){
+				value = parameterValues.get(field);
+			} else {
+				throw new IllegalArgumentException("Parameter is not bound: " + ai.getName());
+			}
+		} else {
+			value = expression;
 		}
 		
 		final String column = getColumnName(emd, field);
