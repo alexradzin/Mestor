@@ -14,31 +14,32 @@
 /*                                                                                                    */
 /*                                                                                                    */
 /******************************************************************************************************/
+package org.mestor.persistence.cql.query;
 
-package org.mestor.entities.queries;
+import org.mestor.query.QueryInfo;
 
-import javax.persistence.Entity;
-import javax.persistence.NamedQueries;
-import javax.persistence.NamedQuery;
+public class CompiledQuery {
+	private final String cqlQuery;
+	private final QueryInfo queryInfo;
+	private final Class<?> resultType;
 
-import org.mestor.entities.annotated.AbstractEntity;
-
-@Entity
-@NamedQueries({ 
-	@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectById", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectCount", query = "SELECT COUNT(e) FROM NamedQueriesEntity e"),
-	@NamedQuery(name = "selectAfterId", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC")
-})
-@NamedQuery(name = "selectOlderThan", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC")
-public class NamedQueriesEntity extends AbstractEntity {
-	private String name;
-	
-	public String getName() {
-		return name;
+	public CompiledQuery(final String cqlQuery, final QueryInfo queryInfo, final Class<?> resultType) {
+		super();
+		this.cqlQuery = cqlQuery;
+		this.queryInfo = queryInfo;
+		this.resultType = resultType;
 	}
 
-	public void setName(final String name) {
-		this.name = name;
+	public String getCqlQuery() {
+		return cqlQuery;
 	}
+
+	public QueryInfo getQueryInfo() {
+		return queryInfo;
+	}
+
+	public Class<?> getResultType() {
+		return resultType;
+	}
+
 }

@@ -14,31 +14,28 @@
 /*                                                                                                    */
 /*                                                                                                    */
 /******************************************************************************************************/
+package org.mestor.entities.integration;
 
-package org.mestor.entities.queries;
 
-import javax.persistence.Entity;
-import javax.persistence.NamedQueries;
-import javax.persistence.NamedQuery;
+public class HostClusterId {
+	private Integer fakeId = 0;
 
-import org.mestor.entities.annotated.AbstractEntity;
+	private Long id;
 
-@Entity
-@NamedQueries({ 
-	@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectById", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectCount", query = "SELECT COUNT(e) FROM NamedQueriesEntity e"),
-	@NamedQuery(name = "selectAfterId", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC")
-})
-@NamedQuery(name = "selectOlderThan", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC")
-public class NamedQueriesEntity extends AbstractEntity {
-	private String name;
-	
-	public String getName() {
-		return name;
+	public Integer getFakeId() {
+		return fakeId;
 	}
 
-	public void setName(final String name) {
-		this.name = name;
+	public void setFakeId(final Integer fakeId) {
+		this.fakeId = fakeId;
 	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(final Long id) {
+		this.id = id;
+	}
+
 }

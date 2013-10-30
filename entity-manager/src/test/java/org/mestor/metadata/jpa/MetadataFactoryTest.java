@@ -230,6 +230,7 @@ public class MetadataFactoryTest {
 		expectedMapQueries.put("selectAfterId", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC");
 		expectedMapQueries.put("selectOlderThan", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC");
 		expectedMapQueries.put("selectById", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC");
+		expectedMapQueries.put("selectCount", "SELECT COUNT(e) FROM NamedQueriesEntity e");
 		assertEquals(expectedMapQueries, mapQueries);
 	}
 

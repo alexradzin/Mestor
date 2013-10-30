@@ -169,6 +169,24 @@ public class EntityManagerTest {
 			em.close();
 		}
 	}
+	
+	@Test
+	public void testNamedQueriesSelectWithCount() {
+		final EntityManager em = getEntityManager("named_queries.xml", "named_queries");
+		try{
+			final int count = 4;
+			createNamedQueriesEntities(count, em);
+			final TypedQuery<Long> selectCount = em.createNamedQuery("selectCount", Long.class);
+			final List<Long> resultList = selectCount.getResultList();
+			assertEquals(1, resultList.size());
+			for(final Long actual : resultList) {
+				assertEquals(actual, Long.valueOf(count));
+			}
+		} finally {
+			em.close();
+		}
+	
+	}
 
 	private void compare(final NamedQueriesEntity actual, final NamedQueriesEntity expected) {
 		assertEquals(expected.getIdentifier(), actual.getIdentifier());

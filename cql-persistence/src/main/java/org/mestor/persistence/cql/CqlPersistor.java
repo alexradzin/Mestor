@@ -58,6 +58,7 @@ import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CommandHelper;
 import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
+import org.mestor.persistence.cql.query.CompiledQuery;
 import org.mestor.persistence.cql.query.CqlQueryFactory;
 import org.mestor.query.QueryInfo;
 import org.mestor.reflection.ClassAccessor;
@@ -107,6 +108,63 @@ public class CqlPersistor implements Persistor {
 			return null;
 		}
 	};
+	/**
+	 * Transforms map of fields to one value
+	 * 
+	 * Map should contain one entry. Key is ignored - only value is returned
+	 * */
+	private final class SimpleMapper<T> implements Function<Map<String, Object>, T> {
+		@Override
+		public T apply(final Map<String, Object> input) {
+			if(input.size() == 0){
+				return null;
+			}
+			if(input.size() != 1){
+				throw new IllegalArgumentException("Wrong field count in result");
+			}
+
+			@SuppressWarnings("unchecked")
+			final T firstValue = (T)input.entrySet().iterator().next().getValue();
+			return firstValue;
+		}
+	}
+	
+	private final class EntityMapper<T> implements Function<Map<String, Object>, T> {
+		private final EntityMetadata<T> emd;
+		private final Class<T> clazz;
+
+		private EntityMapper(final EntityMetadata<T> emd, final Class<T> clazz) {
+			this.emd = emd;
+			this.clazz = clazz;
+		}
+
+		@Override
+		public T apply(final Map<String, Object> data) {
+			final T entity = ClassAccessor.newInstance(clazz);
+
+		    // create fetch context lazily
+		    boolean fetchContextOriginator = false;
+		    if (fetchContext.get() == null) {
+		        fetchContext.set(new TreeMap<Object, Object>(new EntityComparator<Object>(context)));
+		        fetchContextOriginator = true;
+		    }
+
+		    // store the just created instance of entity into fetchContext BEFORE populating of all its properties
+		    // to prevent possible infinite recursion if entity refers to itself either directly or indirectly.
+		    fetchContext.get().put(entity, entity);
+
+		    try {
+		    	populateData(entity, emd, data);
+		    } finally {
+		        if (fetchContextOriginator) {
+		        	fetchContext.remove();
+		        }
+		    }
+
+
+		    return getObjectWrapperFactory(clazz).wrap(entity);
+		}
+	}
 
 
 	/**
@@ -1306,13 +1364,12 @@ public class CqlPersistor implements Persistor {
 		}
 		final CqlQueryFactory cqlQueryFactory = new CqlQueryFactory(context);
 
-		@SuppressWarnings("unchecked")
-		final Pair<String, QueryInfo>[] queries = cqlQueryFactory.createQuery(queryInfo, parameterValues).toArray(new Pair[0]);
+		final Collection<CompiledQuery> queries = cqlQueryFactory.createQuery(queryInfo, parameterValues);
 
         final List<Iterable<Map<String, Object>>> allResults = new ArrayList<>();
-
-		for (int i = 0; i < queries.length; i++) {
-			final QueryInfo currentQueryInfo = queries[i].getValue();
+        Class<?> resultType = null;
+        for(final CompiledQuery cq : queries){
+			final QueryInfo currentQueryInfo = cq.getQueryInfo();
 
 			final String currentEntityName = currentQueryInfo.getFrom().entrySet().iterator().next().getValue();
 			final EntityMetadata<T> currentEmd = context.getEntityMetadata(currentEntityName);
@@ -1320,66 +1377,39 @@ public class CqlPersistor implements Persistor {
 				throw new IllegalArgumentException("Entity " + currentEntityName + " does not exist");
 			}
 
-
-
 	        final Map<String, Class<?>[]> fieldTypes = new HashMap<>();
-	        final Map<String, Object> what = currentQueryInfo.getWhat();
-	        final Collection<String> requestedFields = what == null ? null : what.keySet();
-	        @SuppressWarnings("unused") // return value of this method indeed is not used. But it populates values into fieldTypes
-			final Select.Selection select = selectFields(emd, fieldTypes, requestedFields);
+	        resultType = cq.getResultType();
+	        if(context.getEntityMetadata(resultType) != null) {
+		        final Map<String, Object> what = currentQueryInfo.getWhat();
+		        final Collection<String> requestedFields = what == null ? null : what.keySet();
+		        @SuppressWarnings("unused") // return value of this method indeed is not used. But it populates values into fieldTypes
+				final Select.Selection select = selectFields(emd, fieldTypes, requestedFields);
+	        } else {
+	        	fieldTypes.put("count", new Class<?>[]{resultType});
+	        }
 
 
-			final String cql = queries[i].getKey();
+			final String cql = cq.getCqlQuery();
 			final String nextCql = fixCql(cqlQueryFactory, currentEmd, cql, allResults);
 			final Iterable<Map<String, Object>> result = execute(new SimpleStatement(nextCql), fieldTypes);
 			allResults.add(result);
+			
 		}
-
-
-
 		final Collection<Iterable<Map<String, Object>>> allMainResults =  Collections2.filter(allResults, Predicates.notNull());
-
-
 		if (allMainResults.size() != 1) {
 			throw new UnsupportedOperationException("Join and OR are not supported. TBD");
 		}
 
-
 		final Iterable<Map<String, Object>> queryResults = allMainResults.iterator().next();
-		final Class<T> clazz = emd.getEntityType();
+		final Iterable<T> res;
+		final Class<T> entityType = emd.getEntityType();
+		if(resultType.equals(entityType)){
+			res = Iterables.transform(queryResults, new EntityMapper<T>(emd, entityType));
+		} else {
+			res = Iterables.transform(queryResults, new SimpleMapper<T>());
+		}
 
-
-		final Iterable<T> r = Iterables.transform(queryResults, new Function<Map<String, Object>, T>() {
-			@Override
-			public T apply(final Map<String, Object> data) {
-				final T entity = ClassAccessor.newInstance(clazz);
-
-		        // create fetch context lazily
-		        boolean fetchContextOriginator = false;
-		        if (fetchContext.get() == null) {
-		            fetchContext.set(new TreeMap<Object, Object>(new EntityComparator<Object>(context)));
-		            fetchContextOriginator = true;
-		        }
-
-		        // store the just created instance of entity into fetchContext BEFORE populating of all its properties
-		        // to prevent possible infinite recursion if entity refers to itself either directly or indirectly.
-		        fetchContext.get().put(entity, entity);
-
-		        try {
-		        	populateData(entity, emd, data);
-		        } finally {
-		            if (fetchContextOriginator) {
-		            	fetchContext.remove();
-		            }
-		        }
-
-
-		        return getObjectWrapperFactory(clazz).wrap(entity);
-			}
-		});
-
-
-		return Lists.newLinkedList(r);
+		return Lists.newLinkedList(res);
 	}
 
 

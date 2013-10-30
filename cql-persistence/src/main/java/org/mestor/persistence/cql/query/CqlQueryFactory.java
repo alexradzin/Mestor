@@ -55,7 +55,7 @@ import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Update;
 
 public class CqlQueryFactory {
-	private final static Pattern countPattern = Pattern.compile("count\\([*1]\\)", Pattern.CASE_INSENSITIVE);
+	private final static Pattern countPattern = Pattern.compile("count\\(.*\\)", Pattern.CASE_INSENSITIVE);
 	private final static Pattern subqueryPattern = Pattern.compile("(\\w+)\\s*(?:=|<|>|=|<=|>=|\\s+IN\\s+|\\s+LIKE\\s+)\\s*\\(?\\s*subquery\\((\\d+)\\)\\s*\\)?", Pattern.CASE_INSENSITIVE);
 	private final EntityContext context;
 
@@ -65,21 +65,22 @@ public class CqlQueryFactory {
 	}
 
 
-	public Collection<Pair<String, QueryInfo>> createQuery(final QueryInfo query,
+	public Collection<CompiledQuery> createQuery(final QueryInfo query,
 			final Map<String, Object> parameterValues) {
-		return createQuery(query, new ArrayList<Pair<String, QueryInfo>>(), parameterValues);
+		return createQuery(query, new ArrayList<CompiledQuery>(), parameterValues);
 	}
 
 
 
-	private Collection<Pair<String, QueryInfo>> createQuery(final QueryInfo query, final Collection<Pair<String, QueryInfo>> qls,
+	private Collection<CompiledQuery> createQuery(final QueryInfo query, final Collection<CompiledQuery> qls,
 			final Map<String, Object> parameterValues) {
 		final ClauseInfo where = query.getWhere();
 		final String entityName = getSingleFrom(query);
 		final EntityMetadata<?> emd = context.getEntityMetadata(entityName);
 		final String tableName = emd.getTableName();
 		final String keyspace = emd.getSchemaName();
-		Statement statement;
+		final Statement statement;
+		Class<?> resultType = emd.getEntityType();
 		switch(query.getType()) {
 			case DELETE: {
 				final Delete.Selection delete = delete();
@@ -117,11 +118,14 @@ public class CqlQueryFactory {
 			case SELECT: {
 				final Select.Selection selection = QueryBuilder.select();
 				final Map<String, Object> fields = query.getWhat();
+				
 				if (fields != null) {
-					if (fields.size() == 1 && countPattern.matcher(fields.keySet().iterator().next()).matches()) {
-						// special case for count(*)
-						selection.column(fields.keySet().iterator().next());
-					} else {
+					// special case for count(*)
+					final boolean isCount = isCount(fields); 
+					if (isCount) {
+						selection.column("count(*)");
+						resultType = Long.class;
+					} else{
 						for (final String field : fields.keySet()) {
 							selection.column(getColumnName(emd, field));
 						}
@@ -155,8 +159,6 @@ public class CqlQueryFactory {
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
  					update.with(set(getColumnName(emd, v.getKey()), v.getValue()));
  				}
-				statement = update;
-
 				final Update.Where updateWhere = update.where();
 				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
 				if (clauses != null) {
@@ -172,10 +174,19 @@ public class CqlQueryFactory {
 
 		}
 
-
-		qls.add(new Pair<String, QueryInfo>(statement.getQueryString(), query));
-
+		qls.add(new CompiledQuery(statement.getQueryString(), query, resultType));
 		return qls;
+	}
+
+
+	private boolean isCount(final Map<String, Object> fields) {
+		if (fields.size() == 1) {
+			final Object firstValue = fields.values().iterator().next();
+			if(firstValue instanceof String){
+				return countPattern.matcher((String)firstValue).matches();
+			}
+		}
+		return false;
 	}
 
 
@@ -200,7 +211,7 @@ public class CqlQueryFactory {
 
 	private Collection<Clause> createClause(final EntityMetadata<?> emd, 
 			final ClauseInfo where, 
-			final Collection<Pair<String, QueryInfo>> qls,
+			final Collection<CompiledQuery> qls,
 			final Map<String, Object> parameterValues) {
 		if (where == null) {
 			return null;

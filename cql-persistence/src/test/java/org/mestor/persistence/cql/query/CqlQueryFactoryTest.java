@@ -115,8 +115,11 @@ public class CqlQueryFactoryTest {
 
 	@Test
 	public void testCountSelect() {
-		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonList("count(*)"), "person", null, null, null), "SELECT count(*) FROM \"TestKeySpace\".person;");
-		testCreateQuery(new QueryInfo(QueryType.SELECT, Collections.singletonList("count(1)"), "person", null, null, null), "SELECT count(1) FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, 
+				Collections.<String, Object>singletonMap("count(*)", "count(*)"), 
+				Collections.singletonMap("person", "person"),
+				null, null, null),
+				"SELECT count(*) FROM \"TestKeySpace\".person;");
 	}
 
 
@@ -236,10 +239,10 @@ public class CqlQueryFactoryTest {
 
 	private void testCreateQuery(final QueryInfo query, final Collection<String> expected) {
 		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
-		final Collection<Pair<String, QueryInfo>> queries = factory.createQuery(query, null);
+		final Collection<CompiledQuery> queries = factory.createQuery(query, null);
 		final Collection<String> queryStatements = new ArrayList<String>();
-		for (final Pair<String, QueryInfo> q : queries) {
-			queryStatements.add(q.getKey());
+		for (final CompiledQuery q : queries) {
+			queryStatements.add(q.getCqlQuery());
 		}
 		assertEquals(expected, queryStatements);
 	}
