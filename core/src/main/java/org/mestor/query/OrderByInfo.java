@@ -27,17 +27,14 @@ public class OrderByInfo {
 		ASC, DSC;
 	}
 
-
 	public OrderByInfo(final String field, final Order order) {
 		this.field = field;
 		this.order = order;
 	}
 
-
 	public String getField() {
 		return field;
 	}
-
 
 	public Order getOrder() {
 		return order;
@@ -48,7 +45,7 @@ public class OrderByInfo {
 		if (obj == null || !(obj instanceof OrderByInfo)) {
 			return false;
 		}
-		return equals((OrderByInfo)obj);
+		return equals((OrderByInfo) obj);
 	}
 
 	public boolean equals(final OrderByInfo other) {

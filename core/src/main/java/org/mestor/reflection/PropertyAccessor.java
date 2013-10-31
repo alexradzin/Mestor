@@ -182,7 +182,9 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	public Annotation[] getAnnotations() {
 		final List<Annotation> annotations = new ArrayList<>();
 		for (final AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
-			annotations.addAll(Arrays.asList(ae.getAnnotations()));
+			if (ae != null) {
+				annotations.addAll(Arrays.asList(ae.getAnnotations()));
+			}
 		}
 		return annotations.toArray(new Annotation[annotations.size()]);
 	}
@@ -193,7 +195,9 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	public Annotation[] getDeclaredAnnotations() {
 		final List<Annotation> annotations = new ArrayList<>();
 		for (final AnnotatedElement ae : new AnnotatedElement[] {field, getter}) {
-			annotations.addAll(Arrays.asList(ae.getDeclaredAnnotations()));
+			if (ae != null) {
+				annotations.addAll(Arrays.asList(ae.getDeclaredAnnotations()));
+			}
 		}
 		return annotations.toArray(new Annotation[annotations.size()]);
 	}

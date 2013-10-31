@@ -47,6 +47,7 @@ import org.mestor.entities.queries.DuplicateNamedQueriesEntity;
 import org.mestor.entities.queries.DuplicateNamedQueriesEntity_2;
 import org.mestor.entities.queries.NamedQueriesEntity;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldRole;
 
 /**
  * This test case contains tests that use annotations to extract metadata of given entities
@@ -242,6 +243,17 @@ public class MetadataFactoryTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testDuplicateNamedQueries_2() {
 		MetadataFactoryTestUtils.testJpaAnnotations(DuplicateNamedQueriesEntity_2.class);
+	}
+
+
+	@Test
+	public void testNamedQueriesEntity() {
+		final Map<String, FieldRole[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+				"identifier", new FieldRole[] { FieldRole.PRIMARY_KEY, FieldRole.FILTER, FieldRole.SORTER },
+				"lastModified", new FieldRole[] { FieldRole.FILTER }
+		);
+
+		MetadataFactoryTestUtils.testFieldRoles(NamedQueriesEntity.class, expected);
 	}
 
 }

@@ -29,10 +29,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 import javax.persistence.AttributeConverter;
@@ -73,6 +76,10 @@ import org.mestor.metadata.jpa.conversion.IndexedFieldConverter;
 import org.mestor.metadata.jpa.conversion.PrimaryKeyConverter;
 import org.mestor.metadata.jpa.conversion.SerializableConverter;
 import org.mestor.metadata.jpa.conversion.ValueAttributeConverter;
+import org.mestor.query.ClauseInfo;
+import org.mestor.query.CriteriaLanguageParser;
+import org.mestor.query.OrderByInfo;
+import org.mestor.query.QueryInfo;
 import org.mestor.reflection.Access;
 import org.mestor.reflection.CompositePropertyAccessor;
 import org.mestor.reflection.FieldAccessor;
@@ -80,8 +87,10 @@ import org.mestor.reflection.MethodAccessor;
 import org.mestor.reflection.PropertyAccessor;
 import org.mestor.reflection.jpa.DiscriminatorValueAccess;
 
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.Collections2;
 import com.google.common.primitives.Primitives;
 
 @DiscriminatorColumn
@@ -252,6 +261,8 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 		emeta.addAllIndexes(findIndexes(emeta));
 
+		updateFieldAttributes(emeta);
+
 		return emeta;
 	}
 
@@ -344,6 +355,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		AttributeConverter<P, C> converter = null;
 
 		if (oneToMany != null || manyToMany != null) {
+			@SuppressWarnings("unchecked")
 			final FieldMetadata<T, P, C> filterField = (FieldMetadata<T, P, C>)getCollectionElementBackReferenceField(metadata, emd, fmd);
 			setCollectionConverter(filterField, fmd);
 
@@ -816,6 +828,55 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	private <T> void processNamedQuery(final EntityMetadata<T> emeta, final NamedQuery namedQuery) {
 		//TODO add support of other attributes of NamedQuery
 		emeta.addNamedQuery(namedQuery.name(), namedQuery.query());
+	}
+
+	private <T> void updateFieldAttributes(final EntityMetadata<T> entityMetadata) {
+		final CriteriaLanguageParser parser = entityContext.getCriteriaLanguageParser();
+		final Collection<String> filterFields = new HashSet<>();
+		final Collection<String> sorterFields = new HashSet<>();
+
+		for (final String query : entityMetadata.getNamedQueries().values()) {
+			final QueryInfo queryInfo = parser.createCriteria(query, entityMetadata.getEntityType());
+			filterFields.addAll(findFilterFields(queryInfo.getWhere()));
+
+			final Collection<OrderByInfo> orders = queryInfo.getOrders();
+			if (orders != null) {
+				sorterFields.addAll(Collections2.transform(orders, new Function<OrderByInfo, String>() {
+					@Override
+					public String apply(final OrderByInfo info) {
+						return info.getField();
+					}
+				}));
+			}
+		}
+
+		for (final String filterField : filterFields) {
+			entityMetadata.getFieldByName(filterField).setFilter(true);
+		}
+
+		for (final String sorterField : sorterFields) {
+			entityMetadata.getFieldByName(sorterField).setSorter(true);
+		}
+
+	}
+
+	private Collection<String> findFilterFields(final ClauseInfo clause) {
+		return findFilterFields(clause, new LinkedHashSet<String>());
+	}
+
+	private Collection<String> findFilterFields(final ClauseInfo clause, final Set<String> fields) {
+		if (clause == null) {
+			return fields;
+		}
+		final String field = clause.getField();
+		if (field != null) {
+			fields.add(field);
+		}
+		final Object expression = clause.getExpression();
+		if (expression instanceof ClauseInfo) {
+			findFilterFields((ClauseInfo)expression, fields);
+		}
+		return fields;
 	}
 
 }

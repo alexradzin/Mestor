@@ -15,18 +15,30 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.persistence.cql;
 
-/**
- * Role of the field. Each field can theoretically play several roles.
- * @author alexr
- */
-public enum FieldRole {
-	PARTITION_KEY,
-	PRIMARY_KEY,
-	FILTER,
-	SORTER,
-	DISCRIMINATOR,
-	JOINER,
-	;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+
+import org.mestor.query.OrderByInfo;
+
+public class QueryOrderingComparator implements Comparator<Collection<OrderByInfo>> {
+
+	@Override
+	public int compare(final Collection<OrderByInfo> o1, final Collection<OrderByInfo> o2) {
+		final Iterator<OrderByInfo> it1 = o1.iterator();
+		final Iterator<OrderByInfo> it2 = o1.iterator();
+
+		while (it1.hasNext() && it2.hasNext()) {
+			final int comp = it1.next().getField().compareTo(it2.next().getField());
+			if (comp != 0) {
+				return comp;
+			}
+		}
+
+		// all previous elements are equal, so the longest chain is bigger.
+		return Boolean.compare(it1.hasNext(), it2.hasNext());
+	}
+
 }

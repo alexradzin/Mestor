@@ -68,6 +68,7 @@ import org.mestor.persistence.metamodel.MetamodelImpl;
 import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.persistence.query.JpqlParser;
 import org.mestor.persistence.query.QueryImpl;
+import org.mestor.query.CriteriaLanguageParser;
 import org.mestor.util.TypeUtil;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.slf4j.Logger;
@@ -632,7 +633,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public <T> TypedQuery<T> createQuery(final String qlString, final Class<T> resultClass) {
-		return new QueryImpl<T>(new JpqlParser().createCriteria(qlString, resultClass), this);
+		return new QueryImpl<T>(getCriteriaLanguageParser().createCriteria(qlString, resultClass), this);
 	}
 
 	@Override
@@ -729,6 +730,11 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public String getNamedQuery(final String name) {
 		return namedQueries.get(name);
+	}
+
+	@Override
+	public CriteriaLanguageParser getCriteriaLanguageParser() {
+		return new JpqlParser();
 	}
 
 }

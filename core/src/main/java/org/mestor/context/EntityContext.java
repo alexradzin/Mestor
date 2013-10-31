@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.query.CriteriaLanguageParser;
 
 public interface EntityContext {
 	public Map<String, Object> getProperties();
@@ -32,4 +33,5 @@ public interface EntityContext {
 	public Persistor getPersistor();
 	public DirtyEntityManager getDirtyEntityManager();
 	public Collection<Class<?>> getNativeTypes();
+	public CriteriaLanguageParser getCriteriaLanguageParser();
 }

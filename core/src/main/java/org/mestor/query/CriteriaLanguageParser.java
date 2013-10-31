@@ -15,18 +15,8 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.query;
 
-/**
- * Role of the field. Each field can theoretically play several roles.
- * @author alexr
- */
-public enum FieldRole {
-	PARTITION_KEY,
-	PRIMARY_KEY,
-	FILTER,
-	SORTER,
-	DISCRIMINATOR,
-	JOINER,
-	;
+public interface CriteriaLanguageParser {
+	public <T> QueryInfo createCriteria(final String qlString, final Class<T> resultClass);
 }

@@ -15,18 +15,66 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.metadata;
+package org.mestor.reflection;
 
-/**
- * Role of the field. Each field can theoretically play several roles.
- * @author alexr
- */
-public enum FieldRole {
-	PARTITION_KEY,
-	PRIMARY_KEY,
-	FILTER,
-	SORTER,
-	DISCRIMINATOR,
-	JOINER,
-	;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Modifier;
+
+public class ConstantValueAccess <T, V> implements Access<T, V, AccessibleObject> {
+	private final V value;
+
+	public ConstantValueAccess(final V value) {
+		this.value = value;
+	}
+
+	@Override
+	public V get(final T instance) {
+		return value;
+	}
+
+	@Override
+	public void set(final T instance, final V parameter) {
+		// Nothing to do. This is a constant value
+	}
+
+	@Override
+	public boolean isAnnotationPresent(final Class<? extends Annotation> annotationClass) {
+		return false;
+	}
+
+	@Override
+	public <N extends Annotation> N getAnnotation(final Class<N> annotationClass) {
+		return null;
+	}
+
+	@Override
+	public Annotation[] getAnnotations() {
+		return null;
+	}
+
+	@Override
+	public Annotation[] getDeclaredAnnotations() {
+		return null;
+	}
+
+	@Override
+	public Class<?> getDeclaringClass() {
+		return null;
+	}
+
+	@Override
+	public String getName() {
+		return "$constant";
+	}
+
+	@Override
+	public int getModifiers() {
+		return Modifier.PUBLIC;
+	}
+
+	@Override
+	public boolean isSynthetic() {
+		return true;
+	}
 }

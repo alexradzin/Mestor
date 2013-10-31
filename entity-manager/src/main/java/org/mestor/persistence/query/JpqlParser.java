@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
+import org.mestor.query.CriteriaLanguageParser;
 import org.mestor.query.OrderByInfo;
 import org.mestor.query.OrderByInfo.Order;
 import org.mestor.query.QueryInfo;
@@ -39,7 +40,7 @@ import org.mestor.query.QueryInfo.QueryType;
 
 import com.google.common.collect.ObjectArrays;
 
-public class JpqlParser {
+public class JpqlParser implements CriteriaLanguageParser {
 	private final static Pattern selectPattern = Pattern.compile("^(SELECT)\\s+(.+)\\s+(FROM)\\s+(.*)", Pattern.CASE_INSENSITIVE);
 	private final static Pattern updatePattern = Pattern.compile("^(UPDATE)\\s+(.+).*$", Pattern.CASE_INSENSITIVE); //TBD
 	private final static Pattern deletePattern = Pattern.compile("^(DELETE)\\s+(FROM)\\s+(.*)", Pattern.CASE_INSENSITIVE); //TBD
@@ -65,6 +66,7 @@ public class JpqlParser {
 
 
 
+	@Override
 	public <T> QueryInfo createCriteria(final String qlString, final Class<T> resultClass) {
 		for (final Entry<Pattern, QueryType> queryDef : queryTypes.entrySet()) {
 			Matcher m = queryDef.getKey().matcher(qlString);
@@ -127,7 +129,7 @@ public class JpqlParser {
 
 					orderDef = new String[] {fieldName, Order.ASC.name()};
 				}
-				orders.add(new OrderByInfo(orderDef[0], Order.valueOf(orderDef[1].toUpperCase())));
+				orders.add(new OrderByInfo(getFieldName(orderDef[0]), Order.valueOf(orderDef[1].toUpperCase())));
 			}
 		}
 

@@ -196,10 +196,8 @@ public class BeanMetadataFactory implements MetadataFactory {
 			findIndexes(entityMetadata, fmeta.getAccessor().getGetter(), fmeta.getName(), indexes);
 		}
 
-
 		return indexes.values();
 	}
-
 
 
 	private <T> void findIndexes(final EntityMetadata<T> entityMetadata, final AnnotatedElement ae, final String fieldName, final Map<String, IndexMetadata<T>> indexes) {
