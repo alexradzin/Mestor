@@ -65,7 +65,6 @@ public class QueryFunction<R, A> implements Function<A, R> {
 		@Override
 		public Double apply(final Number input) {
 			avg = ((avg * count) + input.longValue()) / ++count;
-			System.out.println("avg:" + avg);
 			return avg;
 		}
 	};
@@ -99,6 +98,34 @@ public class QueryFunction<R, A> implements Function<A, R> {
 			return input == null ? null : input.trim();
 		}
 	};
+
+
+	public final static QueryFunction<Number, Number> ABS = new QueryFunction<Number, Number>(false, Number.class, Number.class) {
+		@Override
+		public Number apply(final Number input) {
+			final Class<?> clazz = input.getClass();
+			if (Long.class.equals(clazz) || Long.class.equals(clazz)) {
+				return Math.abs(input.longValue());
+			}
+			if (Integer.class.equals(clazz) || int.class.equals(clazz)) {
+				return Math.abs(input.intValue());
+			}
+			if (Short.class.equals(clazz) || short.class.equals(clazz)) {
+				return Math.abs(input.shortValue());
+			}
+			if (Byte.class.equals(clazz) || byte.class.equals(clazz)) {
+				return Math.abs(input.byteValue());
+			}
+			if (Double.class.equals(clazz) || double.class.equals(clazz)) {
+				return Math.abs(input.doubleValue());
+			}
+			if (Float.class.equals(clazz) || float.class.equals(clazz)) {
+				return Math.abs(input.floatValue());
+			}
+			throw new IllegalArgumentException(clazz.getName());
+		}
+	};
+
 
 
 	private final static Map<String, QueryFunction<?,?>> functions = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -169,6 +196,10 @@ public class QueryFunction<R, A> implements Function<A, R> {
 
 	public Class<R> getReturnType() {
 		return returnType;
+	}
+
+	public Class<A> getArgumentType() {
+		return argumentType;
 	}
 
 	public String name() {
