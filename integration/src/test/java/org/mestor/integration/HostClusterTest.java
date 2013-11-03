@@ -30,9 +30,12 @@ import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.em.MestorProperties;
 import org.mestor.entities.integration.HostCluster;
 
+@RunWith(CassandraAwareTestRunner.class)
 public class HostClusterTest {
 
 	// FIXME: duplicate EntityManagerTest.getEntityManager

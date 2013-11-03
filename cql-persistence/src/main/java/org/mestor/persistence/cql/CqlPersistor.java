@@ -53,6 +53,7 @@ import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.metadata.ValueConverter;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
+import org.mestor.persistence.cql.function.QueryFunction;
 import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CommandHelper;
@@ -60,8 +61,11 @@ import org.mestor.persistence.cql.management.CreateTable;
 import org.mestor.persistence.cql.management.CreateTable.FieldAttribute;
 import org.mestor.persistence.cql.query.CompiledQuery;
 import org.mestor.persistence.cql.query.CqlQueryFactory;
+import org.mestor.query.CriteriaLanguageParser;
+import org.mestor.query.OrderByInfo;
 import org.mestor.query.QueryInfo;
 import org.mestor.reflection.ClassAccessor;
+import org.mestor.reflection.ConstantValueAccess;
 import org.mestor.util.CollectionUtils;
 import org.mestor.util.Pair;
 import org.mestor.wrap.ObjectWrapperFactory;
@@ -100,6 +104,11 @@ public class CqlPersistor implements Persistor {
 
 	private Map<String, Object> defaultKeyspaceProperties;
 
+	private final String partitionFieldName;
+	private final Object partitionFieldValue;
+
+	private final Map<String, EntityMetadata<?>> orderedSearch = new HashMap<>();
+
 
 	private final Function<Query, Void> sessionHandler = new Function<Query, Void>() {
 		@Override
@@ -110,7 +119,7 @@ public class CqlPersistor implements Persistor {
 	};
 	/**
 	 * Transforms map of fields to one value
-	 * 
+	 *
 	 * Map should contain one entry. Key is ignored - only value is returned
 	 * */
 	private final class SimpleMapper<T> implements Function<Map<String, Object>, T> {
@@ -128,7 +137,7 @@ public class CqlPersistor implements Persistor {
 			return firstValue;
 		}
 	}
-	
+
 	private final class EntityMapper<T> implements Function<Map<String, Object>, T> {
 		private final EntityMetadata<T> emd;
 		private final Class<T> clazz;
@@ -193,6 +202,10 @@ public class CqlPersistor implements Persistor {
 		final Integer port = CqlPersistorProperties.CASSANDRA_PORT.getValue(properties);
 		final String[] hosts = CqlPersistorProperties.CASSANDRA_HOSTS.getValue(properties);
 
+		final Object[] partitionData = CqlPersistorProperties.PARTITION_KEY.getValue(properties);
+		partitionFieldName = (String)partitionData[0];
+		partitionFieldValue = partitionData[1];
+
 		final Cluster.Builder clusterBuilder = Cluster.builder();
 		if (port != null) {
 			clusterBuilder.withPort(port);
@@ -244,8 +257,13 @@ public class CqlPersistor implements Persistor {
 			}
 		}
 
+		boolean partitionKeyPresents = false;
+
 		for (final FieldMetadata<E, Object, ?> fmd : allFields) {
 			String name = fmd.getColumn();
+			if (fmd.isPartitionKey()) {
+				partitionKeyPresents = true;
+			}
 			if (name == null) {
 				if(fmd.isDiscriminator()) {
 					// find column name in parent class
@@ -286,6 +304,11 @@ public class CqlPersistor implements Persistor {
 			if (value != null) {
 				insert.value(quote(name), value);
 			}
+		}
+
+		if(!partitionKeyPresents) {
+			// This can happen for entities that do not have their own table, e.g. because of inheritance with single table strategy.
+			insert.value(partitionFieldName, partitionFieldValue);
 		}
 
 		insert.setConsistencyLevel(ConsistencyLevel.ONE);
@@ -729,6 +752,9 @@ public class CqlPersistor implements Persistor {
 
 		boolean discriminator = false;
 		final Collection<Clause> clause = new ArrayList<>();
+		if (partitionFieldName != null) {
+			clause.add(eq(quote(partitionFieldName), partitionFieldValue));
+		}
 		if (dmd != null && dmd.getColumn() != null) {
 			final String discriminatorColumn = dmd.getColumn();
 			final Object discriminatorValue = dmd.getDefaultValue();
@@ -828,7 +854,7 @@ public class CqlPersistor implements Persistor {
 		final Object columnValue = fmd.getConverter().toColumn(value);
 		where.and(eq(quote(column), columnValue));
 
-		return execute(where, fields);
+		return execute(where, fields, Collections.<String, Function<?,?>[]>emptyMap());
 	}
 
 
@@ -927,12 +953,20 @@ public class CqlPersistor implements Persistor {
 			return;
 		}
 
+		updateEntityMetadata(entityMetadata);
 
 		final CreateTable table = CommandBuilder.createTable()
 				.named(tableName)
 				.in(entityMetadata.getSchemaName()).with(properties);
 
+
 		final Collection<String> indexedColumns = getIndexedColumns(entityMetadata);
+
+		for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+			if(fmd.isPartitionKey()) {
+				addColumn(table, fmd, indexedColumns);
+			}
+		}
 
 		final FieldMetadata<E, ?, ?> pkmd = entityMetadata.getPrimaryKey();
 		if (pkmd != null) {
@@ -943,7 +977,9 @@ public class CqlPersistor implements Persistor {
 		}
 
 		for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
-			addColumn(table, fmd, indexedColumns);
+			if(!fmd.isPartitionKey()) {
+				addColumn(table, fmd, indexedColumns);
+			}
 		}
 
 		queryHandler.apply(table);
@@ -1056,8 +1092,8 @@ public class CqlPersistor implements Persistor {
 	// }
 
 	private Iterable<Map<String, Object>> execute(final Query query,
-			final Map<String, Class<?>[]> fields) {
-		return transform(session.execute(query), new RowSplitter(fields));
+			final Map<String, Class<?>[]> fields, final Map<String, Function<?,?>[]> transformers) {
+		return transform(session.execute(query), new RowSplitter(fields, transformers));
 	}
 
 	private <E> FieldAttribute[] getFieldAttributes(final FieldMetadata<E, ?, ?> fmd,
@@ -1097,6 +1133,9 @@ public class CqlPersistor implements Persistor {
 			createTable(queryHandler, entityMetadata, properties);
 			return;
 		}
+
+		updateEntityMetadata(entityMetadata);
+
 
 		// table already exists
 
@@ -1372,18 +1411,56 @@ public class CqlPersistor implements Persistor {
 			final QueryInfo currentQueryInfo = cq.getQueryInfo();
 
 			final String currentEntityName = currentQueryInfo.getFrom().entrySet().iterator().next().getValue();
-			final EntityMetadata<T> currentEmd = context.getEntityMetadata(currentEntityName);
+			EntityMetadata<T> currentEmd = context.getEntityMetadata(currentEntityName);
 			if (currentEmd == null) {
 				throw new IllegalArgumentException("Entity " + currentEntityName + " does not exist");
 			}
 
 	        final Map<String, Class<?>[]> fieldTypes = new HashMap<>();
 	        resultType = cq.getResultType();
+	        final Map<String, Function<?,?>[]> transformers = new HashMap<>();
 	        if(context.getEntityMetadata(resultType) != null) {
 		        final Map<String, Object> what = currentQueryInfo.getWhat();
 		        final Collection<String> requestedFields = what == null ? null : what.keySet();
 		        @SuppressWarnings("unused") // return value of this method indeed is not used. But it populates values into fieldTypes
 				final Select.Selection select = selectFields(emd, fieldTypes, requestedFields);
+
+		        if (what != null) {
+		        	//final List<QueryFunction<?,?>> aggregationFunctions = new ArrayList<>();
+		        	final List<Pair<FieldMetadata<?,?,?>, QueryFunction<?,?>>> aggregationFunctions = new ArrayList<>();
+			        for (final Entry<String, Object> w : what.entrySet()) {
+			        	final String f = w.getKey();
+			        	final Object v = w.getValue();
+			        	if (!(v instanceof String)) {
+			        		continue;
+			        	}
+			        	final QueryFunction<?,?>[] functions = getFunctions((String)v);
+			        	final FieldMetadata<T, ?, ?> fmd = emd.getFieldByName(f);
+			        	transformers.put(fmd.getColumn(), functions);
+
+			        	for (final QueryFunction<?,?> function : functions) {
+			        		if (function.isAggregation()) {
+			        			aggregationFunctions.add(new Pair(fmd, function));
+			        		}
+			        	}
+			        }
+
+			        if (aggregationFunctions.size() > 1) {
+			        	throw new IllegalArgumentException("Only one aggregation function per query is supported");
+			        }
+
+			        if (aggregationFunctions.size() == 1) {
+			        	final Pair<FieldMetadata<?,?,?>, QueryFunction<?,?>> aggregationFunctionDef = aggregationFunctions.get(0);
+			        	final Class<?> clazz = aggregationFunctionDef.getValue().getReturnType();
+			        	currentEmd = new EntityMetadata(clazz);
+			        	final FieldMetadata<?, ?, ?> originalFmd = aggregationFunctionDef.getKey();
+			        	final FieldMetadata<?, ?, ?> fmd = new FieldMetadata<>(clazz, clazz, originalFmd.getName());
+			        	fmd.setColumn(originalFmd.getColumn());
+			        	resultType = clazz;
+			        	cq.setAggregation(true);
+			        }
+		        }
+
 	        } else {
 	        	fieldTypes.put("count", new Class<?>[]{resultType});
 	        }
@@ -1391,9 +1468,17 @@ public class CqlPersistor implements Persistor {
 
 			final String cql = cq.getCqlQuery();
 			final String nextCql = fixCql(cqlQueryFactory, currentEmd, cql, allResults);
-			final Iterable<Map<String, Object>> result = execute(new SimpleStatement(nextCql), fieldTypes);
-			allResults.add(result);
-			
+			final Iterable<Map<String, Object>> result = execute(new SimpleStatement(nextCql), fieldTypes, transformers);
+			if (cq.isAggregation()) {
+				Map<String, Object> row = null;
+				for (final Iterator<Map<String, Object>> it = result.iterator(); it.hasNext();) {
+					row = it.next();
+				}
+				allResults.add(Collections.singleton(row));
+			} else {
+				allResults.add(result);
+			}
+
 		}
 		final Collection<Iterable<Map<String, Object>>> allMainResults =  Collections2.filter(allResults, Predicates.notNull());
 		if (allMainResults.size() != 1) {
@@ -1477,5 +1562,195 @@ public class CqlPersistor implements Persistor {
 	public void close() throws IOException {
     	session.shutdown();
     	cluster.shutdown();
+    }
+
+    /**
+     * This method "fixes" received metadata according to special needs of Cassandra.
+     * For example it adds partition key, adds implicit indexes, and key fields.
+     *
+     * @param entityMetadata
+     */
+    private <E> void updateEntityMetadata(final EntityMetadata<E> entityMetadata) {
+    	// find order by sequences. Add fields of first sequence to to primary key list. Create search tables for other sequences.
+    	// find filter fields. Add them to indexes (if they were not added yet).
+    	// duplicate all key fields. Add suffix _pk. Make them references to the "real" indexed field
+
+    	if (partitionFieldName != null) {
+    		addFiledIfDoesNotExist(entityMetadata, createPartitionField(entityMetadata.getEntityType()), 0);
+    	}
+
+    	final FieldMetadata<E, ?, ?> realPrimaryKey = entityMetadata.getPrimaryKey();
+
+    	final List<Collection<OrderByInfo>> orders = new ArrayList<>();
+
+    	final Class<E> entityType = entityMetadata.getEntityType();
+		final CriteriaLanguageParser parser = context.getCriteriaLanguageParser();
+    	for (final String jpql : entityMetadata.getNamedQueries().values()) {
+    		final QueryInfo query = parser.createCriteria(jpql, entityType);
+    		final Collection<OrderByInfo> order = query.getOrders();
+    		if (order != null) {
+    			orders.add(order);
+    		}
+    	}
+
+    	Collections.sort(orders, new QueryOrderingComparator());
+    	purgeSubOrders(orders);
+
+    	if (!orders.isEmpty()) {
+    		final Collection<OrderByInfo> primaryOrder = orders.get(0);
+    		for (final OrderByInfo order : primaryOrder) {
+    			final FieldMetadata<E, ?, ?> fmd = entityMetadata.getFieldByName(order.getField());
+    			fmd.setKey(true);
+    		}
+    	}
+
+    	if (orders.size() > 1) {
+    		for (int i = 1; i < orders.size(); i++) {
+    			final EntityMetadata<E> searchTableMetadata = new EntityMetadata<>(entityType);
+    			final Collection<OrderByInfo> order = orders.get(i);
+    			for (final OrderByInfo o : order) {
+    				final FieldMetadata<E, ?, ?> fmd = entityMetadata.getFieldByName(o.getField());
+    				searchTableMetadata.addField(fmd);
+    			}
+    			searchTableMetadata.addField(realPrimaryKey);
+
+    			final String tableName = createOrderedSearchTableName(entityMetadata, order);
+    			searchTableMetadata.setTableName(tableName);
+    			orderedSearch.put(tableName, searchTableMetadata);
+    		}
+    	}
+
+
+
+
+    	final Set<String> indexedFieldNames = new HashSet<>();
+    	for (final IndexMetadata<E> imd : entityMetadata.getIndexes()) {
+    		indexedFieldNames.addAll(Arrays.asList(imd.getFieldNames()));
+    	}
+
+
+    	final Collection<FieldMetadata<E, ?, ?>> clones = new ArrayList<>();
+    	for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+    		if (!fmd.isKey()) {
+    			continue;
+    		}
+    		// It is a key. Check whether is is a filter.
+    		if (!fmd.isFilter()) {
+    			// It is not a filter, so nothing to do with it.
+    			continue;
+    		}
+
+    		// This is a key used as a filter field. We should split it onto 2 fields - second is a mirror of the first to enable search.
+    		final FieldMetadata<E, ?, ?> clone = new FieldMetadata<>(fmd, fmd.getName(), fmd.getColumn());
+    		clone.setKey(false);
+    		clone.setFilter(true);
+    		clones.add(clone);
+
+
+    		primaryKeyName(entityMetadata, fmd);
+    		fmd.setFilter(false);
+    	}
+    	entityMetadata.addAllFields(clones);
+
+    	for (final FieldMetadata<E, ?, ?> fmd : entityMetadata.getFields()) {
+    		if (fmd.isFilter() && !indexedFieldNames.contains(fmd.getName())) {
+    			entityMetadata.addIndex(fmd);
+    		}
+
+    		if (fmd.isSorter()) {
+    			fmd.setKey(true);
+    		}
+    	}
+    }
+
+    @SuppressWarnings("unchecked")
+	private <E, F, C> FieldMetadata<E, F, C> createPartitionField(final Class<E> clazz) {
+    	final FieldMetadata<E, F, C> fmd = new FieldMetadata<E, F, C>(clazz, (Class<F>)partitionFieldValue.getClass(), (Class<C>)partitionFieldValue.getClass(), partitionFieldName, partitionFieldName, new ConstantValueAccess<E, F>((F)partitionFieldValue));
+    	fmd.setKey(true);
+    	fmd.setPartitionKey(true);
+    	return fmd;
+    }
+
+    private <E, F, C> void addFiledIfDoesNotExist(final EntityMetadata<E> entityMetadata, final FieldMetadata<E, F, C> fieldMetadata, final int index) {
+    	if (entityMetadata.getFieldByName(fieldMetadata.getName()) == null) {
+    		entityMetadata.addField(fieldMetadata, index);
+    	}
+    }
+
+    private void purgeSubOrders(final List<Collection<OrderByInfo>> orders) {
+    	Collection<OrderByInfo> baseOrder = null;
+
+    	for (final Iterator<Collection<OrderByInfo>> it = orders.iterator(); it.hasNext();) {
+    		final Collection<OrderByInfo> order = it.next();
+
+    		if (baseOrder == null) {
+    			baseOrder = order;
+    			break;
+    		}
+
+    		if (startsWith(baseOrder, order)) {
+    			it.remove();
+    			continue;
+    		}
+
+    		baseOrder = order;
+    	}
+    }
+
+    private boolean startsWith(final Collection<OrderByInfo> baseOrder, final Collection<OrderByInfo> order) {
+    	final Iterator<OrderByInfo> bit = baseOrder.iterator();
+    	final Iterator<OrderByInfo> it = order.iterator();
+
+    	while (it.hasNext()) {
+    		if (!bit.hasNext()) {
+    			return false; // order is even longer than baseOrder
+    		}
+    		if (!bit.next().equals(it.next())) {
+    			return false; // we found element in order that is not equal to corresponding element of baseOrder
+    		}
+    	}
+
+    	// we arrived to the end of order and all its elements equal to corresponding elements of baseOrder
+    	return true;
+    }
+
+    private <E> String createOrderedSearchTableName(final EntityMetadata<?> emd, final Collection<OrderByInfo> order) {
+    	return Joiner.on("_").join(
+    			emd.getTableName(),
+    			"search",
+    	    	Collections2.transform(order, new Function<OrderByInfo, String>() {
+    	    		@Override
+    				public String apply(final OrderByInfo info) {
+    	    			return info.getField();
+    	    		}
+    	    	}).toArray()
+    	);
+    }
+
+    private <E, F, C> void primaryKeyName(final EntityMetadata<E> entityMetadata, final FieldMetadata<E, F, C> fmd) {
+    	final String oldName = fmd.getName();
+    	final String oldColumn = fmd.getColumn();
+
+    	fmd.setName(primaryKeyName(fmd.getName()));
+    	fmd.setColumn(primaryKeyName(fmd.getColumn()));
+
+    	entityMetadata.updateField(fmd, oldName, oldColumn);
+    }
+
+    public static String primaryKeyName(final String name) {
+    	return name.endsWith("_pk") ? name : name + "_pk";
+    }
+
+    // length(trim(upper(str))) - > [upper, trim, length]
+    private QueryFunction<?, ?>[] getFunctions(final String spec) {
+    	final String[] parts = spec.split("\\s*\\(\\s*");
+    	final int n = parts.length - 1;
+
+    	final QueryFunction<?, ?>[] functions = new QueryFunction<?, ?>[n];
+    	for (int i = n  - 1; i >=0; i--) {
+    		functions[n - i - 1] = QueryFunction.valueOf(parts[i]);
+    	}
+
+    	return functions;
     }
 }

@@ -35,15 +35,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.persistence.cql.CqlPersistor;
+import org.mestor.persistence.cql.CqlPersistorProperties;
 import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
+import org.mestor.query.OrderByInfo;
 import org.mestor.query.QueryInfo;
 import org.mestor.util.Pair;
 
@@ -51,6 +55,7 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.Clause;
 import com.datastax.driver.core.querybuilder.Delete;
 import com.datastax.driver.core.querybuilder.Insert;
+import com.datastax.driver.core.querybuilder.Ordering;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Update;
@@ -60,9 +65,17 @@ public class CqlQueryFactory {
 	private final static Pattern subqueryPattern = Pattern.compile("(\\w+)\\s*(?:=|<|>|=|<=|>=|\\s+IN\\s+|\\s+LIKE\\s+)\\s*\\(?\\s*subquery\\((\\d+)\\)\\s*\\)?", Pattern.CASE_INSENSITIVE);
 	private final EntityContext context;
 
+	private final String partitionFieldName;
+	private final Object partitionFieldValue;
+
 
 	public CqlQueryFactory(final EntityContext context) {
 		this.context = context;
+
+		final Map<String, Object> properties = context.getProperties();
+		final Object[] partitionData = CqlPersistorProperties.PARTITION_KEY.getValue(properties);
+		partitionFieldName = (String)partitionData[0];
+		partitionFieldValue = partitionData[1];
 	}
 
 
@@ -93,7 +106,7 @@ public class CqlQueryFactory {
 						if (w.getValue() != null) {
 							throw new IllegalArgumentException();
 						}
-						delete.column(getColumnName(emd, w.getKey()));
+						delete.column(getColumnName(emd, w.getKey(), false));
 					}
 				}
 				final Delete.Where cqlWhere = delete.from(quote(keyspace), quote(tableName)).where();
@@ -113,7 +126,7 @@ public class CqlQueryFactory {
  			case INSERT: {
  				final Insert insert = insertInto(quote(keyspace), quote(tableName));
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
- 					insert.value(getColumnName(emd, v.getKey()), v.getValue());
+ 					insert.value(getColumnName(emd, v.getKey(), false), v.getValue());
  				}
 				statement = insert;
 				break;
@@ -121,23 +134,23 @@ public class CqlQueryFactory {
 			case SELECT: {
 				final Select.Selection selection = QueryBuilder.select();
 				final Map<String, Object> fields = query.getWhat();
-				
+
 				if (fields != null) {
 					// special case for count(*)
-					final boolean isCount = isCount(fields); 
+					final boolean isCount = isCount(fields);
 					if (isCount) {
 						selection.column("count(*)");
 						resultType = Long.class;
 					} else{
 						for (final String field : fields.keySet()) {
-							selection.column(getColumnName(emd, field));
+							selection.column(getColumnName(emd, field, false));
 						}
 					}
 				} else {
 					selection.all();
 				}
 
-				
+
 				final Select select = selection.from(quote(keyspace), quote(tableName));
 				final Integer limit = query.getLimit();
 				if (limit != null) {
@@ -147,12 +160,49 @@ public class CqlQueryFactory {
 
 				final Select.Where selectWhere = select.where();
 
-				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
+				final Collection<Ordering> orderings = new ArrayList<>();
+				final Collection<OrderByInfo> orders = query.getOrders();
+				if (orders != null) {
+					for (final OrderByInfo order : orders) {
+						final String field = getKeyColumnName(emd, order.getField());
+						switch(order.getOrder()) {
+							case ASC:
+								orderings.add(QueryBuilder.asc(field));
+								break;
+							case DSC:
+								orderings.add(QueryBuilder.desc(field));
+								break;
+							default:
+								throw new IllegalArgumentException(String.valueOf(order.getOrder()));
+						}
+					}
+				}
+
+				if (!orderings.isEmpty()) {
+					select.orderBy(orderings.toArray(new Ordering[0]));
+				}
+
+				final AtomicBoolean addPartitionClause = new AtomicBoolean(!orderings.isEmpty());
+				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues, !orderings.isEmpty(), addPartitionClause);
+
+				if (addPartitionClause.get()) {
+					selectWhere.and(eq(partitionFieldName, partitionFieldValue));
+				}
+
 				if (clauses != null) {
+					if (clauses.size() > 0) {
+						// Add this just in case although it is not always needed.
+						// ALLOW FILTERING is needed when filtering by more than one indexed field or by primary key when it is composite.
+						// TODO: check whether this may cause performance problems. If yes implement code that adds ALLOW FILTERING only if needed.
+						select.allowFiltering();
+					}
+
+
 					for (final Clause clause : clauses) {
 						selectWhere.and(clause);
 					}
 				}
+
 
 				statement = selectWhere;
 				break;
@@ -160,7 +210,7 @@ public class CqlQueryFactory {
 			case UPDATE: {
 				final Update update = update(quote(keyspace), quote(tableName));
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
- 					update.with(set(getColumnName(emd, v.getKey()), v.getValue()));
+ 					update.with(set(getColumnName(emd, v.getKey(), false), v.getValue()));
  				}
 				final Update.Where updateWhere = update.where();
 				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
@@ -176,6 +226,8 @@ public class CqlQueryFactory {
 				throw new IllegalArgumentException(query.getType().name());
 
 		}
+
+
 
 		qls.add(new CompiledQuery(statement.getQueryString(), query, resultType));
 	}
@@ -209,24 +261,38 @@ public class CqlQueryFactory {
 		return from1.getKey();
 	}
 
-
-
-	private Collection<Clause> createClause(final EntityMetadata<?> emd, 
-			final ClauseInfo where, 
+	private Collection<Clause> createClause(final EntityMetadata<?> emd,
+			final ClauseInfo where,
 			final Collection<CompiledQuery> qls,
 			final Map<String, Object> parameterValues) {
+
+		return createClause(emd,
+				where,
+				qls,
+				parameterValues,
+				false,
+				new AtomicBoolean(false));
+
+	}
+
+	private Collection<Clause> createClause(final EntityMetadata<?> emd,
+			final ClauseInfo where,
+			final Collection<CompiledQuery> qls,
+			final Map<String, Object> parameterValues,
+			final boolean useKeys,
+			final AtomicBoolean addPartitionClause) {
 		if (where == null) {
 			return null;
 		}
 		Object expression = where.getExpression();
 
 		if (expression instanceof ClauseInfo) {
-			return createClause(emd, (ClauseInfo)expression, qls, parameterValues);
+			return createClause(emd, (ClauseInfo)expression, qls, parameterValues, useKeys, addPartitionClause);
 		} else if (expression.getClass().isArray() && ClauseInfo.class.equals(expression.getClass().getComponentType())) {
 			if (Operand.AND.equals(where.getOperator())) {
 				final Collection<Clause> clauses = new ArrayList<>();
 				for ( final Object expr : (Object[])expression) {
-					clauses.addAll(createClause(emd, (ClauseInfo)expr, qls, parameterValues));
+					clauses.addAll(createClause(emd, (ClauseInfo)expr, qls, parameterValues, useKeys, addPartitionClause));
 				}
 				return clauses;
 			}
@@ -248,8 +314,14 @@ public class CqlQueryFactory {
 		} else {
 			value = expression;
 		}
-		
-		final String column = getColumnName(emd, field);
+
+		final String column = getColumnName(emd, field, useKeys);
+		final FieldMetadata<?, ?, ?> fmd = emd.getField(column);
+		if (fmd.isKey()) {
+			addPartitionClause.set(true);
+		}
+
+
 		final Operand op = where.getOperator();
 		switch(op) {
 			case EQ:
@@ -306,17 +378,39 @@ public class CqlQueryFactory {
 	}
 
 
-	private String getColumnName(final EntityMetadata<?> emd, final String fieldName) {
+	private String getColumnName(final EntityMetadata<?> emd, final String fieldName, final boolean useKeys) {
 		if (fieldName == null) {
 			return null; // typical for select * from ...
 		}
 
-		final FieldMetadata<?, ?, ?> fmd = emd.getFieldByName(fieldName);
+		final String name = useKeys ? CqlPersistor.primaryKeyName(fieldName) : fieldName;
+
+		final FieldMetadata<?, ?, ?> fmd = emd.getFieldByName(name);
 		if (fmd == null) {
-			throw new IllegalArgumentException("Unknown field " + fieldName);
+			throw new IllegalArgumentException("Unknown field " + name);
 		}
 
 		final String column = fmd.getColumn();
 		return column;
 	}
+
+
+	private String getKeyColumnName(final EntityMetadata<?> emd, final String fieldName) {
+		if (fieldName == null) {
+			return null; // typical for select * from ...
+		}
+
+		FieldMetadata<?, ?, ?> fmd = emd.getFieldByName(fieldName);
+		if (fmd != null && fmd.isKey()) {
+			return fmd.getColumn();
+		}
+
+		fmd = emd.getFieldByName(CqlPersistor.primaryKeyName(fieldName));
+		if (fmd == null) {
+			throw new IllegalArgumentException("Unknown field " + fieldName);
+		}
+
+		return fmd.getColumn();
+	}
+
 }

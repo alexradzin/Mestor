@@ -39,7 +39,7 @@ public class EntityMetadata<E> {
 	private String tableName;
 	private String schemaName;
 
-	private final Collection<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
+	private final List<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
 	private final Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
 	private final Map<String, FieldMetadata<E, ?, ?>> fieldNames = new LinkedHashMap<>();
 	private final Collection<IndexMetadata<E>> indexes = new ArrayList<>();
@@ -148,7 +148,28 @@ public class EntityMetadata<E> {
 		return cTypes.toArray(new Class[0]);
 	}
 
+
+	public <F, C> void updateField(final FieldMetadata<E, F, C> fmeta, final String oldName, final String oldColumn) {
+		updateField(fmeta, oldName, fmeta.getName(), fieldNames);
+		updateField(fmeta, oldColumn, fmeta.getColumn(), fieldColumns);
+	}
+
+
+	public <F, C> void updateField(final FieldMetadata<E, F, C> fmeta, final String oldName, final String newName, final Map<String, FieldMetadata<E, ?, ?>> map) {
+		if (!oldName.equals(newName)) {
+			map.remove(oldName);
+			map.put(newName, fmeta);
+		}
+	}
+
+
+
 	public <F, C> void addField(final FieldMetadata<E, F, C> fmeta) {
+		addField(fmeta, -1);
+	}
+
+
+	public <F, C> void addField(final FieldMetadata<E, F, C> fmeta, final int index) {
 		final PropertyAccessor<E, F> accessor = fmeta.getAccessor();
 		final Method getter = accessor.getGetter();
 		if (getter != null) {
@@ -172,7 +193,12 @@ public class EntityMetadata<E> {
 
 		@SuppressWarnings("unchecked")
 		final FieldMetadata<E, Object, Object> fmd = (FieldMetadata<E, Object, Object>)fmeta;
-		fields.add(fmd);
+
+		if (index < 0) {
+			fields.add(fmd);
+		} else {
+			fields.add(index, fmd);
+		}
 
 		if (fmd.isDiscriminator()) {
 			discrimintor = fmd;

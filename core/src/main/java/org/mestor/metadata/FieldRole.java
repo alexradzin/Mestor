@@ -18,11 +18,14 @@
 package org.mestor.metadata;
 
 /**
- * Role of the field. Each field can theoretically play several roles.  
+ * Role of the field. Each field can theoretically play several roles.
  * @author alexr
  */
 public enum FieldRole {
+	PARTITION_KEY,
 	PRIMARY_KEY,
+	FILTER,
+	SORTER,
 	DISCRIMINATOR,
 	JOINER,
 	;

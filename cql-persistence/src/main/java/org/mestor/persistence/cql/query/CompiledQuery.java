@@ -23,11 +23,18 @@ public class CompiledQuery {
 	private final QueryInfo queryInfo;
 	private final Class<?> resultType;
 
+	private boolean aggregation;
+
 	public CompiledQuery(final String cqlQuery, final QueryInfo queryInfo, final Class<?> resultType) {
+		this(cqlQuery, queryInfo, resultType, false);
+	}
+
+	public CompiledQuery(final String cqlQuery, final QueryInfo queryInfo, final Class<?> resultType, final boolean aggregation) {
 		super();
 		this.cqlQuery = cqlQuery;
 		this.queryInfo = queryInfo;
 		this.resultType = resultType;
+		this.aggregation = aggregation;
 	}
 
 	public String getCqlQuery() {
@@ -42,4 +49,11 @@ public class CompiledQuery {
 		return resultType;
 	}
 
+	public void setAggregation(final boolean aggregation) {
+		this.aggregation = aggregation;
+	}
+
+	public boolean isAggregation() {
+		return this.aggregation;
+	}
 }

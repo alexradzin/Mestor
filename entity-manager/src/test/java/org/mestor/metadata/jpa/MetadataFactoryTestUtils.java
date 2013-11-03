@@ -26,12 +26,15 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.junit.Assert;
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.metadata.FieldRole;
 import org.mestor.metadata.IndexMetadata;
+import org.mestor.persistence.query.JpqlParser;
 import org.mockito.Mockito;
 
 public class MetadataFactoryTestUtils {
@@ -40,6 +43,8 @@ public class MetadataFactoryTestUtils {
 		final EntityContext ctx = Mockito.mock(EntityContext.class);
 		final JpaAnnotationsMetadataFactory factory = new JpaAnnotationsMetadataFactory();
 		factory.setEntityContext(ctx);
+
+		doReturn(new JpqlParser()).when(ctx).getCriteriaLanguageParser();
 
 		final Map<Class<?>, EntityMetadata<?>> entityClasses = new LinkedHashMap<Class<?>, EntityMetadata<?>>() {
 		    @Override
@@ -136,26 +141,70 @@ public class MetadataFactoryTestUtils {
 	}
 
 
-	static Map<String, String[]> buildStringToStringArrayMap(final Object ...objects){
-		final Map<String, String[]> res = new HashMap<>();
+	static <T> Map<String, T[]> buildStringToStringArrayMap(final Object ...objects){
+		final Map<String, T[]> res = new HashMap<>();
 		for (int i = 0; i < objects.length; i += 2) {
 			final String key = (String)objects[i];
-			final String[] value = (String[])objects[i+1];
+			@SuppressWarnings("unchecked")
+			final T[] value = (T[])objects[i+1];
 			res.put(key, value);
 		}
 
 		return res;
 	}
 
-	static< T> void testIndexes(final Class<T> clazz, final Map<String, String[]> expected) {
+	static< T> EntityMetadata<T> testIndexes(final Class<T> clazz, final Map<String, String[]> expected) {
 		if(clazz == null) {
-			return;
+			return null;
 		}
 		final Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(clazz);
 		@SuppressWarnings("unchecked")
-		final
-		EntityMetadata<T> md = (EntityMetadata<T>) entityClasses.get(clazz);
+		final EntityMetadata<T> md = (EntityMetadata<T>) entityClasses.get(clazz);
 		final Collection<IndexMetadata<T>> indexes = md.getIndexes();
 		assertEntityMetadataIndexes(indexes, expected);
+		return md;
 	}
+
+	static< T> EntityMetadata<T> testFieldRoles(final Class<T> clazz, final Map<String, FieldRole[]> expected) {
+		if(clazz == null) {
+			return null;
+		}
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(clazz);
+		@SuppressWarnings("unchecked")
+		final EntityMetadata<T> emd = (EntityMetadata<T>) entityClasses.get(clazz);
+
+		for (final Entry<String, FieldRole[]> expectedEntry : expected.entrySet()) {
+			final String fieldName = expectedEntry.getKey();
+			final FieldRole[] expectedRoles = expectedEntry.getValue();
+			final FieldMetadata<?, ?, ?> fmd = emd.getFieldByName(fieldName);
+			for (final FieldRole role : expectedRoles) {
+				switch(role) {
+					case DISCRIMINATOR:
+						assertTrue(fmd.isDiscriminator());
+						break;
+					case FILTER:
+						assertTrue(fmd.isFilter());
+						break;
+					case JOINER:
+						assertTrue(fmd.isJoiner());
+						break;
+					case PARTITION_KEY:
+						assertTrue(fmd.isPartitionKey());
+						break;
+					case PRIMARY_KEY:
+						assertTrue(fmd.isKey());
+						break;
+					case SORTER:
+						assertTrue(fmd.isSorter());
+						break;
+				}
+			}
+		}
+
+
+
+		return emd;
+	}
+
+
 }

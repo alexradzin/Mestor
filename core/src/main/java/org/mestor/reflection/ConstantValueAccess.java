@@ -15,54 +15,66 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.persistence.cql;
+package org.mestor.reflection;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Modifier;
 
-import com.datastax.driver.core.Row;
-import com.google.common.base.Function;
+public class ConstantValueAccess <T, V> implements Access<T, V, AccessibleObject> {
+	private final V value;
 
-class RowSplitter extends RowFunctionAdapter<Map<String, Object>> /*implements Function<Row, Map<String, Object>>*/ {
-	private final Map<String, Class<?>[]> fields;
-	private final Map<String, Function<?,?>[]> transformers;
-
-	RowSplitter(final Map<String, Class<?>[]> fields) {
-		this(fields, Collections.<String, Function<?,?>[]>emptyMap());
-	}
-
-	RowSplitter(final Map<String, Class<?>[]> fields, final Map<String, Function<?,?>[]> transformers) {
-		this.fields = fields;
-		this.transformers = transformers;
+	public ConstantValueAccess(final V value) {
+		this.value = value;
 	}
 
 	@Override
-	public Map<String, Object> apply(final Row row) {
-		final Map<String, Object> data = new LinkedHashMap<>();
-
-		for (final Entry<String, Class<?>[]> field : fields.entrySet()) {
-			final String fieldName = field.getKey();
-			final Class<?>[] fieldType = field.getValue();
-			data.put(fieldName, getValue(row, fieldName, fieldType));
-		}
-
-		return data;
-	}
-
-	@Override
-	protected <T> T getValue(final Row row, final String name, final Class<?>[] types) {
-		T value = super.getValue(row, name, types);
-		final Function<?,?>[] valueTransformers = transformers.get(name);
-		if (valueTransformers != null) {
-			for (final Function<?,?> transformer : valueTransformers) {
-				@SuppressWarnings("unchecked")
-				final
-				Function<T,T> typedTransformer = ((Function<T,T>)transformer);
-				value = typedTransformer.apply(value);
-			}
-		}
+	public V get(final T instance) {
 		return value;
+	}
+
+	@Override
+	public void set(final T instance, final V parameter) {
+		// Nothing to do. This is a constant value
+	}
+
+	@Override
+	public boolean isAnnotationPresent(final Class<? extends Annotation> annotationClass) {
+		return false;
+	}
+
+	@Override
+	public <N extends Annotation> N getAnnotation(final Class<N> annotationClass) {
+		return null;
+	}
+
+	@Override
+	public Annotation[] getAnnotations() {
+		return null;
+	}
+
+	@Override
+	public Annotation[] getDeclaredAnnotations() {
+		return null;
+	}
+
+	@Override
+	public Class<?> getDeclaringClass() {
+		return null;
+	}
+
+	@Override
+	public String getName() {
+		return "$constant";
+	}
+
+	@Override
+	public int getModifiers() {
+		return Modifier.PUBLIC;
+	}
+
+	@Override
+	public boolean isSynthetic() {
+		return true;
 	}
 }

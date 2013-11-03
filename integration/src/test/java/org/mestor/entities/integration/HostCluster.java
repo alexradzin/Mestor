@@ -15,11 +15,11 @@ import org.eclipse.persistence.annotations.Indexes;
 @Entity
 @Table(name = "host_cluster")
 @Indexes({ @Index(columnNames = { "name" }), })
-@NamedQueries({ @NamedQuery(name = "findAllHostClusters", query = "SELECT OBJECT(hc) FROM HostCluster hc where fakeId = 0 order by hc.id asc"),
+@NamedQueries({ @NamedQuery(name = "findAllHostClusters", query = "SELECT OBJECT(hc) FROM HostCluster hc order by hc.id asc"),
 		@NamedQuery(name = "countHostClusters", query = "SELECT COUNT(c) from HostCluster c"),
 		@NamedQuery(name = "findHostClusterByName", query = "SELECT OBJECT(hc) FROM HostCluster hc WHERE hc.name = :name")
 		//@NamedQuery(name = "findAllClusterLuns", query = "SELECT DISTINCT lun.lun from HostCluster hc JOIN hc.luns lun WHERE hc.id = :id"),
-		//@NamedQuery(name = "findClusterLun", query = "SELECT OBJECT(lun) from HostCluster hc JOIN hc.luns lun WHERE hc.id = :id AND lun.lun = :lun") 
+		//@NamedQuery(name = "findClusterLun", query = "SELECT OBJECT(lun) from HostCluster hc JOIN hc.luns lun WHERE hc.id = :id AND lun.lun = :lun")
 })
 @IdClass(HostClusterId.class)
 public class HostCluster {
@@ -30,9 +30,6 @@ public class HostCluster {
 	public HostCluster(final String name) {
 		this.name = name;
 	}
-	
-	@Id
-	private Integer fakeId = 0;
 
 	@Id
 	@JsonProperty
@@ -73,13 +70,5 @@ public class HostCluster {
 	@Override
 	public String toString() {
 		return "HostCluster [id=" + id + ", name=" + name + ", createdAt=" + createdAt + "]";
-	}
-
-	public Integer getFake_id() {
-		return fakeId;
-	}
-
-	public void setFakeId(final Integer fakeId) {
-		this.fakeId = fakeId;
 	}
 }

@@ -35,7 +35,9 @@ import org.mestor.metadata.FieldMetadata;
 import org.mestor.query.ArgumentInfo;
 import org.mestor.query.ClauseInfo;
 import org.mestor.query.ClauseInfo.Operand;
+import org.mestor.query.OrderByInfo;
 import org.mestor.query.QueryInfo;
+import org.mestor.query.OrderByInfo.Order;
 import org.mestor.query.QueryInfo.QueryType;
 import org.mestor.util.Pair;
 import org.mockito.Mockito;
@@ -49,7 +51,7 @@ public class CqlQueryFactoryTest {
 		final EntityMetadata<Person> emd1 = createEmd();
 		emd1.setTableName("person");
 		doReturn(emd1).when(ctx).getEntityMetadata("person");
-		
+
 		final EntityMetadata<Person> emd2 = createEmd();
 		emd2.setTableName("Person");
 		doReturn(emd2).when(ctx).getEntityMetadata("Person");
@@ -59,10 +61,14 @@ public class CqlQueryFactoryTest {
 	private EntityMetadata<Person> createEmd() {
 		final EntityMetadata<Person> emd = new EntityMetadata<Person>();
 		emd.setSchemaName(KEYSPACE);
-		
+
 
 		final FieldMetadata<Person, String, String> fieldName = new FieldMetadata<Person, String, String>(Person.class, String.class, "name");
 		fieldName.setColumn("name");
+
+		final FieldMetadata<Person, String, String> pkName = new FieldMetadata<Person, String, String>(Person.class, String.class, "name_pk");
+		pkName.setColumn("name_pk");
+		pkName.setKey(true);
 
 		final FieldMetadata<Person, String, String> fieldFirstName = new FieldMetadata<Person, String, String>(Person.class, String.class, "firstName");
 		fieldFirstName.setColumn("first_name");
@@ -70,7 +76,7 @@ public class CqlQueryFactoryTest {
 		final FieldMetadata<Person, String, String> fieldLastName = new FieldMetadata<Person, String, String>(Person.class, String.class, "lastName");
 		fieldLastName.setColumn("last_name");
 
-		emd.addAllFields(Arrays.<FieldMetadata<Person, ?, ?>>asList(fieldName, fieldFirstName, fieldLastName));
+		emd.addAllFields(Arrays.<FieldMetadata<Person, ?, ?>>asList(pkName, fieldName, fieldFirstName, fieldLastName));
 		return emd;
 	}
 
@@ -116,12 +122,23 @@ public class CqlQueryFactoryTest {
 	}
 
 	@Test
-	public void testCountSelect() {
-		testCreateQuery(new QueryInfo(QueryType.SELECT, 
-				Collections.<String, Object>singletonMap("count(*)", "count(*)"), 
-				Collections.singletonMap("person", "person"),
-				null, null, null),
-				"SELECT count(*) FROM \"TestKeySpace\".person;");
+	public void testCountSelectAsterisk() {
+		testCountSelect("count(*)", "count(*)");
+	}
+
+	@Test
+	public void testCountSelect1() {
+		testCountSelect("count(1)", "count(*)");
+	}
+
+	@Test
+	public void testCountSelect2() {
+		testCountSelect("count(2)", "count(*)");
+	}
+
+	@Test
+	public void testCountSelectName() {
+		testCountSelect("count(last_name)", "count(*)");
 	}
 
 
@@ -187,7 +204,7 @@ public class CqlQueryFactoryTest {
 						new ClauseInfo("lastName", Operand.EQ, "Lennon")
 				}),
 				null, null),
-				"SELECT * FROM \"TestKeySpace\".person WHERE first_name='John' AND last_name='Lennon';");
+				"SELECT * FROM \"TestKeySpace\".person WHERE first_name='John' AND last_name='Lennon' ALLOW FILTERING;");
 	}
 
 	@Test(expected=UnsupportedOperationException.class)
@@ -199,7 +216,7 @@ public class CqlQueryFactoryTest {
 						new ClauseInfo("last_name", Operand.EQ, "Lennon")
 				}),
 				null, null),
-				"SELECT * FROM \"TestKeySpace\".person WHERE first_name='John' AND last_name='Lennon';");
+				"SELECT * FROM \"TestKeySpace\".person WHERE first_name='John' AND last_name='Lennon' ALLOW FILTERING;");
 	}
 
 
@@ -210,44 +227,44 @@ public class CqlQueryFactoryTest {
 				new ClauseInfo("name", Operand.IN, values),
 				null,
 				null),
-				"SELECT name FROM \"TestKeySpace\".person WHERE name IN (" + exectedIn + ");");
+				"SELECT name FROM \"TestKeySpace\".person WHERE name IN (" + exectedIn + ") ALLOW FILTERING;");
 	}
 
 
 
 	private void testSimpleSelectOneFieldWhere(final Operand operand, final String op) {
-		testSimpleSelectOneFieldWhere(operand, "John", "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'John';");
+		testSimpleSelectOneFieldWhere(operand, "John", "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'John' ALLOW FILTERING;");
 	}
 
 	private void testWhereLike(final String op, final String value) {
-		testSimpleSelectOneFieldWhere(Operand.LIKE, value, "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'" + value + "';");
+		testSimpleSelectOneFieldWhere(Operand.LIKE, value, "SELECT name FROM \"TestKeySpace\".person WHERE name" + op + "'" + value + "' ALLOW FILTERING;");
 	}
 
 	@Test(expected=IllegalArgumentException.class)
 	public void testWhereParameterNotBound() {
 		testSimpleSelectOneFieldWhere(
-				Operand.EQ, 
-				new ArgumentInfo<String>("name", null), 
+				Operand.EQ,
+				new ArgumentInfo<String>("name", null),
 				"SELECT name FROM \"TestKeySpace\".person WHERE name='';");
 	}
 
 	@Test
 	public void testWhereParameterBound() {
 		testCreateQuery(new QueryInfo(
-				QueryType.SELECT, 
-				Collections.singletonList("name"), 
-				"person", 
-				new ClauseInfo("name", Operand.EQ, new ArgumentInfo<String>("name", null)), 
-			null, 
+				QueryType.SELECT,
+				Collections.singletonList("name"),
+				"person",
+				new ClauseInfo("name", Operand.EQ, new ArgumentInfo<String>("name", null)),
+			null,
 			null),
-			Arrays.asList(new String[]{"SELECT name FROM \"TestKeySpace\".person WHERE name='John';"}),
+			Arrays.asList(new String[]{"SELECT name FROM \"TestKeySpace\".person WHERE name='John' ALLOW FILTERING;"}),
 			Collections.<String, Object>singletonMap("name", "John"));
 	}
 
 	private void testSimpleSelectOneFieldWhere(final Operand operand, final Object value, final String expectedQl) {
 		testCreateQuery(
-				new QueryInfo(QueryType.SELECT, 
-						Collections.singletonList("name"), 
+				new QueryInfo(QueryType.SELECT,
+						Collections.singletonList("name"),
 						"person",
 						new ClauseInfo("name", operand, value),
 				null,
@@ -258,11 +275,11 @@ public class CqlQueryFactoryTest {
 	private void testCreateQuery(final QueryInfo query, final String ... expected) {
 		testCreateQuery(query, Arrays.asList(expected));
 	}
-	
+
 	private void testCreateQuery(final QueryInfo query, final Collection<String> expected) {
 		testCreateQuery(query, expected, null);
 	}
-	
+
 	private void testCreateQuery(final QueryInfo query, final Collection<String> expected, final Map<String, Object> paramValues) {
 		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
 		final Collection<CompiledQuery> queries = factory.createQuery(query, paramValues);
@@ -321,6 +338,24 @@ public class CqlQueryFactoryTest {
 		);
 	}
 
+	@Test
+	public void testSelectAllOrderBy() {
+		testSelectAllOrderBy(Order.ASC, "ASC");
+		testSelectAllOrderBy(Order.DSC, "DESC");
+	}
+
+	@Test
+	public void testSelectWhereOrderBy() {
+		testCreateQuery(
+				new QueryInfo(
+						QueryType.SELECT,
+						null,
+						Collections.<String, String>singletonMap("person", "person"),
+						new ClauseInfo("name", Operand.GE, "John"),
+						Collections.singleton(new OrderByInfo("name", Order.DSC))),
+				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 AND name_pk>='John' ORDER BY name_pk DESC ALLOW FILTERING;");
+	}
+
 
 
 	private void testGetSubqueryIndexes(final String query, final List<Pair<String, Integer>> expected) {
@@ -328,4 +363,20 @@ public class CqlQueryFactoryTest {
 		final List<Pair<String, Integer>> actual = factory.getSubqueryIndexes(query);
 		assertEquals("Query: " + query, expected, actual);
 	}
+
+	private void testSelectAllOrderBy(final Order order, final String queryOrder) {
+		testCreateQuery(
+				new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", "person"), null, Collections.singleton(new OrderByInfo("name", order))),
+				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 ORDER BY name_pk " + queryOrder + ";");
+	}
+
+	private void testCountSelect(final String count, final String expectedCount) {
+		testCreateQuery(new QueryInfo(QueryType.SELECT,
+				Collections.<String, Object>singletonMap(count, count),
+				Collections.singletonMap("person", "person"),
+				null, null, null),
+				"SELECT " + expectedCount + " FROM \"TestKeySpace\".person;");
+	}
+
+
 }

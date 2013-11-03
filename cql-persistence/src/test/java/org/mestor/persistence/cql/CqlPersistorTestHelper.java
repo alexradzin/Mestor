@@ -58,17 +58,22 @@ import com.google.common.primitives.Primitives;
 class CqlPersistorTestHelper extends MetadataTestHelper {
 	private final Persistor persistor;
 	final EntityContext ctx = Mockito.mock(EntityContext.class);
-	
+
+
 	CqlPersistorTestHelper() throws IOException {
-		super();
-		persistor = createAndConnect(Collections.<String, Object>emptyMap());
+		this(Collections.<String, Object>emptyMap());
 	}
-	
-	CqlPersistorTestHelper(Persistor persistor) {
+
+	CqlPersistorTestHelper(final Map<String, Object> props) throws IOException {
+		super();
+		persistor = createAndConnect(props);
+	}
+
+	CqlPersistorTestHelper(final Persistor persistor) {
 		super();
 		this.persistor = persistor;
 	}
-	
+
 	private static Map<Class<?>, Class<?>> prop2cql = new HashMap<Class<?>, Class<?>>() {{
 		put(BigInteger.class, Long.class);
 		put(BigDecimal.class, BigDecimal.class);
@@ -76,13 +81,13 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 		put(Byte[].class, ByteBuffer.class);
 	}};
 
-	Persistor createAndConnect(Map<String, Object> props) throws IOException {
+	Persistor createAndConnect(final Map<String, Object> props) throws IOException {
 		doReturn(props).when(ctx).getProperties();
 		return new CqlPersistor(ctx);
 	}
 
-	
-	void testCreateSchema(String schemaName, Map<String, Object> with, boolean drop) {
+
+	void testCreateSchema(final String schemaName, final Map<String, Object> with, final boolean drop) {
 		assertFalse(Iterables.contains(persistor.getSchemaNames(), schemaName));
 		persistor.createSchema(schemaName, with);
 		assertTrue(Iterables.contains(persistor.getSchemaNames(), schemaName));
@@ -92,16 +97,16 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param entityMetadata
 	 * @param properties
 	 * @param create true for create, false for update
 	 */
-	<E> void testEditTable(EntityMetadata<E> entityMetadata, Map<String, Object> properties, boolean create, String ... additionalIndexes) {
+	<E> void testEditTable(final EntityMetadata<E> entityMetadata, final Map<String, Object> properties, final boolean create, final String ... additionalIndexes) {
 		final String keyspace = entityMetadata.getSchemaName();
 		final String table = entityMetadata.getTableName();
 
-		TableMetadata existingTable = findTableMetadata(keyspace, table);
+		final TableMetadata existingTable = findTableMetadata(keyspace, table);
 		if (create) {
 			assertNull(existingTable);
 			persistor.createTable(entityMetadata, properties);
@@ -110,127 +115,127 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 			persistor.updateTable(entityMetadata, properties);
 		}
 
-		TableMetadata tmd = findTableMetadata(keyspace, table);
+		final TableMetadata tmd = findTableMetadata(keyspace, table);
 		assertNotNull(tmd);
 		assertMatches(entityMetadata, properties, tmd, additionalIndexes);
 	}
 
-	
-	
-	TableMetadata findTableMetadata(String keyspace, String table) {
-		// search for just created table. Since (at least in current configuration) cassandra is case-insensitive 
-		// and creates tables using lower case and we do not know whether this is configurable 
-		// we have to search for table by iterating over all tables to make test more not sensitive to the possible 
-		// future configuration changes. 
-		for (TableMetadata t : ((CqlPersistor)persistor).getCluster().getMetadata().getKeyspace(keyspace).getTables()) {
+
+
+	TableMetadata findTableMetadata(final String keyspace, final String table) {
+		// search for just created table. Since (at least in current configuration) cassandra is case-insensitive
+		// and creates tables using lower case and we do not know whether this is configurable
+		// we have to search for table by iterating over all tables to make test more not sensitive to the possible
+		// future configuration changes.
+		for (final TableMetadata t : ((CqlPersistor)persistor).getCluster().getMetadata().getKeyspace(keyspace).getTables()) {
 			if (t.getName().equalsIgnoreCase(table)) {
 				return t;
 			}
 		}
 		return null;
 	}
-	
-	<E> void assertMatches(EntityMetadata<E> emd, Map<String, Object> properties, TableMetadata tmd, String ... additionalIndexes) {
+
+	<E> void assertMatches(final EntityMetadata<E> emd, final Map<String, Object> properties, final TableMetadata tmd, final String ... additionalIndexes) {
 		assertNotNull(tmd);
-		
+
 		assertEquals(emd.getTableName().toLowerCase(), tmd.getName().toLowerCase());
 		assertEquals(emd.getSchemaName(), tmd.getKeyspace().getName());
-		
-		Collection<String> actualIndexedColumns = new HashSet<>();
-		
-		for (FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
-			String column = fmd.getColumn();
+
+		final Collection<String> actualIndexedColumns = new HashSet<>();
+
+		for (final FieldMetadata<E, ?, ?> fmd : emd.getFields()) {
+			final String column = fmd.getColumn();
 			if (column == null) {
 				continue;
 			}
-			ColumnMetadata cmd = tmd.getColumn(column);
+			final ColumnMetadata cmd = tmd.getColumn(column);
 			assertNotNull("Column " + column + " is not found", cmd);
 			assertEquals(column, cmd.getName());
-			
-			
-			
-			Class<?> fmdType = fmd.getType();
-			Class<?> fmdTypeComponent = fmdType.getComponentType();
-			Set<Class<?>> specialArrayTypes = new HashSet<>(Arrays.<Class<?>>asList(byte.class, Byte.class));
+
+
+
+			final Class<?> fmdType = fmd.getType();
+			final Class<?> fmdTypeComponent = fmdType.getComponentType();
+			final Set<Class<?>> specialArrayTypes = new HashSet<>(Arrays.<Class<?>>asList(byte.class, Byte.class));
 			if (fmdType.isArray() && !specialArrayTypes.contains(fmdTypeComponent)) {
 				assertEquals(List.class, cmd.getType().asJavaClass());
 				assertEquals(fmdTypeComponent, cmd.getType().getTypeArguments().iterator().next().asJavaClass());
 			} else {
 				assertEquals(toCqlJavaType(fmd.getColumnType()), cmd.getType().asJavaClass());
 			}
-			
+
 			if(cmd.getIndex() != null) {
 				actualIndexedColumns.add(cmd.getIndex().getIndexedColumn().getName());
 			}
 		}
-		
-		Collection<String> exepectedPKColumns = 
+
+		Collection<String> exepectedPKColumns =
 		Collections2.transform(
 		Collections2.filter(emd.getFields(), new Predicate<FieldMetadata<?, ?, ?>>() {
 			@Override
-			public boolean apply(FieldMetadata<?, ?, ?> fmd) {
+			public boolean apply(final FieldMetadata<?, ?, ?> fmd) {
 				return fmd.isKey();
 			}
-		}), 
+		}),
 		new Function<FieldMetadata<?, ?, ?>, String>() {
 			@Override
-			public String apply(FieldMetadata<?, ?, ?> fmd) {
+			public String apply(final FieldMetadata<?, ?, ?> fmd) {
 				return fmd.getColumn();
 			}
 		});
-		
-		
-		FieldMetadata<E, ?, ?> pkmd = emd.getPrimaryKey();
+
+
+		final FieldMetadata<E, ?, ?> pkmd = emd.getPrimaryKey();
 		if (pkmd != null) {
-			String pkColumn = pkmd.getColumn();
-			
+			final String pkColumn = pkmd.getColumn();
+
 			if (emd.getField(pkColumn) == null) {
 				exepectedPKColumns = new ArrayList<String>(exepectedPKColumns); // collection after guava transforms is unmodifiable.
 				exepectedPKColumns.add(pkColumn);
 			}
 		}
-		
-		Collection<String> actualPKColumns = 
+
+		final Collection<String> actualPKColumns =
 		Collections2.transform(tmd.getPrimaryKey(), new Function<ColumnMetadata, String>() {
 			@Override
-			public String apply(ColumnMetadata cmd) {
+			public String apply(final ColumnMetadata cmd) {
 				return cmd.getName();
 			}
 		});
-		
-	
+
+
 		assertArrayEquals(exepectedPKColumns.toArray(), actualPKColumns.toArray());
-		
-		Map<String, String> expectedIndexes = new HashMap<>();
-		
-		for (IndexMetadata<E> imd : emd.getIndexes()) {
-			FieldMetadata<E, ? extends Object, ? extends Object>[] indexFields = imd.getField();
+
+		final Map<String, String> expectedIndexes = new HashMap<>();
+
+		for (final IndexMetadata<E> imd : emd.getIndexes()) {
+			final FieldMetadata<E, ? extends Object, ? extends Object>[] indexFields = imd.getField();
 			assertEquals(1, indexFields.length);
 			expectedIndexes.put(imd.getName(), indexFields[0].getColumn());
 		}
-		
-		
-		Set<String> allExpectedIndexes = new HashSet<>(expectedIndexes.values());
+
+
+		final Set<String> allExpectedIndexes = new HashSet<>(expectedIndexes.values());
 		if (additionalIndexes != null) {
 			allExpectedIndexes.addAll(Arrays.asList(additionalIndexes));
 		}
 
 		assertEquals("Unexpected list of indexed columns", allExpectedIndexes, new HashSet<String>(actualIndexedColumns));
 	}
-	
-	private Class<?> toCqlJavaType(Class<?> type) {
-		Class<?> cqlType = prop2cql.get(type);
+
+	private Class<?> toCqlJavaType(final Class<?> type) {
+		final Class<?> cqlType = prop2cql.get(type);
 		if (cqlType != null) {
 			return cqlType;
 		}
-		
+
 		return Primitives.wrap(type);
 	}
-	
-	
-	
+
+
+
 	Persistor getPersistor() {
-		
+
 		return persistor;
 	}
 }

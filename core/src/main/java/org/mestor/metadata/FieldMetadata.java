@@ -17,6 +17,7 @@
 
 package org.mestor.metadata;
 
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import org.mestor.reflection.Access;
 import org.mestor.reflection.PropertyAccessor;
 
 public class FieldMetadata<T, F, C> {
@@ -69,7 +71,24 @@ public class FieldMetadata<T, F, C> {
 		this.converters.addAll(Arrays.asList(converters));
 	}
 
+	@SuppressWarnings("unchecked")
+	public FieldMetadata(final FieldMetadata<T, F, C> base, final String name, final String columnName) {
+		this(base.getClassType(), base.getType(), base.getColumnType(), base.getAccessor(), base.getConverters().toArray(new ValueConverter[0]));
 
+		this.name = name;
+		this.column = columnName;
+	}
+
+	public FieldMetadata(final Class<T> classType, final Class<F> type, final Class<C> columnType, final String name, final String columnName, final Access<T, F, ? extends AccessibleObject> readAccess, final Access<T, F, ? extends AccessibleObject> writeAccess) {
+		this(classType, type, columnType, new PropertyAccessor<T, F>(classType, type, name, null, null, null, readAccess, writeAccess), new DummyValueConverter<F, C>());
+
+		this.name = name;
+		this.column = columnName;
+	}
+
+	public FieldMetadata(final Class<T> classType, final Class<F> type, final Class<C> columnType, final String name, final String columnName, final Access<T, F, ? extends AccessibleObject> readWriteAccess) {
+		this(classType, type, columnType, name, columnName, readWriteAccess, readWriteAccess);
+	}
 
 	public Class<T> getClassType() {
 		return classType;
@@ -128,6 +147,29 @@ public class FieldMetadata<T, F, C> {
 		setFieldRole(FieldRole.PRIMARY_KEY, key);
 	}
 
+	public void setPartitionKey(final boolean key) {
+		setFieldRole(FieldRole.PARTITION_KEY, key);
+	}
+
+	public boolean isPartitionKey() {
+		return isFieldInRole(FieldRole.PARTITION_KEY);
+	}
+
+	public void setFilter(final boolean key) {
+		setFieldRole(FieldRole.FILTER, key);
+	}
+
+	public boolean isFilter() {
+		return isFieldInRole(FieldRole.FILTER);
+	}
+
+	public void setSorter(final boolean key) {
+		setFieldRole(FieldRole.SORTER, key);
+	}
+
+	public boolean isSorter() {
+		return isFieldInRole(FieldRole.SORTER);
+	}
 
 	public boolean isDiscriminator() {
 		return isFieldInRole(FieldRole.DISCRIMINATOR);
