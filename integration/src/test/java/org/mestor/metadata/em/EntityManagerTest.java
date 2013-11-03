@@ -39,6 +39,8 @@ import javax.persistence.metamodel.Metamodel;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.context.EntityContext;
 import org.mestor.em.MestorProperties;
 import org.mestor.entities.Child;
@@ -60,6 +62,7 @@ import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
+@RunWith(CassandraAwareTestRunner.class)
 public class EntityManagerTest {
 
 	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
@@ -169,7 +172,7 @@ public class EntityManagerTest {
 			em.close();
 		}
 	}
-	
+
 	@Test
 	public void testNamedQueriesSelectWithCount() {
 		final EntityManager em = getEntityManager("named_queries.xml", "named_queries");
@@ -185,7 +188,7 @@ public class EntityManagerTest {
 		} finally {
 			em.close();
 		}
-	
+
 	}
 
 	private void compare(final NamedQueriesEntity actual, final NamedQueriesEntity expected) {

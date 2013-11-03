@@ -15,54 +15,29 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.persistence.cql;
+package org.mestor.util;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.Properties;
 import java.util.Map.Entry;
 
-import com.datastax.driver.core.Row;
-import com.google.common.base.Function;
-
-class RowSplitter extends RowFunctionAdapter<Map<String, Object>> /*implements Function<Row, Map<String, Object>>*/ {
-	private final Map<String, Class<?>[]> fields;
-	private final Map<String, Function<?,?>[]> transformers;
-
-	RowSplitter(final Map<String, Class<?>[]> fields) {
-		this(fields, Collections.<String, Function<?,?>[]>emptyMap());
-	}
-
-	RowSplitter(final Map<String, Class<?>[]> fields, final Map<String, Function<?,?>[]> transformers) {
-		this.fields = fields;
-		this.transformers = transformers;
-	}
-
-	@Override
-	public Map<String, Object> apply(final Row row) {
-		final Map<String, Object> data = new LinkedHashMap<>();
-
-		for (final Entry<String, Class<?>[]> field : fields.entrySet()) {
-			final String fieldName = field.getKey();
-			final Class<?>[] fieldType = field.getValue();
-			data.put(fieldName, getValue(row, fieldName, fieldType));
-		}
-
-		return data;
-	}
-
-	@Override
-	protected <T> T getValue(final Row row, final String name, final Class<?>[] types) {
-		T value = super.getValue(row, name, types);
-		final Function<?,?>[] valueTransformers = transformers.get(name);
-		if (valueTransformers != null) {
-			for (final Function<?,?> transformer : valueTransformers) {
-				@SuppressWarnings("unchecked")
-				final
-				Function<T,T> typedTransformer = ((Function<T,T>)transformer);
-				value = typedTransformer.apply(value);
+public class SystemProperties {
+	/**
+	 * This method retrieves system properties making sure that we take only properties that are indeed of String type.
+	 * Theoretically system properties should not contain values other than strings.
+	 * However since java.util.Properties extends Hashtable<Object, Object>
+	 * system properties can contain such values. If so this causes NullPointerException
+	 * into Maps.fromProperties(). To prevent this situation we filter such value out here.
+	 * @return
+	 */
+	public static Properties systemProperties() {
+		final Properties sysprops = new Properties();
+		for (final Entry<Object, Object> entry : System.getProperties().entrySet()) {
+			final Object key = entry.getKey();
+			final Object value = entry.getValue();
+			if (key instanceof String && value instanceof String) {
+				sysprops.put(key, value);
 			}
 		}
-		return value;
+		return sysprops;
 	}
 }

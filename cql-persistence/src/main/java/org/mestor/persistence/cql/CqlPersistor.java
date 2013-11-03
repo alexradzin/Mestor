@@ -53,6 +53,7 @@ import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.metadata.ValueConverter;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
+import org.mestor.persistence.cql.function.QueryFunction;
 import org.mestor.persistence.cql.management.AlterTable;
 import org.mestor.persistence.cql.management.CommandBuilder;
 import org.mestor.persistence.cql.management.CommandHelper;
@@ -853,7 +854,7 @@ public class CqlPersistor implements Persistor {
 		final Object columnValue = fmd.getConverter().toColumn(value);
 		where.and(eq(quote(column), columnValue));
 
-		return execute(where, fields);
+		return execute(where, fields, Collections.<String, Function<?,?>[]>emptyMap());
 	}
 
 
@@ -1091,8 +1092,8 @@ public class CqlPersistor implements Persistor {
 	// }
 
 	private Iterable<Map<String, Object>> execute(final Query query,
-			final Map<String, Class<?>[]> fields) {
-		return transform(session.execute(query), new RowSplitter(fields));
+			final Map<String, Class<?>[]> fields, final Map<String, Function<?,?>[]> transformers) {
+		return transform(session.execute(query), new RowSplitter(fields, transformers));
 	}
 
 	private <E> FieldAttribute[] getFieldAttributes(final FieldMetadata<E, ?, ?> fmd,
@@ -1410,18 +1411,56 @@ public class CqlPersistor implements Persistor {
 			final QueryInfo currentQueryInfo = cq.getQueryInfo();
 
 			final String currentEntityName = currentQueryInfo.getFrom().entrySet().iterator().next().getValue();
-			final EntityMetadata<T> currentEmd = context.getEntityMetadata(currentEntityName);
+			EntityMetadata<T> currentEmd = context.getEntityMetadata(currentEntityName);
 			if (currentEmd == null) {
 				throw new IllegalArgumentException("Entity " + currentEntityName + " does not exist");
 			}
 
 	        final Map<String, Class<?>[]> fieldTypes = new HashMap<>();
 	        resultType = cq.getResultType();
+	        final Map<String, Function<?,?>[]> transformers = new HashMap<>();
 	        if(context.getEntityMetadata(resultType) != null) {
 		        final Map<String, Object> what = currentQueryInfo.getWhat();
 		        final Collection<String> requestedFields = what == null ? null : what.keySet();
 		        @SuppressWarnings("unused") // return value of this method indeed is not used. But it populates values into fieldTypes
 				final Select.Selection select = selectFields(emd, fieldTypes, requestedFields);
+
+		        if (what != null) {
+		        	//final List<QueryFunction<?,?>> aggregationFunctions = new ArrayList<>();
+		        	final List<Pair<FieldMetadata<?,?,?>, QueryFunction<?,?>>> aggregationFunctions = new ArrayList<>();
+			        for (final Entry<String, Object> w : what.entrySet()) {
+			        	final String f = w.getKey();
+			        	final Object v = w.getValue();
+			        	if (!(v instanceof String)) {
+			        		continue;
+			        	}
+			        	final QueryFunction<?,?>[] functions = getFunctions((String)v);
+			        	final FieldMetadata<T, ?, ?> fmd = emd.getFieldByName(f);
+			        	transformers.put(fmd.getColumn(), functions);
+
+			        	for (final QueryFunction<?,?> function : functions) {
+			        		if (function.isAggregation()) {
+			        			aggregationFunctions.add(new Pair(fmd, function));
+			        		}
+			        	}
+			        }
+
+			        if (aggregationFunctions.size() > 1) {
+			        	throw new IllegalArgumentException("Only one aggregation function per query is supported");
+			        }
+
+			        if (aggregationFunctions.size() == 1) {
+			        	final Pair<FieldMetadata<?,?,?>, QueryFunction<?,?>> aggregationFunctionDef = aggregationFunctions.get(0);
+			        	final Class<?> clazz = aggregationFunctionDef.getValue().getReturnType();
+			        	currentEmd = new EntityMetadata(clazz);
+			        	final FieldMetadata<?, ?, ?> originalFmd = aggregationFunctionDef.getKey();
+			        	final FieldMetadata<?, ?, ?> fmd = new FieldMetadata<>(clazz, clazz, originalFmd.getName());
+			        	fmd.setColumn(originalFmd.getColumn());
+			        	resultType = clazz;
+			        	cq.setAggregation(true);
+			        }
+		        }
+
 	        } else {
 	        	fieldTypes.put("count", new Class<?>[]{resultType});
 	        }
@@ -1429,8 +1468,16 @@ public class CqlPersistor implements Persistor {
 
 			final String cql = cq.getCqlQuery();
 			final String nextCql = fixCql(cqlQueryFactory, currentEmd, cql, allResults);
-			final Iterable<Map<String, Object>> result = execute(new SimpleStatement(nextCql), fieldTypes);
-			allResults.add(result);
+			final Iterable<Map<String, Object>> result = execute(new SimpleStatement(nextCql), fieldTypes, transformers);
+			if (cq.isAggregation()) {
+				Map<String, Object> row = null;
+				for (final Iterator<Map<String, Object>> it = result.iterator(); it.hasNext();) {
+					row = it.next();
+				}
+				allResults.add(Collections.singleton(row));
+			} else {
+				allResults.add(result);
+			}
 
 		}
 		final Collection<Iterable<Map<String, Object>>> allMainResults =  Collections2.filter(allResults, Predicates.notNull());
@@ -1692,5 +1739,18 @@ public class CqlPersistor implements Persistor {
 
     public static String primaryKeyName(final String name) {
     	return name.endsWith("_pk") ? name : name + "_pk";
+    }
+
+    // length(trim(upper(str))) - > [upper, trim, length]
+    private QueryFunction<?, ?>[] getFunctions(final String spec) {
+    	final String[] parts = spec.split("\\s*\\(\\s*");
+    	final int n = parts.length - 1;
+
+    	final QueryFunction<?, ?>[] functions = new QueryFunction<?, ?>[n];
+    	for (int i = n  - 1; i >=0; i--) {
+    		functions[n - i - 1] = QueryFunction.valueOf(parts[i]);
+    	}
+
+    	return functions;
     }
 }

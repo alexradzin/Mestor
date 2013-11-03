@@ -122,12 +122,23 @@ public class CqlQueryFactoryTest {
 	}
 
 	@Test
-	public void testCountSelect() {
-		testCreateQuery(new QueryInfo(QueryType.SELECT,
-				Collections.<String, Object>singletonMap("count(*)", "count(*)"),
-				Collections.singletonMap("person", "person"),
-				null, null, null),
-				"SELECT count(*) FROM \"TestKeySpace\".person;");
+	public void testCountSelectAsterisk() {
+		testCountSelect("count(*)", "count(*)");
+	}
+
+	@Test
+	public void testCountSelect1() {
+		testCountSelect("count(1)", "count(*)");
+	}
+
+	@Test
+	public void testCountSelect2() {
+		testCountSelect("count(2)", "count(*)");
+	}
+
+	@Test
+	public void testCountSelectName() {
+		testCountSelect("count(last_name)", "count(*)");
 	}
 
 
@@ -358,5 +369,14 @@ public class CqlQueryFactoryTest {
 				new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", "person"), null, Collections.singleton(new OrderByInfo("name", order))),
 				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 ORDER BY name_pk " + queryOrder + ";");
 	}
+
+	private void testCountSelect(final String count, final String expectedCount) {
+		testCreateQuery(new QueryInfo(QueryType.SELECT,
+				Collections.<String, Object>singletonMap(count, count),
+				Collections.singletonMap("person", "person"),
+				null, null, null),
+				"SELECT " + expectedCount + " FROM \"TestKeySpace\".person;");
+	}
+
 
 }

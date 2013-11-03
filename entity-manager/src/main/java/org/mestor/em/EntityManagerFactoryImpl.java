@@ -36,6 +36,7 @@ import javax.persistence.spi.PersistenceUnitInfo;
 
 import org.mestor.persistence.metamodel.CompositeMetamodel;
 import org.mestor.util.CollectionUtils;
+import org.mestor.util.SystemProperties;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -63,7 +64,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
 		properties.putAll(CollectionUtils.merge(
 				Maps.filterKeys(System.getenv(), predicate),
-				Maps.filterKeys(Maps.fromProperties(System.getProperties()), predicate),
+				Maps.filterKeys(Maps.fromProperties(SystemProperties.systemProperties()), predicate),
 				this.map));
 //		metamodel = new MetamodelImpl(info, this, properties);
 	}
