@@ -106,7 +106,7 @@ public class CqlQueryFactory {
 						if (w.getValue() != null) {
 							throw new IllegalArgumentException();
 						}
-						delete.column(getColumnName(emd, w.getKey(), false));
+						delete.column(quote(getColumnName(emd, w.getKey(), false)));
 					}
 				}
 				final Delete.Where cqlWhere = delete.from(quote(keyspace), quote(tableName)).where();
@@ -126,7 +126,7 @@ public class CqlQueryFactory {
  			case INSERT: {
  				final Insert insert = insertInto(quote(keyspace), quote(tableName));
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
- 					insert.value(getColumnName(emd, v.getKey(), false), v.getValue());
+ 					insert.value(quote(getColumnName(emd, v.getKey(), false)), v.getValue());
  				}
 				statement = insert;
 				break;
@@ -141,9 +141,9 @@ public class CqlQueryFactory {
 					if (isCount) {
 						selection.column("count(*)");
 						resultType = Long.class;
-					} else{
+					} else {
 						for (final String field : fields.keySet()) {
-							selection.column(getColumnName(emd, field, false));
+							selection.column(quote(getColumnName(emd, field, false)));
 						}
 					}
 				} else {
@@ -210,7 +210,7 @@ public class CqlQueryFactory {
 			case UPDATE: {
 				final Update update = update(quote(keyspace), quote(tableName));
  				for (final Entry<String, Object> v : query.getWhat().entrySet()) {
- 					update.with(set(getColumnName(emd, v.getKey(), false), v.getValue()));
+ 					update.with(set(quote(getColumnName(emd, v.getKey(), false)), v.getValue()));
  				}
 				final Update.Where updateWhere = update.where();
 				final Collection<Clause> clauses = createClause(emd, where, qls, parameterValues);
@@ -321,33 +321,34 @@ public class CqlQueryFactory {
 			addPartitionClause.set(true);
 		}
 
+		final String cqlColumn = quote(column);
 
 		final Operand op = where.getOperator();
 		switch(op) {
 			case EQ:
-				return Collections.singleton(eq(column, value));
+				return Collections.singleton(eq(cqlColumn, value));
 			case GE:
-				return Collections.singleton(gte(column, value));
+				return Collections.singleton(gte(cqlColumn, value));
 			case GT:
-				return Collections.singleton(gt(column, value));
+				return Collections.singleton(gt(cqlColumn, value));
 			case LE:
-				return Collections.singleton(lte(column, value));
+				return Collections.singleton(lte(cqlColumn, value));
 			case LT:
-				return Collections.singleton(lt(column, value));
+				return Collections.singleton(lt(cqlColumn, value));
 			case IN:
 				if (value.getClass().isArray()) {
-					return Collections.singleton(in(column, (Object[])value));
+					return Collections.singleton(in(cqlColumn, (Object[])value));
 				} else if (value instanceof Collection) {
-					return Collections.singleton(in(column, ((Collection<?>)value).toArray()));
+					return Collections.singleton(in(cqlColumn, ((Collection<?>)value).toArray()));
 				}
-				return Collections.singleton(in(column, value));
+				return Collections.singleton(in(cqlColumn, value));
 			case LIKE:
 				if (value instanceof String) {
 					final String str = (String)value;
 					if (!str.startsWith("%") && str.endsWith("%")) {
-						return Collections.singleton(gte(column, value));
+						return Collections.singleton(gte(cqlColumn, value));
 					} else if(!str.startsWith("%") && !str.endsWith("%")) {
-						return Collections.singleton(eq(column, value));
+						return Collections.singleton(eq(cqlColumn, value));
 					}
 				}
 			//$FALL-THROUGH$ - likes except "%..." and "...%" are not supported

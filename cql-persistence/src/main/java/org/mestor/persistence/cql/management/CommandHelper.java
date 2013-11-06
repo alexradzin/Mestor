@@ -223,6 +223,9 @@ public class CommandHelper {
 	 * @return quoted name if needed
 	 */
 	public static String quote(final String name) {
+		if (name == null) {
+			return null;
+		}
 		return capitalLetter.matcher(name).find() ? "\"" + name + "\"" : name;
 	}
 

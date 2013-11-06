@@ -32,21 +32,21 @@ public abstract class IndexTestBase {
 
 	@Test
 	public void testOneColumnIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
 				"index1", new String[] { "column1" });
 		MetadataFactoryTestUtils.testIndexes(getOneColumnIndexClass(), expected);
 	}
-	
+
 	@Test
 	public void testTwoColumnIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
 				"index1", new String[] { "column1", "column2" });
 		MetadataFactoryTestUtils.testIndexes(getTwoColumnIndexClass(), expected);
 	}
-	
+
 	@Test
 	public void testThreeGoodIndexes() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
 				"index1", new String[] { "column1" },
 				"index2", new String[] { "column2" },
 				"index3", new String[] { "column3", "column4" });
@@ -58,7 +58,7 @@ public abstract class IndexTestBase {
 		if(getDuplicateIndexNameClass() != null){
 			try{
 				MetadataFactoryTestUtils.testIndexes(getDuplicateIndexNameClass(), null);
-			}catch(DuplicateIndexName e){
+			}catch(final DuplicateIndexName e){
 				assertEquals("index1", e.getIndexName());
 				return;
 			}
@@ -68,150 +68,52 @@ public abstract class IndexTestBase {
 
 	@Test
 	public void testSameColumnTwiceInIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
 				"index1", new String[] { "column1" });
 		MetadataFactoryTestUtils.testIndexes(getSameColumnTwiceInIndexClass(), expected);
 	}
-	
-	@Test 
+
+	@Test
 	public void testSpacesInNames(){
 		//????
 		//actually dont'n know expected behavior here
 	}
-	
-	@Test
-	public void testOneColumnFieldLevelIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"field_index1", new String[] { "column1" });
-		MetadataFactoryTestUtils.testIndexes(getOneColumnFieldLevelIndexClass(), expected);
-	}
-	
-	@Test
-	public void testTwoColumnFieldLevelIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"field_index1", new String[] { "column1", "column2" });
-		MetadataFactoryTestUtils.testIndexes(getTwoColumnFieldLevelIndexClass(), expected);
-	}
-	
-	@Test
-	public void testThreeGoodFieldLevelIndexes() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"field_index1", new String[] { "column1" },
-				"field_index2", new String[] { "column2" },
-				"field_index3", new String[] { "column3", "column4" });
-		MetadataFactoryTestUtils.testIndexes(getThreeGoodFieldLevelIndexesClass(), expected);
-	}
+
+
+
 
 	@Test
-	public void testFieldLevelIndexColumnCollision() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"field_index1", new String[] { "column1" });
-		MetadataFactoryTestUtils.testIndexes(getFieldLevelIndexColumnCollisionClass(), expected);
+	public void testAutoNamedSingleColumnIndex() {
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+				"column1", new String[] { "column1" });
+		MetadataFactoryTestUtils.testIndexes(getAutoNamedSingleColumnIndex(), expected);
 	}
+
 
 	@Test
-	public void testAutoNamedFieldLevelIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"field_column1", new String[] { "field_column1" });
-		MetadataFactoryTestUtils.testIndexes(getAutoNamedFieldLevelIndexClass(), expected);
+	public void testAutoNamedMultipleColumnIndex() {
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+				"column1_column2_column3", new String[] { "column1", "column2", "column3" });
+		MetadataFactoryTestUtils.testIndexes(getAutoNamedMultipleColumnIndex(), expected);
 	}
 
-	@Test
-	public void testOneColumnMethodLevelIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"method_index1", new String[] { "column1" });
-		MetadataFactoryTestUtils.testIndexes(getOneColumnMethodLevelIndexClass(), expected);
-	}
-	
-	@Test
-	public void testTwoColumnMethodLevelIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"method_index1", new String[] { "column1", "column2" });
-		MetadataFactoryTestUtils.testIndexes(getTwoColumnMethodLevelIndexClass(), expected);
-	}
-	
-	@Test
-	public void testThreeGoodMethodLevelIndexes() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"method_index1", new String[] { "column1" },
-				"method_index2", new String[] { "column2" },
-				"method_index3", new String[] { "column3", "column4" });
-		MetadataFactoryTestUtils.testIndexes(getThreeGoodMethodLevelIndexesClass(), expected);
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testIndexNameWithSpace() {
+		final Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
+				null, new String[] { "column1"});
+		MetadataFactoryTestUtils.testIndexes(getIndexNameWithSpace(), expected);
 	}
 
-	@Test
-	public void testMethodLevelIndexColumnCollision() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"method_index1", new String[] { "column1" });
-		MetadataFactoryTestUtils.testIndexes(getMethodLevelIndexColumnCollisionClass(), expected);
-	}
 
-	@Test
-	public void testAutoNamedMethodLevelIndex() {
-		Map<String, String[]> expected = MetadataFactoryTestUtils.buildStringToStringArrayMap(
-				"method_column1", new String[] { "method_column1" });
-		MetadataFactoryTestUtils.testIndexes(getAutoNamedMethodLevelIndexClass(), expected);
-	}
-	
-	
-	protected Class<?> getOneColumnIndexClass() {
-		return null;
-	}
 
-	protected Class<?> getTwoColumnIndexClass() {
-		return null;
-	}
 
-	protected Class<?> getThreeGoodIndexesClass() {
-		return null;
-	}
-
-	protected Class<?> getDuplicateIndexNameClass() {
-		return null;
-	}
-
-	protected Class<?> getSameColumnTwiceInIndexClass() {
-		return null;
-	}
-
-	protected Class<?> getFieldLevelIndexColumnCollisionClass() {
-		return null;
-	}
-	
-	protected Class<?> getAutoNamedFieldLevelIndexClass(){
-		return null;
-	}
-
-	protected Class<?> getAutoNamedMethodLevelIndexClass() {
-		return null;
-	}
-
-	protected Class<?> getOneColumnFieldLevelIndexClass() {
-		return null;
-	}
-
-	protected Class<?> getTwoColumnFieldLevelIndexClass() {
-		return null;
-	}
-	
-	protected Class<?> getMethodLevelIndexColumnCollisionClass() {
-		return null;
-	}
-	
-	protected Class<?> getThreeGoodMethodLevelIndexesClass(){
-		return null;
-	}
-	
-	protected Class<?> getThreeGoodFieldLevelIndexesClass(){
-		return null;
-	}
-	
-	protected Class<?> getTwoColumnMethodLevelIndexClass(){
-		return null;
-	}
-	
-	protected Class<?> getOneColumnMethodLevelIndexClass(){
-		return null;
-	}
-
+	protected abstract Class<?> getOneColumnIndexClass();
+	protected abstract Class<?> getTwoColumnIndexClass();
+	protected abstract Class<?> getThreeGoodIndexesClass();
+	protected abstract Class<?> getDuplicateIndexNameClass();
+	protected abstract Class<?> getSameColumnTwiceInIndexClass();
+	protected abstract Class<?> getAutoNamedSingleColumnIndex();
+	protected abstract Class<?> getAutoNamedMultipleColumnIndex();
+	protected abstract Class<?> getIndexNameWithSpace();
 }

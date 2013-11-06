@@ -408,7 +408,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 			mdf = mdfClass.newInstance();
 			mdf.setSchema(puName);
 
-			setProperty(mdf, NamingStrategy.class, namingStrategy);
+			if (namingStrategy != null) {
+				setProperty(mdf, NamingStrategy.class, namingStrategy);
+			}
 			setProperty(mdf, EntityContext.class, this);
 		} catch (final ReflectiveOperationException e) {
 			throw new IllegalArgumentException(e);

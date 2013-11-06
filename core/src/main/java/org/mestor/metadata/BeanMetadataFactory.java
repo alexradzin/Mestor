@@ -158,9 +158,9 @@ public class BeanMetadataFactory implements MetadataFactory {
 
 			if (fmeta == null) {
 				@SuppressWarnings("unchecked")
-				final
-				Class<Object> type = (Class<Object>)m.getReturnType();
+				final Class<Object> type = (Class<Object>) (MethodAccessor.isGetter(m) ? m.getReturnType() : m.getParameterTypes()[0]);
 				fmeta = create(clazz, type, fieldName);
+				fields.put(fieldName, fmeta);
 			}
 
 			if(MethodAccessor.isGetter(m)) {
@@ -236,18 +236,21 @@ public class BeanMetadataFactory implements MetadataFactory {
 
 			indexedColumnNames = getIndexedColumnsForFieldIndex(indexes.get(indexName), columnName);
 		} else {
-			if(indexes.containsKey(indexName)){
-				throw new DuplicateIndexName(entityMetadata.getEntityType(), indexName);
-			}
 			final Object indexColumnNamesFromAnnotation = invoke(annotationType, indexDef.getColumnNames(), null, Object.class, a, null);
 			indexedColumnNames = getIndexedColumnNames(indexColumnNamesFromAnnotation);
 		}
 
-		if(indexName == null){
+		final IndexMetadata<T> imd = create(entityMetadata, indexName, indexedColumnNames);
+		final String imdName = imd.getName();
+
+		if(imdName == null) {
 			throw new NullPointerException("Index name is null");
 		}
+		if(fieldName == null && indexes.containsKey(imdName)) {
+			throw new DuplicateIndexName(entityMetadata.getEntityType(), imdName);
+		}
 
-		indexes.put(indexName, create(entityMetadata, indexName, indexedColumnNames));
+		indexes.put(imdName, imd);
 	}
 
 

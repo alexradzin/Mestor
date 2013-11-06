@@ -971,7 +971,8 @@ public class CqlPersistor implements Persistor {
 		final FieldMetadata<E, ?, ?> pkmd = entityMetadata.getPrimaryKey();
 		if (pkmd != null) {
 			final String pkColumn = pkmd.getColumn();
-			if (entityMetadata.getField(pkColumn) == null) {
+			// pkColumn == null means composite primary key that is not really saved in DB. Each field is saved separately.
+			if (pkColumn != null && entityMetadata.getField(pkColumn) == null) {
 				addColumn(table, pkmd, indexedColumns);
 			}
 		}

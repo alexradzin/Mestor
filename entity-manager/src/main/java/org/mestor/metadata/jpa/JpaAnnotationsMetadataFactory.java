@@ -26,6 +26,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -112,6 +113,13 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	public JpaAnnotationsMetadataFactory() {
 	}
 
+	public void setNamingStrategy(final NamingStrategy namingStrategy) {
+		for(final NamableItem i : NamableItem.values()) {
+			this.namingStrategies.put(i, namingStrategy);
+		}
+	}
+
+
 	public void setNamingStrategy(final NamableItem item, final NamingStrategy namingStrategy) {
 		this.namingStrategies.put(item, namingStrategy);
 	}
@@ -152,7 +160,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		final Map<String, FieldMetadata<T, Object, Object>> fields = new LinkedHashMap<>();
 
 		for (final Field f : FieldAccessor.getFields(clazz)) {
-			if (isTransient(f)) {
+			if (isTransient(f) || Modifier.isStatic(f.getModifiers())) {
 				continue;
 			}
 
@@ -259,7 +267,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 
-		emeta.addAllIndexes(findIndexes(emeta));
+		//emeta.addAllIndexes(findIndexes(emeta));
 
 		updateFieldAttributes(emeta);
 
@@ -289,17 +297,18 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	 * @param fmd
 	 * @return
 	 */
+	@ElementCollection // used for default value
 	private <T, P, C> void parseCollectionElementType(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<T> emd, final FieldMetadata<T, P, C> fmd) {
 		final Class<?> collectionType = fmd.getType();
-		if (!Collection.class.isAssignableFrom(collectionType)) {
+		if (!Collection.class.isAssignableFrom(collectionType) && !Map.class.isAssignableFrom(collectionType)) {
 			return;
 		}
 
 
 		final Type collectionGenericType = fmd.getAccessor().getGenericType();
-		Type discoveredType = null;
+		Type[] discoveredType = new Type[0];
 		if (collectionGenericType instanceof ParameterizedType) {
-			discoveredType = ((ParameterizedType)collectionGenericType).getActualTypeArguments()[0];
+			discoveredType = ((ParameterizedType)collectionGenericType).getActualTypeArguments();
 		}
 
 
@@ -308,10 +317,24 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 		final OneToMany oneToMany = fmd.getAccessor().getAnnotation(OneToMany.class);
 		final ManyToMany manyToMany = fmd.getAccessor().getAnnotation(ManyToMany.class);
-		final ElementCollection elementCollection = fmd.getAccessor().getAnnotation(ElementCollection.class);
+		ElementCollection elementCollection = fmd.getAccessor().getAnnotation(ElementCollection.class);
+		if (oneToMany == null && manyToMany == null && elementCollection == null) {
+			try {
+				// although javadoc of ElementCollection says that this annotation "Must be specified if the collection is to be mapped"
+				// we saw that at least eclipse link creates BLOB field for such collections even when this annotation does not exist we
+				// have to follow this concept here.
+				//TODO: probably make this feature configurable.
+				elementCollection = getClass().getDeclaredMethod("parseCollectionElementType", Map.class, EntityMetadata.class, FieldMetadata.class).getAnnotation(ElementCollection.class);
+			} catch (final NoSuchMethodException e) {
+				throw new IllegalStateException("This method must be annotated using ElementCollection to get default value");
+			}
+		}
 
-		if (!(oneToMany != null ^ manyToMany != null ^ elementCollection != null)) {
-			throw new IllegalArgumentException("Only one of OneToMany, ManyToMany, ElementCollection can be used for one field (" + fmd.getName() + ")");
+
+		if (oneToMany != null || manyToMany != null || elementCollection != null) {
+			if (!(oneToMany != null ^ manyToMany != null ^ elementCollection != null)) {
+				throw new IllegalArgumentException("Only one of OneToMany, ManyToMany, ElementCollection can be used for one field (" + fmd.getName() + ")");
+			}
 		}
 
 
@@ -328,27 +351,26 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			explicitType = elementCollection.targetClass();
 		} else if (fmd.getAccessor().getAnnotation(Convert.class) != null) {
 			return; //this collection has explicitly defined converter.
-		} else if (fmd.getAccessor().getAnnotation(Embedded.class) != null && discoveredType != null) {
+		} else if (fmd.getAccessor().getAnnotation(Embedded.class) != null && discoveredType.length != 0) {
 			//collectionElementClass = castTypeToClass(collectionElementType);
 		} else {
 			throw new IllegalArgumentException("Cannot identify type of collection " + fmd.getClassType() + "." + fmd.getName());
 		}
 
 
+		if (explicitType != null && !void.class.equals(explicitType)) {
+			discoveredType[discoveredType.length -1] = explicitType;
+		}
+
+
 		if (!"".equals(mappedBy)) {
 			@SuppressWarnings("unchecked")
-			final
-			EntityMetadata<Object> ref = (EntityMetadata<Object>)metadata.get(explicitType);
+			final EntityMetadata<Object> ref = (EntityMetadata<Object>)metadata.get(discoveredType[discoveredType.length -1]);
 			ref.addIndex(ref.getFieldByName(mappedBy));
 		}
 
-		if (explicitType != null && !void.class.equals(explicitType)) {
-			discoveredType = explicitType;
-		}
 
-
-
-		final Class<?> elementType = castTypeToClass(discoveredType);
+		final Class<?>[] elementType = castTypeToClass(discoveredType);
 		fmd.setGenericTypes(elementType);
 
 
@@ -365,26 +387,41 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 
 		if (elementCollection != null) {
-			@SuppressWarnings("unchecked")
-			final
-			Class<P> elementClass = (Class<P>)elementType;
-			final List<AttributeConverter<?, ?>> converters = findConverters(fmd, elementClass);
-			if (converters != null && !converters.isEmpty()) {
+			// TODO: add support of convertors for Maps
+			if(Collection.class.isAssignableFrom(collectionType)) {
 				@SuppressWarnings("unchecked")
-				final AttributeConverter<P, C> castConv = (AttributeConverter<P, C>)converters.get(0);
-				converter = castConv;
+				final Class<P> elementClass = (Class<P>)elementType[elementType.length - 1];
+				final List<AttributeConverter<?, ?>> converters = findConverters(fmd, elementClass);
+				if (converters != null && !converters.isEmpty()) {
+					@SuppressWarnings("unchecked")
+					final AttributeConverter<P, C> castConv = (AttributeConverter<P, C>)converters.get(0);
+					converter = castConv;
+				}
 			}
+			fmd.setColumnGenericTypes(Arrays.<Class<?>>asList(elementType));
 		}
 
 
 		if (converter != null) {
 			fmd.setConverter(new DummyValueConverter<P, C>(), new ValueAttributeConverter<>(converter));
-			fmd.setColumnGenericTypes(getColumnGenericTypes(Collections.<AttributeConverter<?, ?>>singleton(converter)));
+			final List<Class<?>> columenGenericTypes = new ArrayList<>(getColumnGenericTypes(Collections.<AttributeConverter<?, ?>>singleton(converter)));
+			final Collection<Class<?>> existingColumenGenericTypes = fmd.getColumnGenericTypes();
+
+			final List<Class<?>> mergedColumnGenericTypes = new ArrayList<>(existingColumenGenericTypes);
+
+			for (int i = 0; i < columenGenericTypes.size(); i++) {
+				final Class<?> g = columenGenericTypes.get(i);
+				if (g != null) {
+					mergedColumnGenericTypes.set(i, g);
+				}
+			}
+
+			fmd.setColumnGenericTypes(mergedColumnGenericTypes);
 		}
 	}
 
 	//TOOD: add support of all attributes of ManyToOne
-	private <T, P> void parseCollectionElementBackReference(final Map<Class<?>, EntityMetadata<?>> metadata, final FieldMetadata<T, P, Object> fmd) {
+	private <T, P> void parseCollectionElementBackReference(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<T> emd, final FieldMetadata<T, P, Object> fmd) {
 		final ManyToOne manyToOne = fmd.getAccessor().getAnnotation(ManyToOne.class);
 		if (manyToOne == null) {
 			return;
@@ -402,10 +439,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		fmd.setConverter(new ValueAttributeConverter<P, Object>(new PrimaryKeyConverter<P, Object>(fieldType, entityContext)));
 		final FieldMetadata<P, Object, Object> secondSidePK = entityContext.getEntityMetadata(fieldType).getPrimaryKey();
 
+		final String oldColumn = fmd.getColumn();
 
-		final String columnName = fmd.getColumn() + "_" + secondSidePK.getColumn();
+		final String columnName = oldColumn + "_" + secondSidePK.getColumn();
 		fmd.setColumn(columnName);
 		fmd.setColumnType(secondSidePK.getColumnType());
+
+
+		emd.updateField(fmd, fmd.getName(), oldColumn);
+
 	}
 
 
@@ -428,6 +470,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		return (Class<C>)type;
 	}
 
+	private <C> Class<C>[] castTypeToClass(final Type[] types) {
+		@SuppressWarnings("unchecked")
+		final
+		Class<C>[] classes = new Class[types.length];
+		for (int i = 0; i < types.length; i++) {
+			classes[i] = castTypeToClass(types[i]);
+		}
+		return classes;
+	}
 
 
 	private String extractName(final Object nameHolder, final String defaultValue) {
@@ -557,6 +608,14 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			updateRelationships(metadata, emd);
 			emd.updateFields();
 		}
+
+		for (final EntityMetadata<?> emd : metadata.values()) {
+			updateIndexes(emd);
+		}
+	}
+
+	private <T> void updateIndexes(final EntityMetadata<T> emd) {
+		emd.addAllIndexes(findIndexes(emd));
 	}
 
 
@@ -714,7 +773,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		// references to collections.
 		for (final FieldMetadata<E, Object, Object> fmd : emd.getFields()) {
 			parseCollectionElementType(metadata, emd, fmd);
-			parseCollectionElementBackReference(metadata, fmd);
+			parseCollectionElementBackReference(metadata, emd, fmd);
 		}
 	}
 

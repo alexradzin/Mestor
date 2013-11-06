@@ -19,42 +19,61 @@ package org.mestor.metadata;
 
 import java.util.Arrays;
 
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Collections2;
+
 public class IndexMetadata<T> {
 	private final Class<T> type;
 	private final String name;
 	private final FieldMetadata<T, ? extends Object, ? extends Object>[] fields;
 
 
-	
+
 	@SuppressWarnings("unchecked")
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object> field) {
+	public IndexMetadata(final Class<T> type, final String name, final FieldMetadata<T, ? extends Object, ? extends Object> field) {
 		this(type, name, new FieldMetadata[] {field});
 	}
-	
-	
-	public IndexMetadata(Class<T> type, String name, FieldMetadata<T, ? extends Object, ? extends Object>[] fields) {
+
+
+	public IndexMetadata(final Class<T> type, final String name, final FieldMetadata<T, ? extends Object, ? extends Object>[] fields) {
 		this.type = type;
-		this.name = name;
 		this.fields = Arrays.copyOf(fields, fields.length);
+		this.name = autoName(name);
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	public IndexMetadata(EntityMetadata<T> entityMetadata, String name, String[] columnNames) {
+	public IndexMetadata(final EntityMetadata<T> entityMetadata, final String name, final String[] columnNames) {
 		this.type = entityMetadata.getEntityType();
-		this.name = name;
-		
-		
 		fields = new FieldMetadata[columnNames.length];
-		
+
 		for (int i = 0; i < columnNames.length; i++) {
-			FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(columnNames[i]);
+			final FieldMetadata<T, ? extends Object, ? extends Object> fmd = entityMetadata.getField(columnNames[i]);
 			if (fmd == null) {
 				throw new IllegalArgumentException("Index " + name + " uses unknown field name " + columnNames[i]);
 			}
 			fields[i] = fmd;
 		}
+
+		this.name = autoName(name);
 	}
 
+	private String autoName(final String passedName) {
+		if (passedName == null || "".equals(passedName)) {
+			return Joiner.on("_").join(Collections2.transform(Arrays.asList(fields), new Function<FieldMetadata<T, ?, ?>, String>(){
+				@Override
+				public String apply(final FieldMetadata<T, ?, ?> fmd) {
+					return fmd.getColumn();
+				}
+			}));
+		}
+
+		if (!passedName.matches("^[A-Za-z0-9_]+$")) {
+			throw new IllegalArgumentException("Wrong index name " + passedName);
+		}
+
+		return passedName;
+	}
 
 	public Class<T> getType() {
 		return type;
@@ -74,23 +93,23 @@ public class IndexMetadata<T> {
 		if (fields == null) {
 			return null;
 		}
-		String[] names = new String[fields.length];
+		final String[] names = new String[fields.length];
 		for (int i = 0; i < fields.length; i++) {
 			names[i] = fields[i].getName();
 		}
 		return names;
 	}
-	
+
 	public String[] getColumnNames() {
 		if (fields == null) {
 			return null;
 		}
-		String[] names = new String[fields.length];
+		final String[] names = new String[fields.length];
 		for (int i = 0; i < fields.length; i++) {
 			names[i] = fields[i].getColumn();
 		}
 		return names;
 	}
-	
-	
+
+
 }

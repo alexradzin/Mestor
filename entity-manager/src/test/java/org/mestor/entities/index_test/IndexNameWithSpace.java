@@ -14,55 +14,17 @@
 /*                                                                                                    */
 /*                                                                                                    */
 /******************************************************************************************************/
-package org.mestor.metadata.jpa;
 
-import org.mestor.entities.index_test.AutoNamedMultipleColumnIndex;
-import org.mestor.entities.index_test.AutoNamedOneColumnIndex;
-import org.mestor.entities.index_test.DuplicateIndexName;
-import org.mestor.entities.index_test.IndexNameWithSpace;
-import org.mestor.entities.index_test.OneColumnIndex;
-import org.mestor.entities.index_test.SameColumnTwiceInIndex;
-import org.mestor.entities.index_test.ThreeGoodIndexes;
-import org.mestor.entities.index_test.TwoColumnIndex;
+package org.mestor.entities.index_test;
 
-public class JpaIndexTest extends IndexTestBase {
-	@Override
-	protected Class<?> getOneColumnIndexClass() {
-		return OneColumnIndex.class;
-	}
+import javax.persistence.Entity;
+import javax.persistence.Index;
+import javax.persistence.Table;
 
-	@Override
-	protected Class<?> getTwoColumnIndexClass() {
-		return TwoColumnIndex.class;
-	}
-
-	@Override
-	protected Class<?> getThreeGoodIndexesClass() {
-		return ThreeGoodIndexes.class;
-	}
-
-	@Override
-	protected Class<?> getDuplicateIndexNameClass() {
-		return DuplicateIndexName.class;
-	}
-
-	@Override
-	protected Class<?> getSameColumnTwiceInIndexClass() {
-		return SameColumnTwiceInIndex.class;
-	}
-
-	@Override
-	protected Class<?> getAutoNamedSingleColumnIndex() {
-		return AutoNamedOneColumnIndex.class;
-	}
-
-	@Override
-	protected Class<?> getAutoNamedMultipleColumnIndex() {
-		return AutoNamedMultipleColumnIndex.class;
-	}
-
-	@Override
-	protected Class<?> getIndexNameWithSpace() {
-		return IndexNameWithSpace.class;
-	}
+@Entity
+@Table(indexes = {
+	@Index(name = "foo bar", columnList = "column1"),
+})
+public class IndexNameWithSpace {
+	// This class does not contain code. It is used for testing of annotation parsing.
 }

@@ -71,10 +71,10 @@ public class CqlQueryFactoryTest {
 		pkName.setKey(true);
 
 		final FieldMetadata<Person, String, String> fieldFirstName = new FieldMetadata<Person, String, String>(Person.class, String.class, "firstName");
-		fieldFirstName.setColumn("first_name");
+		fieldFirstName.setColumn("FirstName");
 
 		final FieldMetadata<Person, String, String> fieldLastName = new FieldMetadata<Person, String, String>(Person.class, String.class, "lastName");
-		fieldLastName.setColumn("last_name");
+		fieldLastName.setColumn("LastName");
 
 		emd.addAllFields(Arrays.<FieldMetadata<Person, ?, ?>>asList(pkName, fieldName, fieldFirstName, fieldLastName));
 		return emd;
@@ -108,7 +108,7 @@ public class CqlQueryFactoryTest {
 
 	@Test
 	public void testSimpleSelectSeveralFields() {
-		testCreateQuery(new QueryInfo(QueryType.SELECT, Arrays.asList("name", "lastName"), "person", null, null, null), "SELECT name,last_name FROM \"TestKeySpace\".person;");
+		testCreateQuery(new QueryInfo(QueryType.SELECT, Arrays.asList("name", "lastName"), "person", null, null, null), "SELECT name,\"LastName\" FROM \"TestKeySpace\".person;");
 	}
 
 	@Test
@@ -204,7 +204,7 @@ public class CqlQueryFactoryTest {
 						new ClauseInfo("lastName", Operand.EQ, "Lennon")
 				}),
 				null, null),
-				"SELECT * FROM \"TestKeySpace\".person WHERE first_name='John' AND last_name='Lennon' ALLOW FILTERING;");
+				"SELECT * FROM \"TestKeySpace\".person WHERE \"FirstName\"='John' AND \"LastName\"='Lennon' ALLOW FILTERING;");
 	}
 
 	@Test(expected=UnsupportedOperationException.class)
@@ -356,6 +356,16 @@ public class CqlQueryFactoryTest {
 				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 AND name_pk>='John' ORDER BY name_pk DESC ALLOW FILTERING;");
 	}
 
+	@Test
+	public void testSelectWhereCaseSensitive() {
+		testCreateQuery(new QueryInfo(QueryType.SELECT,
+				null, "person",
+				new ClauseInfo(null, Operand.AND, new ClauseInfo[] {
+						new ClauseInfo("firstName", Operand.EQ, "John"),
+				}),
+				null, null),
+				"SELECT * FROM \"TestKeySpace\".person WHERE \"FirstName\"='John' ALLOW FILTERING;");
+	}
 
 
 	private void testGetSubqueryIndexes(final String query, final List<Pair<String, Integer>> expected) {

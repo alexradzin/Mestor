@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 import javax.persistence.EntityManager;
@@ -54,6 +55,7 @@ import com.google.common.base.Function;
 public class CriteriaBuilderTest {
 	private final String MESTOR_PERSISTOR_CLASS = "org.mestor.persistor.class";
 	private final String MESTOR_ENTITY_PACKAGE = "org.mestor.managed.package";
+	private final static Map<String, String> fromPerson = Collections.<String, String> singletonMap("person", "Person");
 
 	private final EntityManager em;
 
@@ -79,7 +81,7 @@ public class CriteriaBuilderTest {
 
 	@Test
 	public void testCreateQueryWithFrom() {
-		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null)), new Function<CriteriaQuery<Person>, Void>() {
+		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, fromPerson), new Function<CriteriaQuery<Person>, Void>() {
 			@Override
 			public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
 				criteria.from(Person.class);
@@ -132,24 +134,24 @@ public class CriteriaBuilderTest {
 	public void testCreateQueryWithFromAndWhereWith2FieldsByAnd() {
 		twoFieldsByOperand(Operand.AND);
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromAndWhereWith2FieldsByOr() {
 		twoFieldsByOperand(Operand.OR);
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromAndWhereWithLikeNoPercent() {
 		testCreateQueryWithFromAndWhere1("name", String.class, Operand.LIKE, "John");
 	}
-	
+
 	private void twoFieldsByOperand(final Operand op) {
 		Assert.assertTrue(op == Operand.AND || op == Operand.OR);
 		testCreateQuery(Person.class,
-		new QueryInfo(QueryType.SELECT, null, 
-				Collections.<String, String> singletonMap("person", null), 
+		new QueryInfo(QueryType.SELECT, null,
+				fromPerson,
 				new ClauseInfo(null, op, new ClauseInfo[] {
-						new ClauseInfo("name", Operand.EQ, "John"), 
+						new ClauseInfo("name", Operand.EQ, "John"),
 						new ClauseInfo("lastName", Operand.EQ, "Lennon") }
 				),
 				null),
@@ -174,7 +176,7 @@ public class CriteriaBuilderTest {
 	public void testCreateQueryWithFromAndWhereWithEmptyConjunction() {
 		testCreateQuery(Person.class,
 
-		new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null), null, null),
+		new QueryInfo(QueryType.SELECT, null, fromPerson, null, null),
 
 		new Function<CriteriaQuery<Person>, Void>() {
 			@Override
@@ -191,7 +193,7 @@ public class CriteriaBuilderTest {
 	public void testCreateQueryWithFromAndWhereWithConjunctionAndField() {
 		testCreateQuery(Person.class,
 
-		new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null), new ClauseInfo("name", Operand.EQ, "John"), null),
+		new QueryInfo(QueryType.SELECT, null, fromPerson, new ClauseInfo("name", Operand.EQ, "John"), null),
 
 		new Function<CriteriaQuery<Person>, Void>() {
 			@Override
@@ -210,9 +212,9 @@ public class CriteriaBuilderTest {
 		testCreateQuery(
 			Person.class,
 			new QueryInfo(
-					QueryType.SELECT, 
-					null, 
-					Collections.<String, String> singletonMap("person", null),
+					QueryType.SELECT,
+					null,
+					fromPerson,
 					new ClauseInfo("name", Operand.EQ, null),
 					null),
 			new Function<CriteriaQuery<Person>, Void>() {
@@ -226,23 +228,23 @@ public class CriteriaBuilderTest {
 				}
 			});
 	}
-	
+
 	private CriteriaBuilder getBuilder(@Nullable final CriteriaQuery<?> criteria) {
 		// this is ugly casting but it is good enough for tests.
 		@SuppressWarnings("rawtypes")
 		final CriteriaBuilder builder = ((CommonAbstractCriteriaBase) criteria).getCriteriaBuilder();
 		return builder;
 	}
-	
+
 	private <E, F> SingularAttribute<? super E, F> getAttribute(final Class<E> entityClass, final String attrName, final Class<F> attrClass) {
 		final EntityType<E> entityType = notNull(em.getMetamodel().entity(entityClass));
 		final SingularAttribute<? super E, F> singularAttribute = entityType.getSingularAttribute(attrName, attrClass);
 		return notNull(singularAttribute);
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromAndWhereIn() {
-		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null), new ClauseInfo("name", Operand.IN, new String[] { "John",
+		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, fromPerson, new ClauseInfo("name", Operand.IN, new String[] { "John",
 				"Paul", "George", "Ringo" }), null),
 
 		new Function<CriteriaQuery<Person>, Void>() {
@@ -258,13 +260,13 @@ public class CriteriaBuilderTest {
 
 	@Test
 	public void testCreateQueryWithFromAndWhereAgeGEConst() {
-		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null), new ClauseInfo("age", Operand.GE, new Integer(0)), null),
+		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, fromPerson, new ClauseInfo("age", Operand.GE, new Integer(0)), null),
 
 		new Function<CriteriaQuery<Person>, Void>() {
 			@Override
 			public Void apply(@Nullable final CriteriaQuery<Person> criteria) {
 				final Root<Person> root = notNull(criteria.from(Person.class));
-				final SingularAttribute<? super Person, Integer> personAgeAttr = getAttribute(Person.class, "age", int.class);				
+				final SingularAttribute<? super Person, Integer> personAgeAttr = getAttribute(Person.class, "age", int.class);
 				final CriteriaBuilder builder = getBuilder(criteria);
 				criteria.where(builder.greaterThanOrEqualTo(root.get(personAgeAttr), 0));
 				return null;
@@ -284,7 +286,7 @@ public class CriteriaBuilderTest {
 
 	private void testOrderBy(final Order order) {
 		testCreateQuery(Person.class,
-				new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null), null, Collections.<OrderByInfo> singletonList(new OrderByInfo("age", order))),
+				new QueryInfo(QueryType.SELECT, null, fromPerson, null, Collections.<OrderByInfo> singletonList(new OrderByInfo("age", order))),
 
 				new Function<CriteriaQuery<Person>, Void>() {
 					@Override
@@ -301,7 +303,7 @@ public class CriteriaBuilderTest {
 					}
 				});
 	}
-	
+
 	private abstract class FunctionExpression<T> implements Function<CriteriaQuery<T>, Void>{
 		@Override
 		public final Void apply(@Nullable final CriteriaQuery<T> criteria) {
@@ -310,16 +312,16 @@ public class CriteriaBuilderTest {
 			apply(criteria, root, builder);
 			return null;
 		}
-		
+
 		protected abstract void apply(final CriteriaQuery<T> criteria, final Root<Person> root, final CriteriaBuilder builder);
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromCount() {
 		testQueryWithFunction(
-			Long.class, 
-			"count(*)", 
-			"age", 
+			Long.class,
+			"count(*)",
+			"age",
 			new FunctionExpression<Long>() {
 				@Override
 				protected void apply(final CriteriaQuery<Long> criteria, final Root<Person> root, final CriteriaBuilder builder) {
@@ -332,21 +334,21 @@ public class CriteriaBuilderTest {
 	private <T> void testQueryWithFunction(final Class<T> resultClass, final Object value, final String alias, final FunctionExpression<T> func) {
 		testCreateQuery(resultClass,
 				new QueryInfo(
-						QueryType.SELECT, 
-						Collections.<String, Object> singletonMap(alias, value), 
-						Collections.<String, String> singletonMap("person", null), 
-						null, 
+						QueryType.SELECT,
+						Collections.<String, Object> singletonMap(alias, value),
+						fromPerson,
+						null,
 						null),
 
 				func);
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromLiteral() {
 		testQueryWithFunction(
-				Long.class, 
-				1l, 
-				"1", 
+				Long.class,
+				1l,
+				"1",
 				new FunctionExpression<Long>() {
 					@Override
 					protected void apply(final CriteriaQuery<Long> criteria, final Root<Person> root, final CriteriaBuilder builder) {
@@ -354,69 +356,69 @@ public class CriteriaBuilderTest {
 					}
 				});
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromMax() {
 		testQueryWithFunction(
-				Integer.class, 
-				"max(age)", 
-				"age", 
+				Integer.class,
+				"max(age)",
+				"age",
 				new FunctionExpression<Integer>() {
 					@Override
 					protected void apply(final CriteriaQuery<Integer> criteria, final Root<Person> root, final CriteriaBuilder builder) {
 						final SingularAttribute<? super Person, Integer> personAgeAttr = getAttribute(Person.class, "age", int.class);
-						criteria.select(builder.max(root.get(personAgeAttr)));	
+						criteria.select(builder.max(root.get(personAgeAttr)));
 					}
 				});
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromMin() {
 		testQueryWithFunction(
-				Integer.class, 
-				"min(age)", 
-				"age", 
+				Integer.class,
+				"min(age)",
+				"age",
 				new FunctionExpression<Integer>() {
 					@Override
 					protected void apply(final CriteriaQuery<Integer> criteria, final Root<Person> root, final CriteriaBuilder builder) {
 						final SingularAttribute<? super Person, Integer> personAgeAttr = getAttribute(Person.class, "age", int.class);
-						criteria.select(builder.min(root.get(personAgeAttr)));	
+						criteria.select(builder.min(root.get(personAgeAttr)));
 					}
 				});
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromSum() {
 		testQueryWithFunction(
-				Integer.class, 
-				"sum(age)", 
-				"age", 
+				Integer.class,
+				"sum(age)",
+				"age",
 				new FunctionExpression<Integer>() {
 					@Override
 					protected void apply(final CriteriaQuery<Integer> criteria, final Root<Person> root, final CriteriaBuilder builder) {
 						final SingularAttribute<? super Person, Integer> personAgeAttr = getAttribute(Person.class, "age", int.class);
-						criteria.select(builder.sum(root.get(personAgeAttr)));	
+						criteria.select(builder.sum(root.get(personAgeAttr)));
 					}
 				});
 	}
-	
+
 	@Test
 	public void testCreateQueryWithFromUpper() {
 		testQueryWithFunction(
-				String.class, 
-				"upper(name)", 
-				"name", 
+				String.class,
+				"upper(name)",
+				"name",
 				new FunctionExpression<String>() {
 					@Override
 					protected void apply(final CriteriaQuery<String> criteria, final Root<Person> root, final CriteriaBuilder builder) {
 						final SingularAttribute<? super Person, String> personNameAttr = getAttribute(Person.class, "name", String.class);
-						criteria.select(builder.upper(root.get(personNameAttr)));	
+						criteria.select(builder.upper(root.get(personNameAttr)));
 					}
 				});
 	}
 
 	private <T> void testCreateQueryWithFromAndWhere1(final String fieldName, final Class<T> fieldType, final Operand operand, final T fieldValue) {
-		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, Collections.<String, String> singletonMap("person", null), new ClauseInfo(fieldName, operand, fieldValue), null),
+		testCreateQuery(Person.class, new QueryInfo(QueryType.SELECT, null, fromPerson, new ClauseInfo(fieldName, operand, fieldValue), null),
 				new Function<CriteriaQuery<Person>, Void>() {
 					@Override
 					public Void apply(@Nullable final CriteriaQuery<Person> criteria) {

@@ -26,58 +26,65 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 
 public class CompositePropertyAccessor<T, P> extends PropertyAccessor<T, P> {
-	private final Class<P> compositeType; 
+	private final Class<P> compositeType;
 	private final PropertyAccessor<T, Object>[] accessors;
 	private final Map<String, PropertyAccessor<T, Object>> name2accessors;
 	private final BeanMetadataFactory mdf = new BeanMetadataFactory();
 	private final EntityMetadata<P> pm;
-	
-	
-	public CompositePropertyAccessor(Class<T> type, Class<P> compositeType, String name, PropertyAccessor<T, Object>[] accessors) {
+
+
+	public CompositePropertyAccessor(final Class<T> type, final Class<P> compositeType, final String name, final PropertyAccessor<T, Object>[] accessors) {
 		super(type, compositeType, name, null, null, null);
 
 		this.compositeType = compositeType;
 		this.accessors = Arrays.copyOf(accessors, accessors.length);
-		
-		
+
+
 		name2accessors = new LinkedHashMap<>();
-		for (PropertyAccessor<T, Object> accessor : accessors) {
+		for (final PropertyAccessor<T, Object> accessor : accessors) {
 			name2accessors.put(accessor.getName(), accessor);
 		}
-		
-		
+
+
 		this.pm = mdf.create(compositeType);
 	}
 
-	
-	
+
+	//TODO: setValue() and getValue() are null-safe. Take a look on corresponding comment in PropertyAccessor
+
 	@Override
-	public P getValue(T instance) {
+	public P getValue(final T instance) {
 		P p;
 		try {
 			p = compositeType.newInstance();
-		} catch (InstantiationException e) {
+		} catch (final InstantiationException e) {
 			throw new IllegalStateException(e);
-		} catch (IllegalAccessException e) {
+		} catch (final IllegalAccessException e) {
 			throw new IllegalArgumentException("Class " + compositeType + " does not have accessible default constructor", e);
 		}
-		
-		
-		for (PropertyAccessor<T, Object> accessor : accessors) {
-			String name = accessor.getName();
-			Object value = accessor.getValue(instance);
-			
-			pm.getFieldByName(name).getAccessor().setValue(p, value);
+
+
+		for (final PropertyAccessor<T, Object> accessor : accessors) {
+			final String name = accessor.getName();
+			final Object value = accessor.getValue(instance);
+
+			final PropertyAccessor<P, Object> readAccessor = pm.getFieldByName(name).getAccessor();
+			if (readAccessor != null) {
+				readAccessor.setValue(p, value);
+			}
 		}
-		
+
 		return p;
 	}
-	
+
 	@Override
-	public void setValue(T instance, P value) {
-		for(FieldMetadata<P, ?, ?> fmd : pm.getFields()) {
-			Object pmFieldValue = fmd.getAccessor().getValue(value);
-			name2accessors.get(fmd.getName()).setValue(instance, pmFieldValue);
+	public void setValue(final T instance, final P value) {
+		for(final FieldMetadata<P, ?, ?> fmd : pm.getFields()) {
+			final Object pmFieldValue = fmd.getAccessor().getValue(value);
+			final PropertyAccessor<T, Object> writeAccessor = name2accessors.get(fmd.getName());
+			if (writeAccessor != null) {
+				writeAccessor.setValue(instance, pmFieldValue);
+			}
 		}
 	}
 }

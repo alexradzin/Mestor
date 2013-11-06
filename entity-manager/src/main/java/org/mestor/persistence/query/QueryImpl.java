@@ -126,7 +126,7 @@ public class QueryImpl<T> implements TypedQuery<T> {
 				} else {
 					field = alias;
 				}
-				
+
 				what = Collections.<String, Object> singletonMap(alias, field);
 			}
 		}
@@ -138,7 +138,10 @@ public class QueryImpl<T> implements TypedQuery<T> {
 			for (final Root<?> root : roots) {
 				final Class<?> type = root.getJavaType();
 				final String table = context.getEntityMetadata(type).getTableName();
-				final String alias = root.getAlias();
+				String alias = root.getAlias();
+				if (alias == null) {
+					alias = context.getEntityMetadata(type).getEntityName();
+				}
 				from.put(table, alias);
 			}
 		}
@@ -158,23 +161,23 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		this.queryInfo = queryInfo;
 		initParams();
 	}
-	
+
 	private void initParams(){
 		final ClauseInfo where = queryInfo.getWhere();
 		if(where == null){
 			return;
 		}
-		
+
 		if(where.getExpression() instanceof ArgumentInfo) {
 			final EntityMetadata<T> emd = context.getEntityMetadata(resultType);
 			final String name = where.getField();
-			
+
 			final Class<?> fieldType = emd.getFieldByName(name).getType();
-			
+
 			parameterNames.add(name);
 			parameters.put(name, new ParameterExpressionImpl<>(name, fieldType));
 		}
-		
+
 	}
 
 

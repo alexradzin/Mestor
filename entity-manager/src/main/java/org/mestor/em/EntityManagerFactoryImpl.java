@@ -70,14 +70,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	}
 
 	@Override
-	public EntityManager createEntityManager() {
+	public synchronized EntityManager createEntityManager() {
 		checkOpen();
 		return createEntityManager(properties);
 	}
 
 	@Override
 	public EntityManager createEntityManager(@SuppressWarnings("rawtypes") final Map map) {
-		return createEntityManager(SynchronizationType.UNSYNCHRONIZED, Collections.emptyMap());
+		return createEntityManager(SynchronizationType.UNSYNCHRONIZED, map);
 	}
 
 	@Override

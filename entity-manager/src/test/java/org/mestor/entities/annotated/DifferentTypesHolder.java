@@ -14,55 +14,48 @@
 /*                                                                                                    */
 /*                                                                                                    */
 /******************************************************************************************************/
-package org.mestor.metadata.jpa;
 
-import org.mestor.entities.index_test.AutoNamedMultipleColumnIndex;
-import org.mestor.entities.index_test.AutoNamedOneColumnIndex;
-import org.mestor.entities.index_test.DuplicateIndexName;
-import org.mestor.entities.index_test.IndexNameWithSpace;
-import org.mestor.entities.index_test.OneColumnIndex;
-import org.mestor.entities.index_test.SameColumnTwiceInIndex;
-import org.mestor.entities.index_test.ThreeGoodIndexes;
-import org.mestor.entities.index_test.TwoColumnIndex;
+package org.mestor.entities.annotated;
 
-public class JpaIndexTest extends IndexTestBase {
-	@Override
-	protected Class<?> getOneColumnIndexClass() {
-		return OneColumnIndex.class;
+import java.util.List;
+import java.util.Map;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+@Entity
+public class DifferentTypesHolder {
+	@Id
+	private int id;
+	private String name;
+	private Map<String, String> properties;
+	private List<Integer> integers;
+
+
+	public int getId() {
+		return id;
+	}
+	public void setId(final int id) {
+		this.id = id;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(final String name) {
+		this.name = name;
+	}
+	public Map<String, String> getProperties() {
+		return properties;
+	}
+	public void setProperties(final Map<String, String> properties) {
+		this.properties = properties;
+	}
+	public List<Integer> getIntegers() {
+		return integers;
+	}
+	public void setIntegers(final List<Integer> integers) {
+		this.integers = integers;
 	}
 
-	@Override
-	protected Class<?> getTwoColumnIndexClass() {
-		return TwoColumnIndex.class;
-	}
 
-	@Override
-	protected Class<?> getThreeGoodIndexesClass() {
-		return ThreeGoodIndexes.class;
-	}
-
-	@Override
-	protected Class<?> getDuplicateIndexNameClass() {
-		return DuplicateIndexName.class;
-	}
-
-	@Override
-	protected Class<?> getSameColumnTwiceInIndexClass() {
-		return SameColumnTwiceInIndex.class;
-	}
-
-	@Override
-	protected Class<?> getAutoNamedSingleColumnIndex() {
-		return AutoNamedOneColumnIndex.class;
-	}
-
-	@Override
-	protected Class<?> getAutoNamedMultipleColumnIndex() {
-		return AutoNamedMultipleColumnIndex.class;
-	}
-
-	@Override
-	protected Class<?> getIndexNameWithSpace() {
-		return IndexNameWithSpace.class;
-	}
 }

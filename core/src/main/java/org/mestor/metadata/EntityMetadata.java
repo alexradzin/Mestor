@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+
 import org.mestor.reflection.PropertyAccessor;
 
 public class EntityMetadata<E> {
@@ -40,7 +42,7 @@ public class EntityMetadata<E> {
 	private String schemaName;
 
 	private final List<FieldMetadata<E, Object, Object>> fields = new ArrayList<>();
-	private final Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new LinkedHashMap<>();
+	private final Map<String, FieldMetadata<E, ?, ?>> fieldColumns = new TreeMap<>(String.CASE_INSENSITIVE_ORDER); //TODO: make this configurable
 	private final Map<String, FieldMetadata<E, ?, ?>> fieldNames = new LinkedHashMap<>();
 	private final Collection<IndexMetadata<E>> indexes = new ArrayList<>();
 

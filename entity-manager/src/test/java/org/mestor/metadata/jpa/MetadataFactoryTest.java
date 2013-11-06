@@ -36,6 +36,7 @@ import org.junit.Test;
 import org.mestor.entities.Country;
 import org.mestor.entities.annotated.AbstractEntity;
 import org.mestor.entities.annotated.Address;
+import org.mestor.entities.annotated.DifferentTypesHolder;
 import org.mestor.entities.annotated.EmailAddress;
 import org.mestor.entities.annotated.Person;
 import org.mestor.entities.annotated.Person.Gender;
@@ -88,6 +89,37 @@ public class MetadataFactoryTest {
 				new String[] {"name", "type", "value"},
 				new Class[] {String.class, String.class, ByteBuffer.class});
 	}
+
+	@Test
+	public void testEntityWithAttributesOfDifferentTypes() {
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(DifferentTypesHolder.class);
+
+		assertFalse(entityClasses.isEmpty());
+		assertEquals(1,  entityClasses.size());
+
+		@SuppressWarnings("unchecked")
+		final EntityMetadata<DifferentTypesHolder> emd = (EntityMetadata<DifferentTypesHolder>)entityClasses.get(DifferentTypesHolder.class);
+		assertNotNull(emd);
+
+		MetadataFactoryTestUtils.assertEntityMetadata(emd, DifferentTypesHolder.class, DifferentTypesHolder.class.getSimpleName(), "different_types_holder");
+
+		MetadataFactoryTestUtils.assertEntityMetadataFields(
+				emd.getFields(),
+				new String[] {"id", "name", "properties", "integers"},
+				new Class[] {int.class, String.class, Map.class, List.class},
+				new String[] {"id", "name", "properties", "integers"},
+				new Class[] {int.class, String.class, Map.class, List.class});
+
+
+		MetadataFactoryTestUtils.assertEntityMetadataFieldsGenerics(
+				emd.getFields(),
+				new String[] {"integers", "properties"},
+				new Class<?>[][] {{Integer.class}, {String.class, String.class}},
+				new Class<?>[][] {{Integer.class}, {String.class, String.class}}
+		);
+	}
+
+
 
 	@Test
 	public void testPersonIndexes() {
@@ -194,7 +226,7 @@ public class MetadataFactoryTest {
 				new Class[] {int.class, long.class,   String.class, String.class, String.class, Set.class, int.class});
 
 
-		MetadataFactoryTestUtils.assertEntityMetadataFields(userMeta.getFields(), new String[] {"roles"}, new Class<?>[][] {{UserRole.class}}, new Class<?>[][] {{Integer.class}});
+		MetadataFactoryTestUtils.assertEntityMetadataFieldsGenerics(userMeta.getFields(), new String[] {"roles"}, new Class<?>[][] {{UserRole.class}}, new Class<?>[][] {{Integer.class}});
 	}
 
 	static void assertPersonMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
@@ -210,7 +242,7 @@ public class MetadataFactoryTest {
 				new String[] {"identifier", "last_modified", "name", "last_name", "age", "gender", "addresses", "accounts"},
 				new Class[] {int.class, long.class, String.class, String.class, int.class, String.class, List.class, List.class});
 
-		MetadataFactoryTestUtils.assertEntityMetadataFields(personMeta.getFields(), new String[] {"addresses", "accounts"}, new Class<?>[][] {{Address.class}, {User.class}}, new Class<?>[][] {{Integer.class}, {Integer.class}});
+		MetadataFactoryTestUtils.assertEntityMetadataFieldsGenerics(personMeta.getFields(), new String[] {"addresses", "accounts"}, new Class<?>[][] {{Address.class}, {User.class}}, new Class<?>[][] {{Integer.class}, {Integer.class}});
 
 	}
 

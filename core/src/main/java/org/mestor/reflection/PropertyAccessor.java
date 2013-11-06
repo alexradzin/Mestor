@@ -104,14 +104,19 @@ public class PropertyAccessor<T, P> implements AnnotatedElement, Member {
 	}
 
 
+	//TODO: getValue() and setValue() are now null-safe to avoid stupid NPEs
+	// when copying properties and attempting to turn to read-only property.
+	// Think about making this behavior configurable.
 
 
 	public P getValue(final T instance) {
-		return readAccess.get(instance);
+		return readAccess == null ? null : readAccess.get(instance);
 	}
 
 	public void setValue(final T instance, final P value) {
-		writeAccess.set(instance, value);
+		if (writeAccess != null) {
+			writeAccess.set(instance, value);
+		}
 	}
 
 

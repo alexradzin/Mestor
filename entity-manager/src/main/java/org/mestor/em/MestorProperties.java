@@ -25,43 +25,42 @@ import java.util.regex.Pattern;
 
 import org.mestor.metadata.jpa.JpaAnnotationsMetadataFactory;
 import org.mestor.metadata.jpa.NamingStrategy;
-import org.mestor.metadata.jpa.StandardNamingStrategy;
 import org.mestor.util.CollectionUtils;
 import org.mestor.util.FileURLCreator;
 
 public enum MestorProperties {
 	PREFIX(null),
-	
+
     PERSISTENCE_XML("persistencexml", "META-INF/persistence.xml"),
-	
+
     JAR_URLS("jar.urls", System.getProperty("java.class.path")) {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String str = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String str = super.value(map);
 			return (T)CollectionUtils.nullableTransform(split(str, path), new FileURLCreator());
 		}
 	},
-	
+
 	ROOT_URL("root.url") {
 		@Override
 		@SuppressWarnings("unchecked")
-		public <T> T  value(Map<?,?> map) {
+		public <T> T  value(final Map<?,?> map) {
 			try {
-				String str = super.value(map);
+				final String str = super.value(map);
 				return (T)new URL(str);
-			} catch (MalformedURLException e) {
+			} catch (final MalformedURLException e) {
 				throw new IllegalArgumentException(e);
 			}
-			
+
 		}
 	},
-	
+
     MAPPING_FILE_NAMES("mapping.files") {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String str = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String str = super.value(map);
 			return (T)CollectionUtils.nullsafeAsList(split(str, path));
 		}
 	},
@@ -69,8 +68,8 @@ public enum MestorProperties {
     MANAGED_CLASS_NAMES("managed.entities") {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String str = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String str = super.value(map);
 			return (T)CollectionUtils.nullsafeAsList(split(str, path));
 		}
 	},
@@ -78,113 +77,122 @@ public enum MestorProperties {
     MANAGED_CLASS_PACKAGE("managed.package", "") {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String str = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String str = super.value(map);
 			return (T)CollectionUtils.nullsafeAsList(split(str, path));
 		}
 	},
-	
-	
+
+
     PERSISTOR_CLASS("persistor.class", null) {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String className = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String className = super.value(map);
 			return (T)classForName(className);
 		}
 	},
 
-	
+
     METADATA_FACTORY_CLASS("metadata.factory.class", JpaAnnotationsMetadataFactory.class.getName()) {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String className = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String className = super.value(map);
 			return (T)classForName(className);
 		}
 	},
-	
+
     DDL_GENERATION("ddl.generation", SchemaMode.NONE.name()) {
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String property = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String property = super.value(map);
 			return (T)SchemaMode.forProperty(property);
 		}
 	},
-	
+
 	//SchemaMode
 
-	NAMING_STRATEGY("naming.strategy", StandardNamingStrategy.class.getName() + "." + StandardNamingStrategy.LOWER_CASE_UNDERSCORE.name()) {
+	// The default value of naming strategy is null. MetadataFactory should define hard coded defaults itself.
+	// This is done because of currently existing limitation (weakness :() of initialization of of MetadataFactory
+	// that supports simple setters only and one setter per type. However there can be multiple naming strategies
+	// (for entities, fields, columns, indexes...). So, right now we limit this configuration facility to one
+	// strategy for all NamableItems.
+	// TODO: improve initialization code.
+	NAMING_STRATEGY("naming.strategy", null) {
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		@Override
-		public <T> T  value(Map<?,?> map) {
-			String strategyName = super.value(map);
+		public <T> T  value(final Map<?,?> map) {
+			final String strategyName = super.value(map);
+			if (strategyName == null) {
+				return null;
+			}
 			try {
 				return (T)((Class<NamingStrategy>)Class.forName(strategyName)).newInstance();
-			} catch (ClassNotFoundException e) {
+			} catch (final ClassNotFoundException e) {
 				// assume that strategyName refers to enum member
-				String enumClassName = strategyName.replaceFirst("\\.\\w+$", "");
+				final String enumClassName = strategyName.replaceFirst("\\.\\w+$", "");
 				try {
-					Class<?> clazz = Class.forName(enumClassName);
+					final Class<?> clazz = Class.forName(enumClassName);
 					if (!clazz.isEnum()) {
 						throw new IllegalArgumentException(e);
 					}
-					String[] arr = strategyName.split("\\.");
-					String enumMember = arr[arr.length - 1];
-					
+					final String[] arr = strategyName.split("\\.");
+					final String enumMember = arr[arr.length - 1];
+
 					return (T)Enum.<Enum>valueOf((Class<Enum>)clazz, enumMember);
-					
-				} catch (ClassNotFoundException e1) {
+
+				} catch (final ClassNotFoundException e1) {
 					throw new IllegalArgumentException(e);
 				}
-			} catch (ReflectiveOperationException e) {
+			} catch (final ReflectiveOperationException e) {
 				throw new IllegalArgumentException(e);
 			}
 		}
 	},
-	
-	
+
+
 	;
-	
+
 	private String key;
 	private Object defaultValue;
-	
+
 	private final static String prefix = "org.mestor";
 	@SuppressWarnings("unused") // for future use
 	private final static Pattern csv = Pattern.compile("\\s*,\\s*");
 	private final static Pattern path = Pattern.compile("\\s*" + File.pathSeparator + "\\s*");
-	
-	
 
-	private MestorProperties(String key) {
+
+
+	private MestorProperties(final String key) {
 		this(key, null);
 	}
 
-	private MestorProperties(String key, Object defaultValue) {
+	private MestorProperties(final String key, final Object defaultValue) {
 		this.key = (key == null || "".equals(key)) ? prefix : prefix + "." + key;
 		this.defaultValue = defaultValue;
 	}
-	
+
 	public String key() {
 		return key;
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> T value(Map<?,?> map) {
-		T value = map != null ? (T)map.get(key) : null;
+	public <T> T value(final Map<?,?> map) {
+		final T value = map != null ? (T)map.get(key) : null;
 		return value == null ? (T)defaultValue : value;
 	}
-	
-	protected String[] split(String str, Pattern p) {
-		return str == null ? null : p.split(str); 
+
+	protected String[] split(final String str, final Pattern p) {
+		return str == null ? null : p.split(str);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <T> Class<T> classForName(String className) {
+	protected <T> Class<T> classForName(final String className) {
 		try {
 			return className == null ? null : (Class<T>)Class.forName(className);
-		} catch (ClassNotFoundException e) {
+		} catch (final ClassNotFoundException e) {
 			throw new IllegalStateException("Cannot load persistor implementation " + className, e);
 		}
 	}

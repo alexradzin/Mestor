@@ -87,7 +87,7 @@ public class MetadataFactoryTestUtils {
 	}
 
 
-	static <E> void assertEntityMetadataFields(final Collection<FieldMetadata<E, Object, Object>> fields,
+	static <E> void assertEntityMetadataFieldsGenerics(final Collection<FieldMetadata<E, Object, Object>> fields,
 			final String[] names,
 			final Class<?>[][] fieldGenerics,
 			final Class<?>[][] columnGenerics) {
@@ -155,7 +155,7 @@ public class MetadataFactoryTestUtils {
 
 	static< T> EntityMetadata<T> testIndexes(final Class<T> clazz, final Map<String, String[]> expected) {
 		if(clazz == null) {
-			return null;
+			throw new RuntimeException("Class is null");
 		}
 		final Map<Class<?>, EntityMetadata<?>> entityClasses = testJpaAnnotations(clazz);
 		@SuppressWarnings("unchecked")

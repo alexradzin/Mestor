@@ -29,15 +29,12 @@ public class PersistenceProviderImpl implements PersistenceProvider {
 	public EntityManagerFactory createEntityManagerFactory(
 			final String emName,
 			@SuppressWarnings("rawtypes") final Map map) {
-
-
 		@SuppressWarnings({ "unchecked" })
-		final
-		Map<String, String> props = CollectionUtils.merge(
+		final Map<String, String> props = CollectionUtils.merge(
 				Maps.filterKeys(System.getenv(), predicate),
 				Maps.filterKeys(Maps.fromProperties(SystemProperties.systemProperties()), predicate),
 				map);
-		return new EntityManagerFactoryImpl(new PersistenceUnitInfoImpl(emName, props), props);
+		return createContainerEntityManagerFactoryImpl(new PersistenceUnitInfoImpl(emName, props), props);
 	}
 
 	@Override
@@ -45,16 +42,27 @@ public class PersistenceProviderImpl implements PersistenceProvider {
 			final PersistenceUnitInfo info,
 			@SuppressWarnings("rawtypes") final Map map) {
 
-		@SuppressWarnings({ "cast", "unchecked" })
-		final
-		Map<String, String> props = (Map<String, String>)map;
+
+		@SuppressWarnings({ "unchecked" })
+		final Map<String, String> props = CollectionUtils.merge(
+				Maps.filterKeys(System.getenv(), predicate),
+				Maps.filterKeys(Maps.fromProperties(SystemProperties.systemProperties()), predicate),
+				map);
+
+		return createContainerEntityManagerFactoryImpl(info, props);
+	}
+
+	private EntityManagerFactory createContainerEntityManagerFactoryImpl(final PersistenceUnitInfo info, final Map<String, String> props) {
 		return new EntityManagerFactoryImpl(info, props);
 	}
+
+
+
 
 	@Override
 	public void generateSchema(final PersistenceUnitInfo info, @SuppressWarnings("rawtypes") final Map map) {
 		// TODO Auto-generated method stub
-
+		System.out.println("ggggggggggggggggggggggggggggggggggg");
 	}
 
 	@Override

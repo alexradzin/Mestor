@@ -30,6 +30,10 @@ import org.mestor.metadata.jpa.conversion.ToStringConverter;
 
 @Entity
 public class User extends AbstractEntity {
+	@SuppressWarnings("unused")
+	private static final long serialVersionUID = 535123208871586308L;
+
+
 	@Convert(converter=ToStringConverter.class)
 	private URL site;
 
