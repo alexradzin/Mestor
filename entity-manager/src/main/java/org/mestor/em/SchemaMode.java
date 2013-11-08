@@ -128,7 +128,7 @@ public enum SchemaMode {
 		final Persistor persistor = ctx.getPersistor();
 		
 		for (final String schema : getEntitySchemas(ctx)) {
-			persistor.createSchema(schema, CollectionUtils.subMap(ctx.getProperties(), CASSANDRA_KEYSPACE_PROPERTY));
+			persistor.createSchema(schema, CollectionUtils.subMap(ctx.getParameters(), CASSANDRA_KEYSPACE_PROPERTY));
 		}
 
 		for (final EntityMetadata<?> emd : ctx.getEntityMetadata()) {
@@ -143,7 +143,7 @@ public enum SchemaMode {
 		
 		for (final String schema : getEntitySchemas(ctx)) {
 			if (!existingSchemas.contains(schema)) {
-				persistor.createSchema(schema, CollectionUtils.subMap(ctx.getProperties(), CASSANDRA_KEYSPACE_PROPERTY));
+				persistor.createSchema(schema, CollectionUtils.subMap(ctx.getParameters(), CASSANDRA_KEYSPACE_PROPERTY));
 			} else {
 				// TODO: update schema: alter keyspace is not currently supported by persistor.
 			}

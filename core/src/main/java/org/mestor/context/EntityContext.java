@@ -24,7 +24,7 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.query.CriteriaLanguageParser;
 
 public interface EntityContext {
-	public Map<String, Object> getProperties();
+	public Map<String, Object> getParameters();
 	public Collection<EntityMetadata<?>> getEntityMetadata();
 	public Collection<Class<?>> getEntityClasses();
 	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);

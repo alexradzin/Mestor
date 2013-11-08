@@ -17,22 +17,12 @@
 
 package org.mestor.em;
 
-import static org.mestor.em.MestorProperties.DDL_GENERATION;
-import static org.mestor.em.MestorProperties.MANAGED_CLASS_PACKAGE;
-import static org.mestor.em.MestorProperties.METADATA_FACTORY_CLASS;
-import static org.mestor.em.MestorProperties.NAMING_STRATEGY;
-import static org.mestor.em.MestorProperties.PERSISTOR_CLASS;
-
-import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 
 import javax.persistence.EntityGraph;
@@ -56,14 +46,8 @@ import javax.persistence.spi.PersistenceUnitInfo;
 import org.mestor.context.DirtyEntityManager;
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
-import org.mestor.metadata.BeanMetadataFactory;
-import org.mestor.metadata.ClassNameClassScanner;
-import org.mestor.metadata.ClassScanner;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
-import org.mestor.metadata.MetadataFactory;
-import org.mestor.metadata.jpa.JpaAnnotatedClassScanner;
-import org.mestor.metadata.jpa.NamingStrategy;
 import org.mestor.persistence.metamodel.MetamodelImpl;
 import org.mestor.persistence.query.CriteriaBuilderImpl;
 import org.mestor.persistence.query.JpqlParser;
@@ -71,49 +55,48 @@ import org.mestor.persistence.query.QueryImpl;
 import org.mestor.query.CriteriaLanguageParser;
 import org.mestor.util.TypeUtil;
 import org.mestor.wrap.ObjectWrapperFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 
 public class EntityManagerImpl implements EntityManager, EntityContext {
-	private final static Logger logger = LoggerFactory.getLogger(EntityManagerImpl.class);
+//	private final static Logger logger = LoggerFactory.getLogger(EntityManagerImpl.class);
 
 	private final PersistenceUnitInfo info;
+	private final EntityContext delegateEntityContext;
 	private final EntityManagerFactory entityManagerFactory;
 	private final Map<String, Object> properties;
-	private final Map<Class<?>, EntityMetadata<?>> entityClasses;
-	private final Map<String, EntityMetadata<?>> entityNames;
-	private final Map<String, String> namedQueries = new HashMap<>();
+//	private final Map<Class<?>, EntityMetadata<?>> entityClasses;
+//	private final Map<String, EntityMetadata<?>> entityNames;
+//	private final Map<String, String> namedQueries = new HashMap<>();
 	private boolean open = false;
 
 	private FlushModeType flushMode;
 
-	private final Persistor persistor;
+//	private final Persistor persistor;
 
 	private final Metamodel metamodel;
 
-	public EntityManagerImpl(final PersistenceUnitInfo info, final EntityManagerFactory entityManagerFactory, final Map<String, Object> properties, final Map<Class<?>, EntityMetadata<?>> entityClasses) {
+	public EntityManagerImpl(final PersistenceUnitInfo info, final EntityContext ctx, final EntityManagerFactory entityManagerFactory, final Map<String, Object> properties, final Map<Class<?>, EntityMetadata<?>> entityClasses) {
 		this.info = info;
+		this.delegateEntityContext = ctx;
 		this.entityManagerFactory = entityManagerFactory;
 		this.properties = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(properties));
 
-		final Map<String, Object> allParams = getAllParameters(info, properties);
+//		final Map<String, Object> allParams = getAllParameters(info, properties);
 
-		this.entityClasses = entityClasses == null ? new HashMap<Class<?>, EntityMetadata<?>>() : new HashMap<Class<?>, EntityMetadata<?>>(entityClasses);
+//		this.entityClasses = entityClasses == null ? new HashMap<Class<?>, EntityMetadata<?>>() : new HashMap<Class<?>, EntityMetadata<?>>(entityClasses);
 
-		open = true;
-		persistor = createPersistor(info, properties, allParams);
+//		persistor = createPersistor(info, properties, allParams);
 
-		fillEntityClasses(info, properties, allParams);
-		this.entityNames = new HashMap<String, EntityMetadata<?>>();
-		for (final EntityMetadata<?> emd : this.entityClasses.values()) {
-			entityNames.put(emd.getEntityName(), emd);
-		}
-		open = true;
-		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
+//		fillEntityClasses(info, properties, allParams);
+//		this.entityNames = new HashMap<String, EntityMetadata<?>>();
+//		for (final EntityMetadata<?> emd : this.entityClasses.values()) {
+//			entityNames.put(emd.getEntityName(), emd);
+//		}
+//		DDL_GENERATION.<SchemaMode>value(allParams).init(this);
 
 		metamodel = new MetamodelImpl(getEntityMetadata());
+		open = true;
 	}
 
 	@Override
@@ -124,13 +107,13 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public void close() {
 		open = false;
-		if (persistor != null) {
-			try {
-				persistor.close();
-			} catch (final IOException e) {
-				logger.error("Failed to close persistor " + persistor, e);
-			}
-		}
+//		if (persistor != null) {
+//			try {
+//				persistor.close();
+//			} catch (final IOException e) {
+//				logger.error("Failed to close persistor " + persistor, e);
+//			}
+//		}
 	}
 
 
@@ -197,7 +180,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		checkEntityClass(entityClass);
 		checkPrimaryKey(entityClass, primaryKey);
 
-		final boolean exists =  persistor.exists(entityClass, primaryKey);
+		final boolean exists =  getPersistor().exists(entityClass, primaryKey);
 		if (exists) {
 			return getObjectWrapperFactory(entityClass).makeLazy(entityClass, primaryKey);
 		}
@@ -214,10 +197,13 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		final Class<?> entityClass = entity.getClass();
 		checkEntityClass(entityClass);
 
-		@SuppressWarnings({ "rawtypes", "unchecked" })
-		final
-		Object primaryKey = new EntityMetadata(entityClass).getPrimaryKey().getAccessor().getValue(entity);
-		return persistor.exists(entityClass, primaryKey);
+		final Object primaryKey = getPrimaryKeyValue(entity);
+		return getPersistor().exists(entityClass, primaryKey);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> Object getPrimaryKeyValue(final T entity) {
+		return getEntityMetadata((Class<T>)entity.getClass()).getPrimaryKey().getAccessor().getValue(entity);
 	}
 
 
@@ -266,9 +252,16 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public <T> T merge(final T entity) {
 		checkOpen();
-		if (!contains(entity)) {
-			throw new IllegalArgumentException(entity + " is not an entity or is removed entity");
+
+		@SuppressWarnings("unchecked")
+		final Class<T> entityClass = (Class<T>)entity.getClass();
+		checkEntityClass(entityClass);
+
+		final ObjectWrapperFactory<T> owf = getPersistor().getObjectWrapperFactory(entityClass);
+		if (owf.isWrapped(entity) && owf.isRemoved(entity)) {
+			throw new IllegalArgumentException(entity + " is removed entity");
 		}
+
 		persist(entity);
 
 		return entity; //TODO should it be wrapped here?
@@ -277,7 +270,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public void persist(final Object entity) {
 		checkOpen();
-		persistor.store(entity);
+		getPersistor().store(entity);
 	}
 
 	@Override
@@ -309,7 +302,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	@Override
 	public void remove(final Object entity) {
 		checkOpen();
-		persistor.remove(entity);
+		getPersistor().remove(entity);
 	}
 
 	@Override
@@ -324,9 +317,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	private <T> void checkEntityClass(final Class<T> entityClass) {
-		@SuppressWarnings("unchecked")
-		final
-		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
+		final EntityMetadata<T> emeta = delegateEntityContext.getEntityMetadata(entityClass);
 
 		if (emeta == null) {
 			throw new IllegalArgumentException("Class " + entityClass + " is not a registered entity");
@@ -334,9 +325,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 	public <T> void checkPrimaryKey(final Class<T> entityClass, final Object primaryKey) {
-		@SuppressWarnings("unchecked")
-		final
-		EntityMetadata<T> emeta = (EntityMetadata<T>)entityClasses.get(entityClass);
+		final EntityMetadata<T> emeta = delegateEntityContext.getEntityMetadata(entityClass);
 
 		final FieldMetadata<?, ?, ?> pkMeta = emeta.getPrimaryKey();
 		if (pkMeta == null) {
@@ -369,7 +358,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	}
 
 
-
+/*
 	private void fillEntityClasses(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
 		ClassLoader cl = info.getClassLoader();
 		final List<URL> jarFiles = info.getJarFileUrls();
@@ -436,8 +425,8 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 		mdf.update(entityClasses);
 	}
-
-
+*/
+/*
 	private <M extends MetadataFactory, P> void setProperty(final M mdf, final Class<P> parameterType, final P parameterValue) {
 		@SuppressWarnings("unchecked")
 		final
@@ -457,45 +446,45 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 		// property of give type is unsupported. Ignore it.
 	}
+*/
 
-
-	private Persistor createPersistor(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
-
-		final Map<Object, Object> map = new HashMap<>();
-		map.putAll(info.getProperties());
-		map.putAll(properties);
-
-
-		final Class<Persistor> clazz = PERSISTOR_CLASS.value(allParams);
-
-		if (clazz == null) {
-			throw new IllegalArgumentException("No persistor class configured");
-		}
-
-		if (!Persistor.class.isAssignableFrom(clazz)) {
-			throw new IllegalArgumentException(clazz + " must implement "  + Persistor.class + "interface to be a persistor");
-		}
-
-		Constructor<Persistor> c = null;
-		try {
-			try {
-				c = clazz.getConstructor(EntityContext.class);
-				final Persistor persistor = c.newInstance(this);
-				return persistor;
-			} catch (final NoSuchMethodException e) {
-				try {
-					c = clazz.getConstructor();
-					return c.newInstance();
-				} catch (NoSuchMethodException | SecurityException e1) {
-					throw new IllegalArgumentException(
-							clazz + " must provide either constructor that accepts " + Map.class +
-							" argument or default constructor to be a " + Persistor.class);
-				}
-			}
-		} catch (final ReflectiveOperationException e) {
-			throw new IllegalStateException("Cannot create persistor " + clazz, e);
-		}
-	}
+//	private Persistor createPersistor(final PersistenceUnitInfo info, final Map<String, Object> properties, final Map<String, Object> allParams) {
+//
+//		final Map<Object, Object> map = new HashMap<>();
+//		map.putAll(info.getProperties());
+//		map.putAll(properties);
+//
+//
+//		final Class<Persistor> clazz = PERSISTOR_CLASS.value(allParams);
+//
+//		if (clazz == null) {
+//			throw new IllegalArgumentException("No persistor class configured");
+//		}
+//
+//		if (!Persistor.class.isAssignableFrom(clazz)) {
+//			throw new IllegalArgumentException(clazz + " must implement "  + Persistor.class + "interface to be a persistor");
+//		}
+//
+//		Constructor<Persistor> c = null;
+//		try {
+//			try {
+//				c = clazz.getConstructor(EntityContext.class);
+//				final Persistor persistor = c.newInstance(this);
+//				return persistor;
+//			} catch (final NoSuchMethodException e) {
+//				try {
+//					c = clazz.getConstructor();
+//					return c.newInstance();
+//				} catch (NoSuchMethodException | SecurityException e1) {
+//					throw new IllegalArgumentException(
+//							clazz + " must provide either constructor that accepts " + Map.class +
+//							" argument or default constructor to be a " + Persistor.class);
+//				}
+//			}
+//		} catch (final ReflectiveOperationException e) {
+//			throw new IllegalStateException("Cannot create persistor " + clazz, e);
+//		}
+//	}
 
 	private Map<String, Object> getAllParameters(final PersistenceUnitInfo info, final Map<String, Object> properties) {
 		final Map<String, Object> all = new HashMap<>();
@@ -517,42 +506,48 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 	 * @return object wrapper factory
 	 */
 	private <T> ObjectWrapperFactory<T> getObjectWrapperFactory(final Class<T> entityClass) {
-		return persistor.getObjectWrapperFactory(entityClass);
+		return getPersistor().getObjectWrapperFactory(entityClass);
 	}
+
+	@Override
+	public Map<String, Object> getProperties() {
+		return getParameters();
+	}
+
 
 	// Implementation of EntityContext
 
 	@Override
-	public Map<String, Object> getProperties() {
+	public Map<String, Object> getParameters() {
 		return getAllParameters(info, properties);
 	}
 
 	@Override
 	public Collection<EntityMetadata<?>> getEntityMetadata() {
-		return entityClasses.values();
+		return delegateEntityContext.getEntityMetadata();
 	}
 
 	@Override
 	public Collection<Class<?>> getEntityClasses() {
-		return entityClasses.keySet();
+		return delegateEntityContext.getEntityClasses();
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
+//	@SuppressWarnings("unchecked")
 	public <T> EntityMetadata<T> getEntityMetadata(final Class<T> clazz) {
-		return (EntityMetadata<T>)entityClasses.get(clazz);
+		return delegateEntityContext.getEntityMetadata(clazz);
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
+//	@SuppressWarnings("unchecked")
 	public <T> EntityMetadata<T> getEntityMetadata(final String entityName) {
-		return (EntityMetadata<T>)entityNames.get(entityName);
+		return delegateEntityContext.getEntityMetadata(entityName);
 	}
 
 
 	@Override
 	public Persistor getPersistor() {
-		return persistor;
+		return delegateEntityContext.getPersistor();
 	}
 
 	@Override
@@ -577,7 +572,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		checkEntityClass(entityClass);
 		checkPrimaryKey(entityClass, primaryKey);
 
-		return persistor.fetch(entityClass, primaryKey);
+		return getPersistor().fetch(entityClass, primaryKey);
 	}
 
 	@Override
@@ -705,7 +700,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public Collection<Class<?>> getNativeTypes() {
-		return persistor.getNativeTypes();
+		return getPersistor().getNativeTypes();
 	}
 
 	@Override
@@ -731,7 +726,7 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 
 	@Override
 	public String getNamedQuery(final String name) {
-		return namedQueries.get(name);
+		return delegateEntityContext.getNamedQuery(name);
 	}
 
 	@Override

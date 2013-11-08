@@ -47,11 +47,13 @@ import java.util.TreeMap;
 
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
+import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.EntityComparator;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.metadata.ValueConverter;
+import org.mestor.persistence.cql.CassandraClusterConnectionManager.ClusterConnection;
 import org.mestor.persistence.cql.CqlPersistorProperties.ThrowOnViolation;
 import org.mestor.persistence.cql.function.QueryFunction;
 import org.mestor.persistence.cql.management.AlterTable;
@@ -101,6 +103,7 @@ public class CqlPersistor implements Persistor {
 	private final EntityContext context;
 	private Cluster cluster;
 	private Session session;
+	private ClusterConnection connection;
 
 	private Map<String, Object> defaultKeyspaceProperties;
 
@@ -197,7 +200,7 @@ public class CqlPersistor implements Persistor {
 		}
 		this.context = context;
 
-		final Map<String, Object> properties = context.getProperties();
+		final Map<String, Object> properties = context.getParameters();
 		// set defaults
 		final Integer port = CqlPersistorProperties.CASSANDRA_PORT.getValue(properties);
 		final String[] hosts = CqlPersistorProperties.CASSANDRA_HOSTS.getValue(properties);
@@ -206,21 +209,19 @@ public class CqlPersistor implements Persistor {
 		partitionFieldName = (String)partitionData[0];
 		partitionFieldValue = partitionData[1];
 
-		final Cluster.Builder clusterBuilder = Cluster.builder();
-		if (port != null) {
-			clusterBuilder.withPort(port);
-		}
-		connect(clusterBuilder,
+		connect(port,
 				hosts,
 				CqlPersistorProperties.CASSANDRA_KEYSPACE_PROPERTIES
 						.getValue(properties));
 	}
 
-	private void connect(final Cluster.Builder clusterBuilder, final String[] hosts,
+	private void connect(final Integer port, final String[] hosts,
 			final Map<String, Object> keyspaceProperties) throws IOException {
 		try {
-			cluster = clusterBuilder.addContactPoints(hosts).build();
-			session = cluster.connect();
+			connection = CassandraClusterConnectionManager.getInstance().getConnection(port, hosts);
+
+			cluster = connection.getCluster();
+			session = connection.getSession();
 			defaultKeyspaceProperties = keyspaceProperties;
 		} catch (final NoHostAvailableException e) {
 			throw new IOException(e);
@@ -837,6 +838,8 @@ public class CqlPersistor implements Persistor {
 	}
 
 
+	//TODO: refactor similar code of doSelect() and doSelectAll()
+
 	private <E, P> Iterable<Map<String, Object>> doSelect(
 			final Select.Builder queryBuilder,
 			final EntityMetadata<E> emd,
@@ -851,8 +854,20 @@ public class CqlPersistor implements Persistor {
 		if (fmd == null) {
 			fmd = emd.getPrimaryKey();
 		}
-		final Object columnValue = fmd.getConverter().toColumn(value);
-		where.and(eq(quote(column), columnValue));
+		if (column != null) {
+			final Object columnValue = fmd.getConverter().toColumn(value);
+			where.and(eq(quote(column), columnValue));
+		} else {
+			// it must be a composite primary key.
+			for (final FieldMetadata<Object, Object, Object> pkFmd : new BeanMetadataFactory().create(fmd.getType()).getFields()) {
+				final FieldMetadata<E, Object, Object> kfmd = emd.getFieldByName(pkFmd.getName());
+				if (kfmd != null) {
+					final String pkColumn = kfmd.getColumn();
+					final Object pkColumnValue = kfmd.getConverter().toColumn(pkFmd.getAccessor().getValue(value));
+					where.and(eq(quote(pkColumn), pkColumnValue));
+				}
+			}
+		}
 
 		return execute(where, fields, Collections.<String, Function<?,?>[]>emptyMap());
 	}
@@ -865,8 +880,21 @@ public class CqlPersistor implements Persistor {
 		final Where where = select().all().from(quote(keyspace), quote(table)).allowFiltering().where();
 		final FieldMetadata<E, Object, Object> fmd = emd.getPrimaryKey();
 		final String column = fmd.getColumn();
-		final Object columnValue = fmd.getConverter().toColumn(pkValue);
-		where.and(eq(quote(column), columnValue));
+		if (column != null) {
+			final Object columnValue = fmd.getConverter().toColumn(pkValue);
+			where.and(eq(quote(column), columnValue));
+		} else {
+			// it must be a composite primary key.
+			for (final FieldMetadata<Object, Object, Object> pkFmd : new BeanMetadataFactory().create(fmd.getType()).getFields()) {
+				final FieldMetadata<E, Object, Object> kfmd = emd.getFieldByName(pkFmd.getName());
+				if (kfmd != null) {
+					final String pkColumn = kfmd.getColumn();
+					final Object pkColumnValue = kfmd.getConverter().toColumn(pkFmd.getAccessor().getValue(pkValue));
+					where.and(eq(quote(pkColumn), pkColumnValue));
+				}
+			}
+
+		}
 
 		where.setConsistencyLevel(ConsistencyLevel.ONE);
 		return session.execute(where);
@@ -1019,7 +1047,7 @@ public class CqlPersistor implements Persistor {
 	public <E> void validateTable(final EntityMetadata<E> entityMetadata,
 			final Map<String, Object> properties) {
 		final Map<String, Object> allProps = CollectionUtils.merge(
-				context.getProperties(), properties);
+				context.getParameters(), properties);
 
 		final ThrowOnViolation onViolation = CqlPersistorProperties.SCHEMA_VALIDATION
 				.getValue(allProps);
@@ -1294,15 +1322,11 @@ public class CqlPersistor implements Persistor {
 		final Set<String> requiredIndexes = new HashSet<>();
 
 		for (final IndexMetadata<E> imd : entityMetadata.getIndexes()) {
-			requiredIndexes.addAll(Collections2.transform(
-					Arrays.asList(imd.getField()),
-					new Function<FieldMetadata<E, ? extends Object, ? extends Object>, String>() {
-						@Override
-						public String apply(
-								final FieldMetadata<E, ? extends Object, ? extends Object> fmd) {
-							return fmd.getColumn();
-						}
-					}));
+			for (final FieldMetadata<E, ? extends Object, ? extends Object> fmd : imd.getField()) {
+				if (!fmd.isKey()) {
+					requiredIndexes.add(fmd.getColumn());
+				}
+			}
 		}
 
 		// Add indexes created for inherited entities
@@ -1408,7 +1432,7 @@ public class CqlPersistor implements Persistor {
 
         final List<Iterable<Map<String, Object>>> allResults = new ArrayList<>();
         Class<?> resultType = null;
-        for(final CompiledQuery cq : queries){
+        for(final CompiledQuery cq : queries) {
 			final QueryInfo currentQueryInfo = cq.getQueryInfo();
 
 			final String currentEntityName = currentQueryInfo.getFrom().entrySet().iterator().next().getValue();
@@ -1441,7 +1465,7 @@ public class CqlPersistor implements Persistor {
 
 			        	for (final QueryFunction<?,?> function : functions) {
 			        		if (function.isAggregation()) {
-			        			aggregationFunctions.add(new Pair(fmd, function));
+			        			aggregationFunctions.add(new Pair<FieldMetadata<?, ?, ?>, QueryFunction<?,?>>(fmd, function));
 			        		}
 			        	}
 			        }
@@ -1452,8 +1476,9 @@ public class CqlPersistor implements Persistor {
 
 			        if (aggregationFunctions.size() == 1) {
 			        	final Pair<FieldMetadata<?,?,?>, QueryFunction<?,?>> aggregationFunctionDef = aggregationFunctions.get(0);
-			        	final Class<?> clazz = aggregationFunctionDef.getValue().getReturnType();
-			        	currentEmd = new EntityMetadata(clazz);
+			        	@SuppressWarnings("unchecked")
+						final Class<T> clazz = (Class<T>)aggregationFunctionDef.getValue().getReturnType();
+			        	currentEmd = new EntityMetadata<T>(clazz);
 			        	final FieldMetadata<?, ?, ?> originalFmd = aggregationFunctionDef.getKey();
 			        	final FieldMetadata<?, ?, ?> fmd = new FieldMetadata<>(clazz, clazz, originalFmd.getName());
 			        	fmd.setColumn(originalFmd.getColumn());
@@ -1489,7 +1514,7 @@ public class CqlPersistor implements Persistor {
 		final Iterable<Map<String, Object>> queryResults = allMainResults.iterator().next();
 		final Iterable<T> res;
 		final Class<T> entityType = emd.getEntityType();
-		if(resultType.equals(entityType)){
+		if(entityType.equals(resultType)){
 			res = Iterables.transform(queryResults, new EntityMapper<T>(emd, entityType));
 		} else {
 			res = Iterables.transform(queryResults, new SimpleMapper<T>());
@@ -1561,8 +1586,7 @@ public class CqlPersistor implements Persistor {
 
     @Override
 	public void close() throws IOException {
-    	session.shutdown();
-    	cluster.shutdown();
+    	CassandraClusterConnectionManager.getInstance().closeConnection(connection);
     }
 
     /**

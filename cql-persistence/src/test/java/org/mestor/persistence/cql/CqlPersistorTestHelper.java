@@ -82,7 +82,7 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 	}};
 
 	Persistor createAndConnect(final Map<String, Object> props) throws IOException {
-		doReturn(props).when(ctx).getProperties();
+		doReturn(props).when(ctx).getParameters();
 		return new CqlPersistor(ctx);
 	}
 
@@ -189,7 +189,8 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 		if (pkmd != null) {
 			final String pkColumn = pkmd.getColumn();
 
-			if (emd.getField(pkColumn) == null) {
+			// column exists that means that PK is "real" but for some reason does not appear in regular list of fields.
+			if (pkColumn != null && emd.getField(pkColumn) == null) {
 				exepectedPKColumns = new ArrayList<String>(exepectedPKColumns); // collection after guava transforms is unmodifiable.
 				exepectedPKColumns.add(pkColumn);
 			}

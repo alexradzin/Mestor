@@ -15,31 +15,24 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.entities.queries;
+package org.mestor.entities.annotated;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.NamedQueries;
-import javax.persistence.NamedQuery;
-
-import org.mestor.entities.annotated.AbstractEntity;
+import javax.persistence.Id;
 
 @Entity
-@NamedQueries({
-	@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectById", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectCount", query = "SELECT COUNT(e) FROM NamedQueriesEntity e"),
-	@NamedQuery(name = "selectAfterId", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectBySecondaryIndex", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > :date AND name=:name")
-})
-@NamedQuery(name = "selectOlderThan", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC")
-public class NamedQueriesEntity extends AbstractEntity {
-	private String name;
+public class NoFieldAttribute {
+	// ID is just to satisfy JPA spec
+	@Id
+	int id;
 
-	public String getName() {
-		return name;
+	@Column
+	public String getGeneric() {
+		return "something";
 	}
 
-	public void setName(final String name) {
-		this.name = name;
+	public void setGeneric(final String generic) {
+		// do nothing
 	}
 }

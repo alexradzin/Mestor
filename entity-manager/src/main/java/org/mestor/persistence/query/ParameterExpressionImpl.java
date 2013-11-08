@@ -17,6 +17,8 @@
 
 package org.mestor.persistence.query;
 
+import java.util.Objects;
+
 import javax.persistence.criteria.ParameterExpression;
 
 public class ParameterExpressionImpl<T> extends ExpressionImpl<T> implements ParameterExpression<T> {
@@ -37,11 +39,11 @@ public class ParameterExpressionImpl<T> extends ExpressionImpl<T> implements Par
 		this(null, position, type);
 	}
 
-	public ParameterExpressionImpl(final String name, final int position, final Class<T> type) {
-		this(name, new Integer(position), type);
-	}
+//	public ParameterExpressionImpl(final String name, final int position, final Class<T> type) {
+//		this(name, new Integer(position), type);
+//	}
 
-	private ParameterExpressionImpl(final String name, final Integer position, final Class<T> type) {
+	public ParameterExpressionImpl(final String name, final Integer position, final Class<T> type) {
 		super(null, type);
 		this.name = name;
 		this.position = position;
@@ -67,4 +69,19 @@ public class ParameterExpressionImpl<T> extends ExpressionImpl<T> implements Par
         return true;
     }
 
+    @Override
+	public int hashCode() {
+    	return Objects.hash(name, position, type);
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+    	if (obj == null || !(obj instanceof ParameterExpressionImpl)) {
+    		return false;
+    	}
+    	@SuppressWarnings("unchecked")
+		final
+		ParameterExpressionImpl<T> other = (ParameterExpressionImpl<T>)obj;
+    	return Objects.equals(name, other.name) && Objects.equals(position, other.position) && Objects.equals(type, other.type);
+    }
 }

@@ -15,31 +15,26 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.entities.queries;
+package org.mestor.util;
 
-import javax.persistence.Entity;
-import javax.persistence.NamedQueries;
-import javax.persistence.NamedQuery;
+import java.util.Comparator;
 
-import org.mestor.entities.annotated.AbstractEntity;
+public class NullSafeComparator<T> implements Comparator<T> {
+	private final Comparator<T> comparator;
 
-@Entity
-@NamedQueries({
-	@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectById", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectCount", query = "SELECT COUNT(e) FROM NamedQueriesEntity e"),
-	@NamedQuery(name = "selectAfterId", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectBySecondaryIndex", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > :date AND name=:name")
-})
-@NamedQuery(name = "selectOlderThan", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC")
-public class NamedQueriesEntity extends AbstractEntity {
-	private String name;
-
-	public String getName() {
-		return name;
+	public NullSafeComparator(final Comparator<T> comparator) {
+		this.comparator = comparator;
 	}
 
-	public void setName(final String name) {
-		this.name = name;
+	@Override
+	public int compare(final T o1, final T o2) {
+		if (o1 == null && o2 != null) {
+			return -1;
+		}
+		if (o1 != null && o2 == null) {
+			return 1;
+		}
+		return comparator.compare(o1, o2);
 	}
+
 }

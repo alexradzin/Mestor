@@ -82,7 +82,7 @@ public class CqlPersistorTest {
 
 	private void createAndConnect(final Map<String, Object> props) throws IOException {
 		final EntityContext ctx = Mockito.mock(EntityContext.class);
-		doReturn(props).when(ctx).getProperties();
+		doReturn(props).when(ctx).getParameters();
 		createAndConnect(ctx);
 	}
 

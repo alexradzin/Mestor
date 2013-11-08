@@ -22,5 +22,7 @@ public interface ObjectWrapperFactory<E> {
 	public <K> E makeLazy(Class<E> clazz, K pk);
 	public E unwrap(E obj);
 	public boolean isWrapped(E obj);
+	public void markAsRemoved(E obj);
+	public boolean isRemoved(E obj);
 	public Class<E> getRealType(Class<? extends E> wrappedType);
 }

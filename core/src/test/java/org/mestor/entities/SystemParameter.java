@@ -15,31 +15,43 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.entities.queries;
+package org.mestor.entities;
 
-import javax.persistence.Entity;
-import javax.persistence.NamedQueries;
-import javax.persistence.NamedQuery;
+public class SystemParameter {
+    public static class SystemParameterPK {
+    	final String key;
+    	final String category;
 
-import org.mestor.entities.annotated.AbstractEntity;
+    	public SystemParameterPK(final String category, final String key) {
+    		this.category = category;
+    		this.key = key;
+    	}
+    }
 
-@Entity
-@NamedQueries({
-	@NamedQuery(name = "selectSorted", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectById", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectCount", query = "SELECT COUNT(e) FROM NamedQueriesEntity e"),
-	@NamedQuery(name = "selectAfterId", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier > :identifier ORDER BY e.identifier ASC"),
-	@NamedQuery(name = "selectBySecondaryIndex", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > :date AND name=:name")
-})
-@NamedQuery(name = "selectOlderThan", query = "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC")
-public class NamedQueriesEntity extends AbstractEntity {
-	private String name;
+	private String category;
+	private String key;
+	private String value;
 
-	public String getName() {
-		return name;
+
+
+	public String getCategory() {
+		return category;
+	}
+	public void setCategory(final String category) {
+		this.category = category;
+	}
+	public String getKey() {
+		return key;
+	}
+	public void setKey(final String key) {
+		this.key = key;
+	}
+	public String getValue() {
+		return value;
+	}
+	public void setValue(final String value) {
+		this.value = value;
 	}
 
-	public void setName(final String name) {
-		this.name = name;
-	}
+
 }

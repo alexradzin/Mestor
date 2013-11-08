@@ -20,11 +20,13 @@ package org.mestor.persistence.query;
 import static org.mestor.query.OrderByInfo.Order.ASC;
 import static org.mestor.query.OrderByInfo.Order.DSC;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,6 +44,7 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Order;
+import javax.persistence.criteria.ParameterExpression;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Predicate.BooleanOperator;
 import javax.persistence.criteria.Root;
@@ -74,10 +77,16 @@ public class QueryImpl<T> implements TypedQuery<T> {
 	private FlushModeType flushMode = FlushModeType.AUTO;
 
 	private final Map<String, Object> hints = new LinkedHashMap<>();
+	// field name -> field value
 	private final Map<String, Object> parameterValues = new LinkedHashMap<>();
-	private final Map<String, Parameter<?>> parameters = new LinkedHashMap<>();
-	private final List<String> parameterNames = new ArrayList<>();
-	private final Map<String, Object> parameterInfo = new LinkedHashMap<>();
+
+	//Object: parameter name (String) or parameter position (Integer)
+	private final Map<Object, Parameter<?>> parameters = new LinkedHashMap<>();
+
+	//private final List<String> parameterNames = new ArrayList<>();
+//	private final Map<String, Object> parameterInfo = new LinkedHashMap<>();
+
+	private final Map<Object, String> parameterIdToFieldName = new LinkedHashMap<>();
 
 	private final QueryInfo queryInfo;
 
@@ -162,22 +171,68 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		initParams();
 	}
 
-	private void initParams(){
-		final ClauseInfo where = queryInfo.getWhere();
-		if(where == null){
+	private void initParams() {
+		initParams(queryInfo.getWhere());
+	}
+
+
+
+	private void initParams(final ClauseInfo clause) {
+		if(clause == null) {
 			return;
 		}
 
-		if(where.getExpression() instanceof ArgumentInfo) {
-			final EntityMetadata<T> emd = context.getEntityMetadata(resultType);
-			final String name = where.getField();
+		final Object expression = clause.getExpression();
+		if (expression == null) {
+			return;
+		}
+		initParams(clause, expression);
+	}
 
-			final Class<?> fieldType = emd.getFieldByName(name).getType();
 
-			parameterNames.add(name);
-			parameters.put(name, new ParameterExpressionImpl<>(name, fieldType));
+	private void initParams(final ClauseInfo clause, final Object expression) {
+		if (expression == null) {
+			return;
 		}
 
+		if(expression instanceof ClauseInfo) {
+			initParams((ClauseInfo)expression);
+		}
+
+
+		if(expression instanceof ArgumentInfo) {
+			final EntityMetadata<T> emd = context.getEntityMetadata(resultType);
+			final String fieldName = clause.getField();
+			final String name = ((ArgumentInfo<?>)expression).getName();
+			final Integer position = ((ArgumentInfo<?>)expression).getPosition();
+
+			final Class<?> fieldType = emd.getFieldByName(fieldName).getType();
+			final ParameterExpression<?> parameter = new ParameterExpressionImpl<>(name, position, fieldType);
+
+
+			if (position != null) {
+				parameters.put(position, parameter);
+				parameterIdToFieldName.put(position, fieldName);
+			}
+			if (name != null) {
+				parameters.put(name, parameter);
+				parameterIdToFieldName.put(name, fieldName);
+			}
+			return;
+		}
+
+		if (expression instanceof ClauseInfo) {
+			initParams((ClauseInfo)expression);
+			return;
+		}
+
+		if (expression.getClass().isArray()) {
+			final int n = Array.getLength(expression);
+			for (int i = 0; i < n; i++) {
+				final Object elem = Array.get(expression, i);
+				initParams(clause, elem);
+			}
+		}
 	}
 
 
@@ -227,9 +282,19 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		if (curentLimit != DEFAULT_LIMIT) {
 			qi = new QueryInfo(queryInfo.getType(), queryInfo.getWhat(), queryInfo.getFrom(), queryInfo.getWhere(), queryInfo.getOrders(), queryInfo.getStart(), curentLimit);
 		}
-		if(parameterValues.size() != parameters.size()){
-			throw new IllegalArgumentException("Not all parameters are bound");
+
+		final Collection<Object> notBoundParameters = new HashSet<>();
+		for (final Object pid : parameters.keySet()) {
+			final String fieldName = parameterIdToFieldName.get(pid);
+			if (fieldName == null || !parameterValues.containsKey(fieldName)) {
+				notBoundParameters.add(pid);
+			}
 		}
+
+		if(!notBoundParameters.isEmpty()) {
+			throw new IllegalArgumentException("Parameters " + notBoundParameters +  " are not bound");
+		}
+
 		return persistor.selectQuery(qi, parameterValues);
 	}
 
@@ -274,7 +339,16 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	@Override
 	public <P> TypedQuery<T> setParameter(final Parameter<P> param, final P value) {
-		return setParameter(param, value, null);
+		final String name = param.getName();
+		if (name != null) {
+			setParameter(name, value);
+		}
+
+		final Integer position = param.getPosition();
+		if (position != null) {
+			setParameter(position, value);
+		}
+		return this;
 	}
 
 	@Override
@@ -289,32 +363,38 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	@Override
 	public TypedQuery<T> setParameter(final String name, final Object value) {
-		return setReferencedParameter(new NamedParameter<Object>(), name, value, null);
+		final String fieldName = parameterIdToFieldName.get(name);
+		parameterValues.put(fieldName, value);
+		return this;
 	}
 
+	// FIXME TemporalType is ignored now
 	@Override
 	public TypedQuery<T> setParameter(final String name, final Calendar value, final TemporalType temporalType) {
-		return setParameter(name, value, temporalType);
+		return setParameter(name, value);
 	}
 
+	// FIXME TemporalType is ignored now
 	@Override
 	public TypedQuery<T> setParameter(final String name, final Date value, final TemporalType temporalType) {
-		return setParameter(name, value, temporalType);
+		return setParameter(name, value);
 	}
 
 	@Override
 	public TypedQuery<T> setParameter(final int position, final Object value) {
-		return setReferencedParameter(new IndexedParameter<Object>(), position, value, null);
+		final String fieldName = parameterIdToFieldName.get(position);
+		parameterValues.put(fieldName, value);
+		return this;
 	}
 
 	@Override
 	public TypedQuery<T> setParameter(final int position, final Calendar value, final TemporalType temporalType) {
-		return setReferencedParameter(new IndexedParameter<Calendar>(), position, value, temporalType);
+		return setParameter(position, value);
 	}
 
 	@Override
 	public TypedQuery<T> setParameter(final int position, final Date value, final TemporalType temporalType) {
-		return setReferencedParameter(new IndexedParameter<Date>(), position, value, temporalType);
+		return setParameter(position, value);
 	}
 
 	@Override
@@ -324,8 +404,18 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	@Override
 	public Parameter<?> getParameter(final String name) {
-		return notNull(parameters.get(name), name);
+		return getParameterImpl(name);
 	}
+
+	/**
+	 *
+	 * @param identifier either name or position
+	 * @return
+	 */
+	private Parameter<?> getParameterImpl(final Object identifier) {
+		return notNull(parameters.get(identifier), identifier);
+	}
+
 
 	@Override
 	public <P> Parameter<P> getParameter(final String name, final Class<P> type) {
@@ -337,12 +427,15 @@ public class QueryImpl<T> implements TypedQuery<T> {
 
 	@Override
 	public Parameter<?> getParameter(final int position) {
-		return getParameter(parameterNames.get(checkParameterPosition(position)));
+		return getParameterImpl(position);
 	}
 
 	@Override
 	public <P> Parameter<P> getParameter(final int position, final Class<P> type) {
-		return getParameter(parameterNames.get(checkParameterPosition(position)), type);
+		@SuppressWarnings("unchecked")
+		final Parameter<P> parameter = (Parameter<P>) getParameter(position);
+		checkType(parameter.getParameterType(), type);
+		return parameter;
 	}
 
 	@Override
@@ -402,21 +495,21 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		throw new PersistenceException("Could not unwrap query to: " + cls);
 	}
 
-	private <P> TypedQuery<T> setParameter(final Parameter<P> param, final P value, final Object info) {
-		final String name = param.getName();
-		parameterValues.put(name, value);
-		parameters.put(name, param);
-		parameterNames.add(name);
-		if (info != null) {
-			parameterInfo.put(name, info);
-		}
-		return this;
-	}
+//	private <P> TypedQuery<T> setParameter(final Parameter<P> param, final P value, final Object info) {
+//		final String name = param.getName();
+//		parameterValues.put(name, value);
+//		parameters.put(name, param);
+//		parameterNames.add(name);
+//		if (info != null) {
+//			parameterInfo.put(name, info);
+//		}
+//		return this;
+//	}
 
-	private <R, V> TypedQuery<T> setReferencedParameter(final Function<R, Parameter<V>> accessor, final R ref, final V value, final Object info) {
-		final Parameter<V> param = notNull(accessor.apply(ref), ref);
-		return setParameter(param, isAssignable(value, param.getParameterType()), info);
-	}
+//	private <R, V> TypedQuery<T> setReferencedParameter(final Function<R, Parameter<V>> accessor, final R ref, final V value, final Object info) {
+//		final Parameter<V> param = notNull(accessor.apply(ref), ref);
+//		return setParameter(param, isAssignable(value, param.getParameterType()), info);
+//	}
 
 	private <V, I> V notNull(final V value, final I id) {
 		if (value == null) {
@@ -425,19 +518,19 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		return value;
 	}
 
-	private int checkParameterPosition(final int position) {
-		if (position < 0 || position >= parameterNames.size()) {
-			throw new IllegalArgumentException("Unknown query parameter " + position);
-		}
-		return position;
-	}
+//	private int checkParameterPosition(final int position) {
+//		if (position < 0 || position >= parameterNames.size()) {
+//			throw new IllegalArgumentException("Unknown query parameter " + position);
+//		}
+//		return position;
+//	}
 
-	private <V> V isAssignable(final V value, final Class<V> type) {
-		if (value != null) {
-			checkType(value.getClass(), type);
-		}
-		return value;
-	}
+//	private <V> V isAssignable(final V value, final Class<V> type) {
+//		if (value != null) {
+//			checkType(value.getClass(), type);
+//		}
+//		return value;
+//	}
 
 	private <V, C> void checkType(final Class<V> valueType, final Class<C> type) {
 		if (!TypeUtil.compareTypes(type, valueType)) {
@@ -452,21 +545,21 @@ public class QueryImpl<T> implements TypedQuery<T> {
 		return param;
 	}
 
-	private class NamedParameter<P> implements Function<String, Parameter<P>> {
-		@SuppressWarnings("unchecked")
-		@Override
-		public Parameter<P> apply(final String name) {
-			return (Parameter<P>) parameters.get(name);
-		}
-	}
-
-	private class IndexedParameter<P> implements Function<Integer, Parameter<P>> {
-		@SuppressWarnings("unchecked")
-		@Override
-		public Parameter<P> apply(final Integer index) {
-			return (Parameter<P>) parameters.get(parameterNames.get(index));
-		}
-	}
+//	private class NamedParameter<P> implements Function<String, Parameter<P>> {
+//		@SuppressWarnings("unchecked")
+//		@Override
+//		public Parameter<P> apply(final String name) {
+//			return (Parameter<P>) parameters.get(name);
+//		}
+//	}
+//
+//	private class IndexedParameter<P> implements Function<Integer, Parameter<P>> {
+//		@SuppressWarnings("unchecked")
+//		@Override
+//		public Parameter<P> apply(final Integer index) {
+//			return (Parameter<P>) parameters.get(index);
+//		}
+//	}
 
 	public QueryInfo getQueryInfo() {
 		return queryInfo;
@@ -534,5 +627,10 @@ public class QueryImpl<T> implements TypedQuery<T> {
 			}
 		}
 		return clauses;
+	}
+
+
+	Class<T> getResultType() {
+		return resultType;
 	}
 }

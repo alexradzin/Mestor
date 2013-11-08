@@ -121,41 +121,44 @@ public enum MestorProperties {
 	// strategy for all NamableItems.
 	// TODO: improve initialization code.
 	NAMING_STRATEGY("naming.strategy", null) {
-		@SuppressWarnings({ "unchecked", "rawtypes" })
+		@SuppressWarnings( "unchecked" )
 		@Override
 		public <T> T  value(final Map<?,?> map) {
 			final String strategyName = super.value(map);
-			if (strategyName == null) {
-				return null;
-			}
-			try {
-				return (T)((Class<NamingStrategy>)Class.forName(strategyName)).newInstance();
-			} catch (final ClassNotFoundException e) {
-				// assume that strategyName refers to enum member
-				final String enumClassName = strategyName.replaceFirst("\\.\\w+$", "");
-				try {
-					final Class<?> clazz = Class.forName(enumClassName);
-					if (!clazz.isEnum()) {
-						throw new IllegalArgumentException(e);
-					}
-					final String[] arr = strategyName.split("\\.");
-					final String enumMember = arr[arr.length - 1];
-
-					return (T)Enum.<Enum>valueOf((Class<Enum>)clazz, enumMember);
-
-				} catch (final ClassNotFoundException e1) {
-					throw new IllegalArgumentException(e);
-				}
-			} catch (final ReflectiveOperationException e) {
-				throw new IllegalArgumentException(e);
-			}
+			return (T)getNamingStrategy(strategyName);
 		}
 	},
 
+	ENTITY_NAMING_STRATEGY("entity.naming.strategy", null) {
+		@SuppressWarnings( "unchecked" )
+		@Override
+		public <T> T  value(final Map<?,?> map) {
+			final String strategyName = super.value(map);
+			return (T)getNamingStrategy(strategyName);
+		}
+	},
 
+	TABLE_NAMING_STRATEGY("table.naming.strategy", null) {
+		@SuppressWarnings( "unchecked" )
+		@Override
+		public <T> T  value(final Map<?,?> map) {
+			final String strategyName = super.value(map);
+			return (T)getNamingStrategy(strategyName);
+		}
+	},
+
+	COLUMN_NAMING_STRATEGY("column.naming.strategy", null) {
+		@SuppressWarnings( "unchecked" )
+		@Override
+		public <T> T  value(final Map<?,?> map) {
+			final String strategyName = super.value(map);
+			return (T)getNamingStrategy(strategyName);
+		}
+	},
 	;
 
 	private String key;
+	private String localKey;
 	private Object defaultValue;
 
 	private final static String prefix = "org.mestor";
@@ -170,12 +173,17 @@ public enum MestorProperties {
 	}
 
 	private MestorProperties(final String key, final Object defaultValue) {
+		this.localKey = key;
 		this.key = (key == null || "".equals(key)) ? prefix : prefix + "." + key;
 		this.defaultValue = defaultValue;
 	}
 
 	public String key() {
 		return key;
+	}
+
+	public String localKey() {
+		return localKey;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -196,4 +204,33 @@ public enum MestorProperties {
 			throw new IllegalStateException("Cannot load persistor implementation " + className, e);
 		}
 	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	protected static NamingStrategy  getNamingStrategy(final String strategyName) {
+		if (strategyName == null) {
+			return null;
+		}
+		try {
+			return ((Class<NamingStrategy>)Class.forName(strategyName)).newInstance();
+		} catch (final ClassNotFoundException e) {
+			// assume that strategyName refers to enum member
+			final String enumClassName = strategyName.replaceFirst("\\.\\w+$", "");
+			try {
+				final Class<?> clazz = Class.forName(enumClassName);
+				if (!clazz.isEnum()) {
+					throw new IllegalArgumentException(e);
+				}
+				final String[] arr = strategyName.split("\\.");
+				final String enumMember = arr[arr.length - 1];
+
+				return (NamingStrategy)Enum.<Enum>valueOf((Class<Enum>)clazz, enumMember);
+
+			} catch (final ClassNotFoundException e1) {
+				throw new IllegalArgumentException(e);
+			}
+		} catch (final ReflectiveOperationException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
+
 }

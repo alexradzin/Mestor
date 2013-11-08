@@ -244,6 +244,25 @@ public class JpqlParserTest {
 		);
 	}
 
+	@Test
+	public void testSelectAllFromPersonWhereNamedParameters() {
+		test("SELECT * FROM Person WHERE name=:givenName AND lastName=:surname AND age>=:years",
+				new QueryInfo(
+						QueryType.SELECT,
+						null,
+						Collections.singletonMap("Person", "Person"),
+						new ClauseInfo(
+								null,
+								Operand.AND,
+								new ClauseInfo[] {
+										new ClauseInfo("name", Operand.EQ, new ArgumentInfo<String>("givenName", null)),
+										new ClauseInfo("lastName", Operand.EQ, new ArgumentInfo<String>("surname", null)),
+										new ClauseInfo("age", Operand.GE, new ArgumentInfo<String>("years", null)),
+								}),
+						null
+				)
+		);
+	}
 
 	@Test
 	public void testSelectAllFromPersonOrderById() {
@@ -341,7 +360,7 @@ public class JpqlParserTest {
 				)
 		);
 	}
-	
+
 	@Test
 	public void testDeleteAllFromPersonWhereIdGtNamedParameterYodaStyle() {
 		test("DELETE FROM Person WHERE :id < id",
@@ -353,6 +372,15 @@ public class JpqlParserTest {
 						null
 				)
 		);
+	}
+
+	/**
+	 * Joins are not supported now. Actually there is a very low chance that they will
+	 * be ever supported...
+	 */
+	@Test(expected = UnsupportedOperationException.class)
+	public void testSelectWithJoin() {
+		test("SELECT OBJECT(lun) from HostCluster hc JOIN hc.luns lun WHERE hc.id = :id AND lun.lun = :lun", null);
 	}
 
 

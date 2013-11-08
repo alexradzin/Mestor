@@ -161,7 +161,7 @@ public class EntityManagerTest {
 			final NamedQueriesEntity[] entities = createNamedQueriesEntities(4, em);
 			final TypedQuery<NamedQueriesEntity> selectAfterId = em.createNamedQuery("selectById", NamedQueriesEntity.class);
 			final int OFFSET = 1;
-			selectAfterId.setParameter(0, entities[OFFSET].getIdentifier());
+			selectAfterId.setParameter(1, entities[OFFSET].getIdentifier());
 			final List<NamedQueriesEntity> resultList = selectAfterId.getResultList();
 			assertEquals(1, resultList.size());
 			for(final NamedQueriesEntity actual : resultList){
@@ -204,7 +204,7 @@ public class EntityManagerTest {
 			final NamedQueriesEntity[] entities = createNamedQueriesEntities(4, em);
 			final TypedQuery<NamedQueriesEntity> selectAfterId = em.createNamedQuery("selectAfterId", NamedQueriesEntity.class);
 			final int OFFSET = 1;
-			selectAfterId.setParameter(0, entities[OFFSET].getIdentifier());
+			selectAfterId.setParameter("identifier", entities[OFFSET].getIdentifier());
 			final List<NamedQueriesEntity> resultList = selectAfterId.getResultList();
 			/*assertEquals(entities.length - OFFSET, resultList.size());
 			//TODO: no order by is implemented yet
@@ -317,7 +317,6 @@ public class EntityManagerTest {
 		em.persist(jlHome);
 		em.persist(jlEmail);
 
-
 		// The following does not work because addresses are inherited using TABLLE_PER_CLASS strategy
 		// that does not work well now even in Persister.fetch() because it assumes that table of base class exists.
 		// It also does not work when fetching lazy dependent collection because ObjectWrapperFactory tries to create instance of
@@ -325,6 +324,10 @@ public class EntityManagerTest {
 		// Bottom line: the inheritance support should be reviewed and fixed, however we do not need it now, so this task is postponed.
 //		final Person foundJl = em.find(Person.class, 1);
 //		assertNotNull(foundJl);
+
+		em.remove(jl);
+		em.remove(jlHome);
+		em.remove(jlEmail);
 	}
 
 	@Test

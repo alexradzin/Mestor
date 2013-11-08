@@ -38,6 +38,7 @@ import org.mestor.entities.annotated.AbstractEntity;
 import org.mestor.entities.annotated.Address;
 import org.mestor.entities.annotated.DifferentTypesHolder;
 import org.mestor.entities.annotated.EmailAddress;
+import org.mestor.entities.annotated.NoFieldAttribute;
 import org.mestor.entities.annotated.Person;
 import org.mestor.entities.annotated.Person.Gender;
 import org.mestor.entities.annotated.SimpleProperty;
@@ -48,6 +49,7 @@ import org.mestor.entities.queries.DuplicateNamedQueriesEntity;
 import org.mestor.entities.queries.DuplicateNamedQueriesEntity_2;
 import org.mestor.entities.queries.NamedQueriesEntity;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.FieldRole;
 
 /**
@@ -89,6 +91,29 @@ public class MetadataFactoryTest {
 				new String[] {"name", "type", "value"},
 				new Class[] {String.class, String.class, ByteBuffer.class});
 	}
+
+
+	@Test
+	public void testOneEntityClassWithAttributeWithoutField() {
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(NoFieldAttribute.class);
+
+		assertFalse(entityClasses.isEmpty());
+		assertEquals(1,  entityClasses.size());
+
+		@SuppressWarnings("unchecked")
+		final EntityMetadata<NoFieldAttribute> emd = (EntityMetadata<NoFieldAttribute>)entityClasses.get(NoFieldAttribute.class);
+		assertNotNull(emd);
+
+		MetadataFactoryTestUtils.assertEntityMetadata(emd, NoFieldAttribute.class, NoFieldAttribute.class.getSimpleName(), "no_field_attribute");
+
+		MetadataFactoryTestUtils.assertEntityMetadataFields(
+				emd.getFields(),
+				new String[] {"id", "generic"},
+				new Class[] {int.class, String.class},
+				new String[] {"id", "generic"},
+				new Class[] {int.class, String.class});
+	}
+
 
 	@Test
 	public void testEntityWithAttributesOfDifferentTypes() {
@@ -264,6 +289,7 @@ public class MetadataFactoryTest {
 		expectedMapQueries.put("selectOlderThan", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > ?1 ORDER BY e.identifier ASC");
 		expectedMapQueries.put("selectById", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.identifier = ?1 ORDER BY e.identifier ASC");
 		expectedMapQueries.put("selectCount", "SELECT COUNT(e) FROM NamedQueriesEntity e");
+		expectedMapQueries.put("selectBySecondaryIndex", "SELECT OBJECT(e) FROM NamedQueriesEntity e where e.lastModified > :date AND name=:name");
 		assertEquals(expectedMapQueries, mapQueries);
 	}
 
@@ -287,5 +313,21 @@ public class MetadataFactoryTest {
 
 		MetadataFactoryTestUtils.testFieldRoles(NamedQueriesEntity.class, expected);
 	}
+
+	@Test
+	public void testIndexesExtractedFromNamedQueries() {
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(NamedQueriesEntity.class);
+		final EntityMetadata<NamedQueriesEntity> emd = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, NamedQueriesEntity.class);
+
+		final Set<String> filterFields = new HashSet<>();
+		for (final FieldMetadata<NamedQueriesEntity, Object, Object> fmd : emd.getFields()) {
+			if (fmd.isFilter()) {
+				filterFields.add(fmd.getName());
+			}
+		}
+
+		assertEquals(new HashSet<>(Arrays.asList("identifier", "lastModified", "name")), filterFields);
+	}
+
 
 }

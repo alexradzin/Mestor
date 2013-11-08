@@ -32,50 +32,51 @@ import org.mestor.wrap.ObjectWrapperFactory;
 public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T> {
 	private final EntityContext context;
 	private final static Pattern proxyClassNamePattern = Pattern.compile("^(.*?)_$$_javassist_.*$");
-	
-	
-	public JavassistObjectWrapperFactory(EntityContext context) {
+
+
+	public JavassistObjectWrapperFactory(final EntityContext context) {
 		this.context = context;
 	}
 
 	@Override
-	public T wrap(T obj) {
+	public T wrap(final T obj) {
 		@SuppressWarnings("unchecked")
+		final
 		Class<T> clazz = (Class<T>)obj.getClass();
-		T proxy = ClassAccessor.newInstance(createClass(clazz));
-		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context, false);
+		final T proxy = ClassAccessor.newInstance(createClass(clazz));
+		final EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
+		final MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context, false);
 		((ProxyObject)proxy).setHandler(mi);
 		return proxy;
 	}
-	
+
 	@Override
-	public <K> T makeLazy(Class<T> clazz, K pk) {
-		T obj = ClassAccessor.newInstance(clazz);
-		EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		
+	public <K> T makeLazy(final Class<T> clazz, final K pk) {
+		final T obj = ClassAccessor.newInstance(clazz);
+		final EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
+
 		@SuppressWarnings("unchecked")
+		final
 		FieldMetadata<T, K, K> pkMeta = (FieldMetadata<T, K, K>)metadata.getPrimaryKey();
 		pkMeta.getAccessor().setValue(obj, pk);
 		return wrap(obj);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public T unwrap(T obj) {
-		return ((PropertyAccessHandler<T>)((ProxyObject)obj).getHandler()).getPayload();
+	public T unwrap(final T obj) {
+		return getMethodHandler(obj).getPayload();
 	}
-	
+
 	@Override
-	public boolean isWrapped(T obj) {
+	public boolean isWrapped(final T obj) {
 		return obj instanceof ProxyObject;
 	}
-	
-	
-	
+
+
+
 	private Class<? extends T> createClass(final Class<T> clazz) {
 
-		ProxyFactory f = new ProxyFactory();
+		final ProxyFactory f = new ProxyFactory();
 
 		if (clazz.isInterface()) {
 			f.setInterfaces(new Class[] {clazz});
@@ -84,20 +85,39 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		}
 
 		f.setFilter(new HierarchyAwareMethodFilter<>(context, clazz));
-		
+
 		@SuppressWarnings("unchecked")
+		final
 		Class<? extends T> c = f.createClass();
 		return c;
-		
+
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Class<T> getRealType(Class<? extends T> wrappedType) {
+	public Class<T> getRealType(final Class<? extends T> wrappedType) {
 		if (!proxyClassNamePattern.matcher(wrappedType.getName()).find()) {
 			throw new IllegalArgumentException(wrappedType + " is not wrapped");
 		}
 		return (Class<T>)wrappedType.getSuperclass();
 	}
-	
+
+	@Override
+	public void markAsRemoved(final T obj) {
+		getMethodHandler(obj).markAsRemoved();
+	}
+
+	@Override
+	public boolean isRemoved(final T obj) {
+		return getMethodHandler(obj).isRemoved();
+	}
+
+
+	@SuppressWarnings("unchecked")
+	private PropertyAccessHandler<T> getMethodHandler(final T obj) {
+		if (!isWrapped(obj)) {
+			throw new IllegalArgumentException("Object " + obj + (obj == null ? "" : " of type " + obj.getClass()) + " is not wrapped");
+		}
+		return (PropertyAccessHandler<T>)((ProxyObject)obj).getHandler();
+	}
 }

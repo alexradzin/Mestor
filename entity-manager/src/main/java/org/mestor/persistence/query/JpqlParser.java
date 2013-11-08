@@ -45,6 +45,8 @@ public class JpqlParser implements CriteriaLanguageParser {
 	private final static Pattern updatePattern = Pattern.compile("^(UPDATE)\\s+(.+).*$", Pattern.CASE_INSENSITIVE); //TBD
 	private final static Pattern deletePattern = Pattern.compile("^(DELETE)\\s+(FROM)\\s+(.*)", Pattern.CASE_INSENSITIVE); //TBD
 
+	private final static Pattern joinPattern = Pattern.compile("^(.+)\\s+(JOIN)\\s+(.*)", Pattern.CASE_INSENSITIVE);
+
 	private final static Pattern wherePattern = Pattern.compile("^(.+)\\s+(WHERE)\\s+(.*)", Pattern.CASE_INSENSITIVE);
 	private final static Pattern orderByPattern = Pattern.compile("^(.+)\\s+(ORDER\\s+BY)\\s+(.*)", Pattern.CASE_INSENSITIVE);
 
@@ -68,6 +70,11 @@ public class JpqlParser implements CriteriaLanguageParser {
 
 	@Override
 	public <T> QueryInfo createCriteria(final String qlString, final Class<T> resultClass) {
+		if (joinPattern.matcher(qlString).find()) {
+			throw new UnsupportedOperationException("JOINs are not supported");
+		}
+
+
 		for (final Entry<Pattern, QueryType> queryDef : queryTypes.entrySet()) {
 			Matcher m = queryDef.getKey().matcher(qlString);
 			if (!m.find()) {

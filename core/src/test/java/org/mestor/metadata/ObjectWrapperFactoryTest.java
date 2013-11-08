@@ -52,39 +52,39 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 /**
- * This test case contains tests that verify wrapping functionality of {@link ObjectWrapperFactory}. 
- * The test case currently verifies {@link JavassistObjectWrapperFactory} but is parameterized and ready  
+ * This test case contains tests that verify wrapping functionality of {@link ObjectWrapperFactory}.
+ * The test case currently verifies {@link JavassistObjectWrapperFactory} but is parameterized and ready
  * to support other implementations of {@link ObjectWrapperFactory} (see {@link #getWrapperFactoryConstructors()}).
- * 
+ *
  * <br/><br/>
- * 
+ *
  * This test case is massively using mocking and verifies the {@link ObjectWrapperFactory} only. Since concrete implementations
- * of {@link ObjectWrapperFactory} can depend on other components that should be verified together it is useful to create 
- * tests that use real implementations of referenced interfaces that are mocked here. 
+ * of {@link ObjectWrapperFactory} can depend on other components that should be verified together it is useful to create
+ * tests that use real implementations of referenced interfaces that are mocked here.
  * For example {@code ObjectWrapperFactoryWithDirtyEntityManagerTest} uses {@code EntityTransactionImpl} as a real implementation
- * of {@link DirtyEntityManager} (see {@link #getDirtyEntityManager()}). 
- *   
- * 
+ * of {@link DirtyEntityManager} (see {@link #getDirtyEntityManager()}).
+ *
+ *
  * @author alexr
  *
  * @param <W>
  */
 @RunWith(Parameterized.class)
 public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
-    @Mock 
+    @Mock
     protected EntityContext ctx;
     private final Constructor<W> constructor;
-    
+
     public ObjectWrapperFactoryTest(final String name, final Constructor<W> constructor) {
-    	this.constructor = constructor; 
+    	this.constructor = constructor;
     }
-    
+
 
     @Parameters(name="{0}")
     public static List<Object[]> getWrapperFactoryTestParameters() throws NoSuchMethodException {
     	return Lists.transform(getWrapperFactoryConstructors(), new Function<Constructor<?>, Object[]>() {
     		@Override
-			public Object[] apply(Constructor<?> c) {
+			public Object[] apply(final Constructor<?> c) {
     			return new Object[] {c.getDeclaringClass().getSimpleName(), c};
     		}
     	});
@@ -94,42 +94,87 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
 	public void setUp() {
 		MockitoAnnotations.initMocks(this);
 	}
-    
-    
-    
+
+
+
     public static List<Constructor<?>> getWrapperFactoryConstructors() throws NoSuchMethodException {
     	return Arrays.<Constructor<?>>asList(JavassistObjectWrapperFactory.class.getConstructor(EntityContext.class));
     }
-    
-    
+
+
     @Test
     public void testWrapAndUnWrap() {
-    	Person person  = new Person();
-		ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
-	
+    	final Person person  = new Person();
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+
         assertFalse(personfact.isWrapped(person));
-        Person personProxy = personfact.wrap(person);
-        assertTrue(personfact.isWrapped(personProxy));           
-        Person temp =  personfact.unwrap(personProxy);
+        final Person personProxy = personfact.wrap(person);
+        assertTrue(personfact.isWrapped(personProxy));
+        final Person temp =  personfact.unwrap(personProxy);
         assertFalse(personfact.isWrapped(temp));
     }
 
-    
+
     @Test(expected = RuntimeException.class)
     public void testWrapFinalClass() {
-    	Pattern p = Pattern.compile("");
+    	final Pattern p = Pattern.compile("");
 		createWrapperFactory(Pattern.class).wrap(p);
     }
-    
+
     @Test(expected = IllegalArgumentException.class)
     public void testWrapNoDefaultConstructor() {
 		createWrapperFactory(File.class).wrap(new File(""));
     }
-    
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIsRemovedNotWrappedEntity() {
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+		personfact.isRemoved(new Person());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIsRemovedNotEntity() {
+		final ObjectWrapperFactory<String> personfact = createWrapperFactory(String.class);
+		personfact.isRemoved("");
+    }
+
+    @Test
+    public void testIsRemovedNotRemovedEntity() {
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+		final Person person = personfact.wrap(new Person());
+		assertFalse(personfact.isRemoved(person));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIsRemovedNullEntity() {
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+		personfact.isRemoved(null);
+    }
+
+    @Test
+    public void testIsRemovedRemovedEntity() {
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+		final Person person = personfact.wrap(new Person());
+		personfact.markAsRemoved(person);
+		assertTrue(personfact.isRemoved(person));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testMarkRemovedNotWrappedEntity() {
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+		personfact.markAsRemoved(new Person());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testMarkRemovedNotEntity() {
+		final ObjectWrapperFactory<String> personfact = createWrapperFactory(String.class);
+		personfact.markAsRemoved("");
+    }
+
 	public void testDirtyDataOnGet() {
 		testDirtyData(new Function<Person, Void>() {
 			@Override
-			public Void apply(Person person) {
+			public Void apply(final Person person) {
 				person.getAge();
 				person.getName();
 				person.getLastName();
@@ -143,7 +188,7 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
 	public void testDirtyDataOnSet() {
 		testDirtyData(new Function<Person, Void>() {
 			@Override
-			public Void apply(Person person) {
+			public Void apply(final Person person) {
 				person.setAge(5);
 				person.setName("name");
 				person.setLastName("surname");
@@ -151,23 +196,23 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
 			}
 		}, 1, 3);
 	}
-	
+
 	@Test
 	public void testDirtyDataOnSetAndGet() {
 		testDirtyData(new Function<Person, Void>() {
 			@Override
-			public Void apply(Person person) {
+			public Void apply(final Person person) {
 				person.setAge(person.getAge());
 				return null;
 			}
 		}, 1, 1);
 	}
-	
+
 	@Test
 	public void testDirtyDataOnInvokationOfOtherMethods() {
 		testDirtyData(new Function<Person, Void>() {
 			@Override
-			public Void apply(Person person) {
+			public Void apply(final Person person) {
 				person.toString();
 				person.hashCode();
 				person.equals(null);
@@ -180,77 +225,77 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
 	 * Defines test that creates required mock-ups, then creates object, wraps it and invokes
 	 * {@code scenario} that is expected to invoke various methods of wrapped object.
 	 * Then test verifies that number of updates of {@link DirtyEntityManager} is as expected.
-	 * 
+	 *
 	 * @param scenario
 	 * @param expectedDirtyEntityManagerCalls
 	 */
-	private void testDirtyData(Function<Person, Void> scenario, int expectedNumberOfDirtyEntities, int expectedDirtyEntityManagerCalls) {
-		DirtyEntityManager dirtyEntityManager = getDirtyEntityManager();
+	private void testDirtyData(final Function<Person, Void> scenario, final int expectedNumberOfDirtyEntities, final int expectedDirtyEntityManagerCalls) {
+		final DirtyEntityManager dirtyEntityManager = getDirtyEntityManager();
 		doReturn(dirtyEntityManager).when(ctx).getDirtyEntityManager();
-		
-		Person person = new Person(30, "name", "surname", Gender.MALE);
-		Person personProxy = createWrapperFactory(Person.class).wrap(person);
+
+		final Person person = new Person(30, "name", "surname", Gender.MALE);
+		final Person personProxy = createWrapperFactory(Person.class).wrap(person);
 		scenario.apply(personProxy);
-		
+
 		verifyDirtyEntityManager(
-				dirtyEntityManager, 
+				dirtyEntityManager,
 				expectedNumberOfDirtyEntities,
-				expectedDirtyEntityManagerCalls, 
+				expectedDirtyEntityManagerCalls,
 				new BeanFieldMatcher<Person>(Person.class, "id", person.getId()));
-	}    
-	
-	
+	}
+
+
 	/**
-	 * Verifies that {@link DirtyEntityManager} was called expected number of times and that 
-	 * objects sent during calls match specified {@link Matcher}. 
-	 *  
+	 * Verifies that {@link DirtyEntityManager} was called expected number of times and that
+	 * objects sent during calls match specified {@link Matcher}.
+	 *
 	 * <br/><br/>
-	 * 
+	 *
 	 * <i>
-	 * Parameter  {@code expectedNumberOfDirtyEntities} is ignored here because it cannot be verified. 
-	 * It however is verified in sub class implementation {@link ObjectWrapperFactoryWithDirtyEntityManagerTest}. 
+	 * Parameter  {@code expectedNumberOfDirtyEntities} is ignored here because it cannot be verified.
+	 * It however is verified in sub class implementation {@link ObjectWrapperFactoryWithDirtyEntityManagerTest}.
 	 * This is ugly but very simple design and IMHO good enough for tests.
 	 * </i>
-	 * 
+	 *
 	 * @param dirtyEntityManager
 	 * @param expectedNumberOfDirtyEntities
 	 * @param expectedDirtyEntityManagerCalls
 	 * @param matcher
-	 * 
+	 *
 	 * @see ObjectWrapperFactoryWithDirtyEntityManagerTest#verifyDirtyEntityManager(DirtyEntityManager, int, int, Matcher)
 	 */
 	@SuppressWarnings("unchecked")
-	protected <T> void verifyDirtyEntityManager(DirtyEntityManager dirtyEntityManager, int expectedNumberOfDirtyEntities, int expectedDirtyEntityManagerCalls, Matcher<T> matcher) {
-		// this line produces warning because class FieldMetadata is generic, 
-		// however it is impossible to create something like Class<Person, Object, Object>.class 
+	protected <T> void verifyDirtyEntityManager(final DirtyEntityManager dirtyEntityManager, final int expectedNumberOfDirtyEntities, final int expectedDirtyEntityManagerCalls, final Matcher<T> matcher) {
+		// this line produces warning because class FieldMetadata is generic,
+		// however it is impossible to create something like Class<Person, Object, Object>.class
 		verify(dirtyEntityManager, times(expectedDirtyEntityManagerCalls)).
 			addDirtyEntity(
-					argThat(matcher), 
+					argThat(matcher),
 					any(FieldMetadata.class));
 	}
-    
-	protected <T> EntityMetadata<T> createEntityMetadata(Class<T> clazz) {
+
+	protected <T> EntityMetadata<T> createEntityMetadata(final Class<T> clazz) {
 		return new BeanMetadataFactory().create(clazz);
 	}
-	
-    
-    private <T> ObjectWrapperFactory<T> createWrapperFactory(Class<T> clazz) {
-        EntityMetadata<T> emd = createEntityMetadata(clazz); 
+
+
+    private <T> ObjectWrapperFactory<T> createWrapperFactory(final Class<T> clazz) {
+        final EntityMetadata<T> emd = createEntityMetadata(clazz);
         doReturn(emd).when(ctx).getEntityMetadata(clazz);
         return createWrapperFactory(ctx);
     }
 
     @SuppressWarnings("unchecked")
-	private <T> ObjectWrapperFactory<T> createWrapperFactory(EntityContext ctx) {
+	private <T> ObjectWrapperFactory<T> createWrapperFactory(final EntityContext ctx) {
         try {
 			return (ObjectWrapperFactory<T>)constructor.newInstance(ctx);
-		} catch (ReflectiveOperationException e) {
+		} catch (final ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
     }
 
     protected DirtyEntityManager getDirtyEntityManager() {
-		DirtyEntityManager dirtyEntityManager = mock(DirtyEntityManager.class);
+		final DirtyEntityManager dirtyEntityManager = mock(DirtyEntityManager.class);
 		doReturn(dirtyEntityManager).when(ctx).getDirtyEntityManager();
     	return dirtyEntityManager;
     }

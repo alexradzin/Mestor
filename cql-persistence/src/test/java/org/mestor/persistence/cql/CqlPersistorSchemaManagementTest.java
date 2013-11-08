@@ -221,21 +221,26 @@ public class CqlPersistorSchemaManagementTest {
 	/**
 	 * Creates table with one field that is not a primary key.
 	 * The test is expected to fail because any table must have primary key.
+	 * Tests that should throw exceptions cannot use try-with-resource syntax because
+	 * in this case persistor is closed automatically before finally block that should drop schema is executed.
 	 */
 	@Test(expected=SyntaxError.class)
 	public void testCreateTableOneIntFieldNoPK() throws IOException {
 		final String schemaName = "test1";
 		final CqlPersistorTestHelper helper = new CqlPersistorTestHelper(Collections.<String, Object>singletonMap("org.mestor.cassandra.partition.key", new String[] {null, null}));
 
-		try (
-				Persistor persistor = helper.getPersistor();
-		) {
+		Persistor persistor = null;
+		try {
+			persistor = helper.getPersistor();
 			helper.testCreateSchema(schemaName, null, false);
 			final FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id");
 			pk.setColumn("identifier");
 			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", null), null, true);
 		} finally {
-			persistor.dropSchema(schemaName);
+			if (persistor != null) {
+				persistor.dropSchema(schemaName);
+				persistor.close();
+			}
 		}
 	}
 
@@ -245,13 +250,16 @@ public class CqlPersistorSchemaManagementTest {
 		final String schemaName = "test1";
 		final CqlPersistorTestHelper helper = new CqlPersistorTestHelper(Collections.<String, Object>singletonMap("org.mestor.cassandra.partition.key", new String[] {null, null}));
 
-		try (
-				Persistor persistor = helper.getPersistor();
-		) {
+		Persistor persistor = null;
+		try {
+			persistor = helper.getPersistor();
 			helper.testCreateSchema(schemaName, null, false);
 			helper.testEditTable(helper.createMetadata(Person.class, schemaName, "People", null), null, true);
 		} finally {
-			persistor.dropSchema(schemaName);
+			if (persistor != null) {
+				persistor.dropSchema(schemaName);
+				persistor.close();
+			}
 		}
 	}
 

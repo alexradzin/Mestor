@@ -67,7 +67,7 @@ public class CqlQueryFactoryTest {
 		fieldName.setColumn("name");
 
 		final FieldMetadata<Person, String, String> pkName = new FieldMetadata<Person, String, String>(Person.class, String.class, "name_pk");
-		pkName.setColumn("name_pk");
+		pkName.setColumn("Name_PK");
 		pkName.setKey(true);
 
 		final FieldMetadata<Person, String, String> fieldFirstName = new FieldMetadata<Person, String, String>(Person.class, String.class, "firstName");
@@ -139,6 +139,11 @@ public class CqlQueryFactoryTest {
 	@Test
 	public void testCountSelectName() {
 		testCountSelect("count(last_name)", "count(*)");
+	}
+
+	@Test
+	public void testCapitalCountSelectName() {
+		testCountSelect("COUNT(v)", "count(*)");
 	}
 
 
@@ -353,7 +358,7 @@ public class CqlQueryFactoryTest {
 						Collections.<String, String>singletonMap("person", "person"),
 						new ClauseInfo("name", Operand.GE, "John"),
 						Collections.singleton(new OrderByInfo("name", Order.DSC))),
-				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 AND name_pk>='John' ORDER BY name_pk DESC ALLOW FILTERING;");
+				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 AND \"Name_PK\">='John' ORDER BY \"Name_PK\" DESC ALLOW FILTERING;");
 	}
 
 	@Test
@@ -367,6 +372,13 @@ public class CqlQueryFactoryTest {
 				"SELECT * FROM \"TestKeySpace\".person WHERE \"FirstName\"='John' ALLOW FILTERING;");
 	}
 
+	@Test
+	public void testSelectOrderBySensitive() {
+		testCreateQuery(new QueryInfo(QueryType.SELECT,
+				null, "person",
+				null, Collections.singleton(new OrderByInfo("name", Order.ASC)), null),
+				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 ORDER BY \"Name_PK\" ASC;");
+	}
 
 	private void testGetSubqueryIndexes(final String query, final List<Pair<String, Integer>> expected) {
 		final CqlQueryFactory factory = new CqlQueryFactory(ctx);
@@ -377,7 +389,7 @@ public class CqlQueryFactoryTest {
 	private void testSelectAllOrderBy(final Order order, final String queryOrder) {
 		testCreateQuery(
 				new QueryInfo(QueryType.SELECT, null, Collections.<String, String>singletonMap("person", "person"), null, Collections.singleton(new OrderByInfo("name", order))),
-				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 ORDER BY name_pk " + queryOrder + ";");
+				"SELECT * FROM \"TestKeySpace\".person WHERE partition=0 ORDER BY \"Name_PK\" " + queryOrder + ";");
 	}
 
 	private void testCountSelect(final String count, final String expectedCount) {

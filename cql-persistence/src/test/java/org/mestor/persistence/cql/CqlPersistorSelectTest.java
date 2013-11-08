@@ -37,6 +37,8 @@ import org.mestor.cassandra.CassandraAwareTestRunner;
 import org.mestor.context.Persistor;
 import org.mestor.entities.Person;
 import org.mestor.entities.Person.Gender;
+import org.mestor.entities.SystemParameter;
+import org.mestor.entities.SystemParameter.SystemParameterPK;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.query.ClauseInfo;
@@ -44,7 +46,6 @@ import org.mestor.query.ClauseInfo.Operand;
 import org.mestor.query.QueryInfo;
 import org.mestor.query.QueryInfo.QueryType;
 import org.mestor.util.ReflectiveBean;
-
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
@@ -329,10 +330,49 @@ public class CqlPersistorSelectTest {
 		testSelectAggregationFunction("age", "avg", 857);
 	}
 
+	@Test
+	public void testSelectByCompositePK() {
+		final String schemaName = "test1";
+		try {
+			initPersonMetadata(schemaName);
+
+			final SystemParameter labrador = new SystemParameter();
+			labrador.setCategory("animal");
+			labrador.setKey("dog");
+			labrador.setValue("labrador");
+
+			persistor.store(labrador);
+
+			final SystemParameter labrador1 = persistor.fetch(SystemParameter.class, new SystemParameterPK("animal", "dog"));
+			assertNotNull(labrador1);
+			assertEquals("animal", labrador1.getCategory());
+			assertEquals("dog", labrador1.getKey());
+			assertEquals("labrador", labrador1.getValue());
+
+			final List<Long> countResult = persistor.selectQuery(
+					new QueryInfo(
+						QueryType.SELECT,
+						Collections.<String, Object>singletonMap("count(*)", "count(*)"),
+						Collections.singletonMap("SystemParameter", "SystemParameter")),
+					null);
+
+			assertNotNull(countResult);
+			assertEquals(1, countResult.size());
+
+			final long count = countResult.get(0);
+			assertEquals(1,  count);
+		} finally {
+			persistor.dropSchema(schemaName);
+		}
+	}
+
+
+
+
 	private void initPersonMetadata(final String schemaName) {
 		helper.testCreateSchema(schemaName, null, false);
 		final FieldMetadata<Person, Integer, Integer> pk = helper.createFieldMetadata(Person.class, Integer.class, "id", "identifier", true);
-		final EntityMetadata<Person> emd = helper.createMetadata(Person.class, schemaName, "People", pk, pk);
+		final EntityMetadata<Person> personEmd = helper.createMetadata(Person.class, schemaName, "People", pk, pk);
 
 		final String yearField = "year";
 		final FieldMetadata<Person, Integer, Integer> year = new FieldMetadata<Person, Integer, Integer>(Person.class, Integer.class, yearField,
@@ -342,8 +382,8 @@ public class CqlPersistorSelectTest {
 		);
 
 		year.setColumn("year");
-		emd.addField(year);
-		emd.addIndex(year);
+		personEmd.addField(year);
+		personEmd.addIndex(year);
 
 		final String ageField = "age";
 		final FieldMetadata<Person, Integer, Integer> age = new FieldMetadata<Person, Integer, Integer>(Person.class, Integer.class, ageField,
@@ -353,8 +393,8 @@ public class CqlPersistorSelectTest {
 		);
 
 		age.setColumn("age");
-		emd.addField(age);
-		emd.addIndex(age);
+		personEmd.addField(age);
+		personEmd.addIndex(age);
 
 
 
@@ -365,7 +405,7 @@ public class CqlPersistorSelectTest {
 				ReflectiveBean.getSetter(Person.class, String.class, firstNameField)
 		);
 		firstName.setColumn("first_name");
-		emd.addField(firstName);
+		personEmd.addField(firstName);
 
 
 		final String lastNameField = "lastName";
@@ -375,12 +415,54 @@ public class CqlPersistorSelectTest {
 				ReflectiveBean.getSetter(Person.class, String.class, lastNameField)
 		);
 		lastName.setColumn("last_name");
-		emd.addField(lastName);
+		personEmd.addField(lastName);
 
 
-		helper.testEditTable(emd, null, true);
-		doReturn(emd).when(helper.ctx).getEntityMetadata(Person.class);
-		doReturn(emd).when(helper.ctx).getEntityMetadata("People");
+		helper.testEditTable(personEmd, null, true);
+		doReturn(personEmd).when(helper.ctx).getEntityMetadata(Person.class);
+		doReturn(personEmd).when(helper.ctx).getEntityMetadata("People");
+
+		//////////////////////////////////
+
+		final FieldMetadata<SystemParameter, SystemParameterPK, Object> sysParamPk = helper.createFieldMetadata(SystemParameter.class, SystemParameterPK.class, "category_key", null, true);
+		final EntityMetadata<SystemParameter> sysParamEmd = helper.createMetadata(SystemParameter.class, schemaName, "SystemParameter", sysParamPk);
+
+		final String sysParamCategoryField = "category";
+		final FieldMetadata<SystemParameter, String, String> sysParamCategory = new FieldMetadata<SystemParameter, String, String>(SystemParameter.class, String.class, sysParamCategoryField,
+				ReflectiveBean.getField(SystemParameter.class, sysParamCategoryField),
+				ReflectiveBean.getGetter(SystemParameter.class, sysParamCategoryField),
+				ReflectiveBean.getSetter(SystemParameter.class, String.class, sysParamCategoryField)
+		);
+
+		sysParamCategory.setKey(true);
+		sysParamCategory.setColumn(sysParamCategoryField);
+		sysParamEmd.addField(sysParamCategory);
+
+
+		final String sysParamKeyField = "key";
+		final FieldMetadata<SystemParameter, String, String> sysParamKey = new FieldMetadata<SystemParameter, String, String>(SystemParameter.class, String.class, sysParamKeyField,
+				ReflectiveBean.getField(SystemParameter.class, sysParamKeyField),
+				ReflectiveBean.getGetter(SystemParameter.class, sysParamKeyField),
+				ReflectiveBean.getSetter(SystemParameter.class, String.class, sysParamKeyField)
+		);
+
+		sysParamKey.setKey(true);
+		sysParamKey.setColumn(sysParamKeyField);
+		sysParamEmd.addField(sysParamKey);
+
+		final String sysParamValueField = "value";
+		final FieldMetadata<SystemParameter, String, String> sysParamValue = new FieldMetadata<SystemParameter, String, String>(SystemParameter.class, String.class, sysParamValueField,
+				ReflectiveBean.getField(SystemParameter.class, sysParamValueField),
+				ReflectiveBean.getGetter(SystemParameter.class, sysParamValueField),
+				ReflectiveBean.getSetter(SystemParameter.class, String.class, sysParamValueField)
+		);
+
+		sysParamValue.setColumn(sysParamValueField);
+		sysParamEmd.addField(sysParamValue);
+
+		helper.testEditTable(sysParamEmd, null, true);
+		doReturn(sysParamEmd).when(helper.ctx).getEntityMetadata(SystemParameter.class);
+		doReturn(sysParamEmd).when(helper.ctx).getEntityMetadata("SystemParameter");
 	}
 
 

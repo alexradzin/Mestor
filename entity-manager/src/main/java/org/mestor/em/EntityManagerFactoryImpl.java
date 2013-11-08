@@ -34,6 +34,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.metamodel.Metamodel;
 import javax.persistence.spi.PersistenceUnitInfo;
 
+import org.mestor.context.EntityContext;
 import org.mestor.persistence.metamodel.CompositeMetamodel;
 import org.mestor.util.CollectionUtils;
 import org.mestor.util.SystemProperties;
@@ -54,12 +55,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
 
 	private final PersistenceUnitInfo info;
+	private final EntityContext context;
 	private final Map<String, String> map;
 	private final Map<String, Object> properties = new HashMap<>();
 
 
-	public EntityManagerFactoryImpl(final PersistenceUnitInfo info, final Map<String, String> map) {
+	public EntityManagerFactoryImpl(final PersistenceUnitInfo info, final EntityContext context, final Map<String, String> map) {
 		this.info = info;
+		this.context = context;
 		this.map = map;
 
 		properties.putAll(CollectionUtils.merge(
@@ -106,7 +109,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 	@Override
 	public EntityManager createEntityManager(final SynchronizationType synchronizationType, @SuppressWarnings("rawtypes") final Map map) {
 		checkOpen();
-		final EntityManager em = new EntityManagerImpl(info, this, CollectionUtils.merge(properties, map), null);
+		final EntityManager em = new EntityManagerImpl(info, context, this, CollectionUtils.merge(properties, map), null);
 		metamodel.add(em.getMetamodel());
 		return em;
 	}

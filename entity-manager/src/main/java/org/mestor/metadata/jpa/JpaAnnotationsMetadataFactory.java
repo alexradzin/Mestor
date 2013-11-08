@@ -19,6 +19,7 @@ package org.mestor.metadata.jpa;
 
 import java.io.Serializable;
 import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
@@ -113,12 +114,15 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 	public JpaAnnotationsMetadataFactory() {
 	}
 
-	public void setNamingStrategy(final NamingStrategy namingStrategy) {
-		for(final NamableItem i : NamableItem.values()) {
-			this.namingStrategies.put(i, namingStrategy);
-		}
+	public JpaAnnotationsMetadataFactory(final EntityContext context) {
+		setEntityContext(context);
 	}
 
+	public void setNamingStrategy(final NamingStrategy namingStrategy) {
+		for(final NamableItem item : NamableItem.values()) {
+			setNamingStrategy(item, namingStrategy);
+		}
+	}
 
 	public void setNamingStrategy(final NamableItem item, final NamingStrategy namingStrategy) {
 		this.namingStrategies.put(item, namingStrategy);
@@ -165,8 +169,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			}
 
 			@SuppressWarnings("unchecked")
-			final
-			Class<Object> type = (Class<Object>)f.getType();
+			final Class<Object> type = (Class<Object>)f.getType();
 			final String name = getFieldName(f);
 			final FieldMetadata<T, Object, Object> fmeta = create(clazz, type, name);
 
@@ -195,10 +198,11 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 			if (fmeta == null) {
 				@SuppressWarnings("unchecked")
-				final
-				Class<Object> type = (Class<Object>)m.getReturnType();
+				final Class<Object> type = (Class<Object>)m.getReturnType();
 				fmeta = create(clazz, type, fieldName);
-				initMeta(fmeta, m, fieldName, clazz, type);
+				if (initMeta(fmeta, m, fieldName, clazz, type)) {
+					fields.put(fieldName, fmeta);
+				}
 			}
 			fmeta.setGetter(m);
 		}
@@ -516,8 +520,9 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 
 
-	private <T, F, C> void initMeta(final FieldMetadata<T, F, C> fmeta, final AccessibleObject ao, final String memberName, final Class<T> clazz, final Class<F> memberType) {
-		fmeta.setColumn(extractName(ao.getAnnotation(Column.class), namingStrategies.get(NamableItem.COLUMN).getColumnName(ao)));
+	private <T, F, C> boolean initMeta(final FieldMetadata<T, F, C> fmeta, final AccessibleObject ao, final String memberName, final Class<T> clazz, final Class<F> memberType) {
+		final Column column = ao.getAnnotation(Column.class);
+		fmeta.setColumn(extractName(column, namingStrategies.get(NamableItem.COLUMN).getColumnName(ao)));
 		fmeta.setKey(ao.getAnnotation(Id.class) != null);
 
 		final boolean nullable = ao.getAnnotation(Nullable.class) != null;
@@ -546,6 +551,8 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 				fmeta.setColumnGenericTypes(getColumnGenericTypes(converters));
 			}
 		}
+
+		return column != null;
 	}
 
 	private <F, C> Collection<ValueAttributeConverter<?,?>> wrapConverters(final List<AttributeConverter<?, ?>> attributeConverters) {
@@ -932,8 +939,20 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			fields.add(field);
 		}
 		final Object expression = clause.getExpression();
+		if (expression == null) {
+			return fields;
+		}
 		if (expression instanceof ClauseInfo) {
 			findFilterFields((ClauseInfo)expression, fields);
+		}
+		if(expression.getClass().isArray()) {
+			final int n = Array.getLength(expression);
+			for (int i = 0; i < n; i++) {
+				final Object element = Array.get(expression, i);
+				if (element instanceof ClauseInfo) {
+					findFilterFields((ClauseInfo)element, fields);
+				}
+			}
 		}
 		return fields;
 	}

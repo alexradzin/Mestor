@@ -72,7 +72,7 @@ public class CqlQueryFactory {
 	public CqlQueryFactory(final EntityContext context) {
 		this.context = context;
 
-		final Map<String, Object> properties = context.getProperties();
+		final Map<String, Object> properties = context.getParameters();
 		final Object[] partitionData = CqlPersistorProperties.PARTITION_KEY.getValue(properties);
 		partitionFieldName = (String)partitionData[0];
 		partitionFieldValue = partitionData[1];
@@ -139,7 +139,7 @@ public class CqlQueryFactory {
 					// special case for count(*)
 					final boolean isCount = isCount(fields);
 					if (isCount) {
-						selection.column("count(*)");
+						selection.countAll();
 						resultType = Long.class;
 					} else {
 						for (final String field : fields.keySet()) {
@@ -164,7 +164,7 @@ public class CqlQueryFactory {
 				final Collection<OrderByInfo> orders = query.getOrders();
 				if (orders != null) {
 					for (final OrderByInfo order : orders) {
-						final String field = getKeyColumnName(emd, order.getField());
+						final String field = quote(getKeyColumnName(emd, order.getField()));
 						switch(order.getOrder()) {
 							case ASC:
 								orderings.add(QueryBuilder.asc(field));
@@ -315,40 +315,44 @@ public class CqlQueryFactory {
 			value = expression;
 		}
 
+
 		final String column = getColumnName(emd, field, useKeys);
-		final FieldMetadata<?, ?, ?> fmd = emd.getField(column);
+		final FieldMetadata<?, Object, Object> fmd = emd.getField(column);
 		if (fmd.isKey()) {
 			addPartitionClause.set(true);
 		}
 
 		final String cqlColumn = quote(column);
 
+		final Object columnValue = fmd.getConverter().toColumn(value);
+
+
 		final Operand op = where.getOperator();
 		switch(op) {
 			case EQ:
-				return Collections.singleton(eq(cqlColumn, value));
+				return Collections.singleton(eq(cqlColumn, columnValue));
 			case GE:
-				return Collections.singleton(gte(cqlColumn, value));
+				return Collections.singleton(gte(cqlColumn, columnValue));
 			case GT:
-				return Collections.singleton(gt(cqlColumn, value));
+				return Collections.singleton(gt(cqlColumn, columnValue));
 			case LE:
-				return Collections.singleton(lte(cqlColumn, value));
+				return Collections.singleton(lte(cqlColumn, columnValue));
 			case LT:
-				return Collections.singleton(lt(cqlColumn, value));
+				return Collections.singleton(lt(cqlColumn, columnValue));
 			case IN:
 				if (value.getClass().isArray()) {
-					return Collections.singleton(in(cqlColumn, (Object[])value));
+					return Collections.singleton(in(cqlColumn, (Object[])columnValue));
 				} else if (value instanceof Collection) {
-					return Collections.singleton(in(cqlColumn, ((Collection<?>)value).toArray()));
+					return Collections.singleton(in(cqlColumn, ((Collection<?>)columnValue).toArray()));
 				}
 				return Collections.singleton(in(cqlColumn, value));
 			case LIKE:
 				if (value instanceof String) {
-					final String str = (String)value;
+					final String str = (String)columnValue;
 					if (!str.startsWith("%") && str.endsWith("%")) {
-						return Collections.singleton(gte(cqlColumn, value));
+						return Collections.singleton(gte(cqlColumn, columnValue));
 					} else if(!str.startsWith("%") && !str.endsWith("%")) {
-						return Collections.singleton(eq(cqlColumn, value));
+						return Collections.singleton(eq(cqlColumn, columnValue));
 					}
 				}
 			//$FALL-THROUGH$ - likes except "%..." and "...%" are not supported
