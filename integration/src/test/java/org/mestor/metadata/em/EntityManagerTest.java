@@ -17,6 +17,7 @@
 package org.mestor.metadata.em;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -30,6 +31,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
@@ -56,6 +58,9 @@ import org.mestor.entities.annotated.SimpleProperty;
 import org.mestor.entities.annotated.StreetAddress;
 import org.mestor.entities.annotated.User;
 import org.mestor.entities.annotated.UserRole;
+import org.mestor.entities.annotatedidgenerator.CompositeGeneratedId;
+import org.mestor.entities.annotatedidgenerator.SimpleNumericId;
+import org.mestor.entities.annotatedidgenerator.StringGeneratedId;
 import org.mestor.entities.queries.NamedQueriesEntity;
 
 import com.datastax.driver.core.exceptions.InvalidQueryException;
@@ -64,6 +69,8 @@ import com.google.common.collect.Collections2;
 
 @RunWith(CassandraAwareTestRunner.class)
 public class EntityManagerTest {
+	// example: b3312373-254a-4fa7-959c-c5f6cd68b8cd
+	private final static Pattern uuidPattern = Pattern.compile("^[a-z0-9]{8}(?:-[a-z0-9]{4}){3}-[a-z0-9]{12}$");
 
 	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
 		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
@@ -353,6 +360,81 @@ public class EntityManagerTest {
 
 		assertPerson(jl, foundJl);
 	}
+
+
+	@Test
+	public void testAutomaticLongIdGeneration() {
+		final EntityManager em = getEntityManager("id_generator.xml", "id_generator_test");
+		try{
+			assertNull(em.find(SimpleNumericId.class, 1L));
+			final SimpleNumericId snid = new SimpleNumericId();
+			em.persist(snid);
+			SimpleNumericId found = em.find(SimpleNumericId.class, 1L);
+			assertNotNull(found);
+			em.remove(found);
+			assertNull(em.find(SimpleNumericId.class, 1L));
+		} finally {
+			em.close();
+		}
+	}
+
+	@Test
+	public void testAutomaticStringIdGeneration() {
+		final EntityManager em = getEntityManager("id_generator.xml", "id_generator_test");
+		try{
+			final String query = "select * from StringGeneratedId";
+			em.createQuery(query, StringGeneratedId.class);
+			assertTrue(em.createQuery(query, StringGeneratedId.class).getResultList().isEmpty());
+			final StringGeneratedId snid = new StringGeneratedId();
+			em.persist(snid);
+
+			List<StringGeneratedId> foundEntities = em.createQuery(query, StringGeneratedId.class).getResultList();
+			assertNotNull(foundEntities);
+			assertFalse(foundEntities.isEmpty());
+			assertTrue(foundEntities.size() == 1);
+
+			StringGeneratedId found = foundEntities.get(0);
+			assertNotNull(found);
+			assertNotNull(found.getId());
+			assertTrue(uuidPattern.matcher(found.getId()).find());
+
+			em.remove(found);
+			assertTrue(em.createQuery(query, StringGeneratedId.class).getResultList().isEmpty());
+		} finally {
+			em.close();
+		}
+	}
+
+	@Test
+	public void testAutomaticCompositeIdGeneration() {
+		final EntityManager em = getEntityManager("id_generator.xml", "id_generator_test");
+		try{
+			final String query = "select * from CompositeGeneratedId";
+			em.createQuery(query, CompositeGeneratedId.class);
+			assertTrue(em.createQuery(query, CompositeGeneratedId.class).getResultList().isEmpty());
+			final CompositeGeneratedId snid = new CompositeGeneratedId();
+			em.persist(snid);
+
+			List<CompositeGeneratedId> foundEntities = em.createQuery(query, CompositeGeneratedId.class).getResultList();
+			assertNotNull(foundEntities);
+			assertFalse(foundEntities.isEmpty());
+			assertTrue(foundEntities.size() == 1);
+
+			CompositeGeneratedId found = foundEntities.get(0);
+			assertNotNull(found);
+			assertNotNull(found.getId());
+			assertNotNull(found.getName());
+
+			assertEquals(1L, found.getId().longValue());
+			assertTrue(uuidPattern.matcher(found.getName()).find());
+
+			em.remove(found);
+			assertTrue(em.createQuery(query, CompositeGeneratedId.class).getResultList().isEmpty());
+		} finally {
+			em.close();
+		}
+	}
+
 
 	//TODO: move this method to reusable utility
 	private void assertPerson(final Person expected, final Person actual) {

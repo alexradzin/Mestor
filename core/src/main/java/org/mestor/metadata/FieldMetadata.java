@@ -46,6 +46,8 @@ public class FieldMetadata<T, F, C> {
 	private F defaultValue;
 
 	private PropertyAccessor<T, F> accessor;
+	private IdGeneratorMetadata<T, F> idGenerator;
+
 
 	public FieldMetadata(final Class<T> classType, final Class<F> type, final String name) {
 		this(classType, type, name, null, null, null);
@@ -318,4 +320,11 @@ public class FieldMetadata<T, F, C> {
 		return null;
 	}
 
+	public IdGeneratorMetadata<T, F> getIdGenerator() {
+		return idGenerator;
+	}
+
+	public void setIdGenerator(IdGeneratorMetadata<T, F> idGenerator) {
+		this.idGenerator = idGenerator;
+	}
 }

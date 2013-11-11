@@ -20,7 +20,9 @@ package org.mestor.em;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import org.mestor.metadata.jpa.JpaAnnotationsMetadataFactory;
@@ -155,6 +157,37 @@ public enum MestorProperties {
 			return (T)getNamingStrategy(strategyName);
 		}
 	},
+
+    ID_GENERATOR("id.generator", null) {
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T> T value(final Map<?,?> map) {
+			Map<String, String> idGeneratorsConfig = new HashMap<>();
+
+			final String defaultGeneratorClassName = super.value(map);
+			final String prefix = key() + ".";
+			for (Entry<?, ?> entry : map.entrySet()) {
+				String entryKey = entry.getKey().toString();
+				if (!entryKey.startsWith(prefix)) {
+					continue;
+				}
+				String generatorName = entryKey.substring(prefix.length());
+				if ("*".equals(generatorName)) {
+					generatorName = null;
+				}
+				idGeneratorsConfig.put(generatorName, entry.getValue().toString());
+			}
+
+			if (defaultGeneratorClassName != null) {
+				idGeneratorsConfig.put(null, defaultGeneratorClassName);
+			}
+
+			// generator is a class that accepts EntityContext in constructor or have a defualt constructor
+			// and implements Iterator<ID>
+			return (T)idGeneratorsConfig;
+		}
+	},
+
 	;
 
 	private String key;

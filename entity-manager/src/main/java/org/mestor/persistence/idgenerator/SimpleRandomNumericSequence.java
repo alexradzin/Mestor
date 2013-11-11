@@ -15,24 +15,30 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.persistence.idgenerator;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.Random;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.query.CriteriaLanguageParser;
 
-public interface EntityContext {
-	public Map<String, Object> getParameters();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public <T> EntityMetadata<T> getEntityMetadata(String entityName);
-	public String getNamedQuery(String name);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
-	public CriteriaLanguageParser getCriteriaLanguageParser();
-	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName);
+public class SimpleRandomNumericSequence extends SimpleSequence<Long> {
+	private final Random random;
+
+	public SimpleRandomNumericSequence() {
+		this(System.currentTimeMillis());
+	}
+
+
+	public SimpleRandomNumericSequence(long seed) {
+		random = new Random(seed);
+	}
+
+	@Override
+	public boolean hasNext() {
+		return true;
+	}
+
+	@Override
+	protected Long nextImpl() {
+		return random.nextLong();
+	}
 }

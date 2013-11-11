@@ -15,24 +15,25 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.persistence.idgenerator;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.Iterator;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.query.CriteriaLanguageParser;
 
-public interface EntityContext {
-	public Map<String, Object> getParameters();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public <T> EntityMetadata<T> getEntityMetadata(String entityName);
-	public String getNamedQuery(String name);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
-	public CriteriaLanguageParser getCriteriaLanguageParser();
-	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName);
+public class SimpleTimestampSequence implements Iterator<Long> {
+
+	@Override
+	public boolean hasNext() {
+		return true;
+	}
+
+	@Override
+	public Long next() {
+		return System.currentTimeMillis();
+	}
+
+	@Override
+	public void remove() {
+		throw new UnsupportedOperationException("People still cannot remove time");
+	}
 }

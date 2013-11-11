@@ -20,8 +20,8 @@ package org.mestor.reflection;
 import java.lang.reflect.Method;
 
 public class ClassAccessor {
-	
-	
+
+
 	public static <T> Class<T> forName(String className) {
 		try {
 			return forNameThrowsChecked(className);
@@ -29,7 +29,7 @@ public class ClassAccessor {
 			throw new IllegalArgumentException(className, e);
 		}
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public static <T> Class<T> forNameThrowsChecked(String className) throws ClassNotFoundException{
 		return (Class<T>)Class.forName(className);
@@ -42,8 +42,16 @@ public class ClassAccessor {
 			throw new IllegalArgumentException(clazz.getName(), e);
 		}
 	}
-	
-	
+
+	@SuppressWarnings("unchecked")
+	public static <T> T newInstance(String className) {
+		try {
+			return (T)forName(className).newInstance();
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalArgumentException(className, e);
+		}
+	}
+
 	public static <T, R> R invoke(Class<? extends T> clazz, String methodName, Class<?>[] paramTypes, Class<R> returnType, T obj, Object[] args) {
 		//TODO search for non-public method and for methods with not exact match of parameters, i.e. those that assignable from parameters
 		Method method;

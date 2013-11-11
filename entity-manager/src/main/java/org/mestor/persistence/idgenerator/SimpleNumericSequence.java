@@ -15,24 +15,48 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.persistence.idgenerator;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.NoSuchElementException;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.query.CriteriaLanguageParser;
+public class SimpleNumericSequence extends SimpleSequence<Long> {
+	private long value;
+	private final long step;
 
-public interface EntityContext {
-	public Map<String, Object> getParameters();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public <T> EntityMetadata<T> getEntityMetadata(String entityName);
-	public String getNamedQuery(String name);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
-	public CriteriaLanguageParser getCriteriaLanguageParser();
-	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName);
+
+	public SimpleNumericSequence() {
+		this(1, 1);
+	}
+
+
+	public SimpleNumericSequence(long initialValue) {
+		this(initialValue, 1);
+	}
+
+
+	public SimpleNumericSequence(long initialValue, long step) {
+		this.value = initialValue;
+		this.step = step;
+	}
+
+	@Override
+	public boolean hasNext() {
+		if (step > 0) {
+			return value < Long.MAX_VALUE;
+		} else if (step < 0) {
+			return value > Long.MIN_VALUE;
+		} else {
+			return true;
+		}
+	}
+
+	@Override
+	protected Long nextImpl() {
+		if (!hasNext()) {
+			throw new NoSuchElementException();
+		}
+		long result = value;
+		value += step;
+		return result;
+	}
 }

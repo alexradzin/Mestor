@@ -734,4 +734,9 @@ public class EntityManagerImpl implements EntityManager, EntityContext {
 		return new JpqlParser();
 	}
 
+	@Override
+	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName) {
+		return delegateEntityContext.getNextId(clazz, fieldName);
+	}
+
 }

@@ -52,6 +52,7 @@ import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
 import javax.persistence.Inheritance;
@@ -70,6 +71,8 @@ import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.DummyValueConverter;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.metadata.IdGeneratorMetadata;
+import org.mestor.metadata.IdGeneratorMetadata.GenerationType;
 import org.mestor.metadata.jpa.conversion.BeanConverter;
 import org.mestor.metadata.jpa.conversion.DummyAttributeConverter;
 import org.mestor.metadata.jpa.conversion.EnumNameConverter;
@@ -249,7 +252,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		if (primaryKeyFields.size() > 1) {
 			final IdClass idClass = clazz.getAnnotation(IdClass.class);
 			if (idClass == null) {
-				throw new IllegalArgumentException("Entity " + clazz + " has ");
+				throw new IllegalArgumentException("Entity " + clazz + " has " + primaryKeyFields.size() + " @Id fields but does not have @IdClass");
 			}
 
 			@SuppressWarnings("unchecked")
@@ -270,6 +273,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 			emeta.setPrimaryKey(keyMetadata);
 		}
 
+		updateIdGenerator(emeta);
 
 		//emeta.addAllIndexes(findIndexes(emeta));
 
@@ -895,6 +899,24 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		//TODO add support of other attributes of NamedQuery
 		emeta.addNamedQuery(namedQuery.name(), namedQuery.query());
 	}
+
+
+	private <T> void updateIdGenerator(final EntityMetadata<T> entityMetadata) {
+		for (FieldMetadata<T, Object, Object> fmd : entityMetadata.getFields()) {
+			if (!fmd.isKey()) {
+				continue;
+			}
+			GeneratedValue generatedValue = fmd.getAccessor().getAnnotation(GeneratedValue.class);
+			if (generatedValue == null) {
+				continue;
+			}
+
+			String generator = generatedValue.generator();
+			GenerationType generationType = GenerationType.valueOf(generatedValue.strategy().name());
+			fmd.setIdGenerator(new IdGeneratorMetadata<>(fmd.getClassType(), fmd.getType(), generationType, generator));
+		}
+	}
+
 
 	private <T> void updateFieldAttributes(final EntityMetadata<T> entityMetadata) {
 		final CriteriaLanguageParser parser = entityContext.getCriteriaLanguageParser();

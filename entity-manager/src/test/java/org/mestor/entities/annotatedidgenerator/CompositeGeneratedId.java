@@ -15,24 +15,44 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.entities.annotatedidgenerator;
 
-import java.util.Collection;
-import java.util.Map;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.IdClass;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.query.CriteriaLanguageParser;
+@Entity
+@IdClass(CompositeGeneratedId.PrimaryKey.class)
+public class CompositeGeneratedId {
+	@Id
+	@GeneratedValue(generator = "number-generator")
+	private Long id;
 
-public interface EntityContext {
-	public Map<String, Object> getParameters();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public <T> EntityMetadata<T> getEntityMetadata(String entityName);
-	public String getNamedQuery(String name);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
-	public CriteriaLanguageParser getCriteriaLanguageParser();
-	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName);
+	@Id
+	@GeneratedValue(generator = "string-generator")
+	private String name;
+
+
+	public static class PrimaryKey {
+		Long id;
+		String name;
+	}
+
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
 }

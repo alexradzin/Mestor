@@ -17,14 +17,14 @@
 
 package org.mestor.em;
 
+import static org.mestor.em.MestorProperties.COLUMN_NAMING_STRATEGY;
+import static org.mestor.em.MestorProperties.ENTITY_NAMING_STRATEGY;
+import static org.mestor.em.MestorProperties.ID_GENERATOR;
 import static org.mestor.em.MestorProperties.MANAGED_CLASS_PACKAGE;
 import static org.mestor.em.MestorProperties.METADATA_FACTORY_CLASS;
 import static org.mestor.em.MestorProperties.NAMING_STRATEGY;
-import static org.mestor.em.MestorProperties.ENTITY_NAMING_STRATEGY;
-import static org.mestor.em.MestorProperties.TABLE_NAMING_STRATEGY;
-import static org.mestor.em.MestorProperties.COLUMN_NAMING_STRATEGY;
-
 import static org.mestor.em.MestorProperties.PERSISTOR_CLASS;
+import static org.mestor.em.MestorProperties.TABLE_NAMING_STRATEGY;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,6 +34,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -57,6 +58,8 @@ import org.mestor.metadata.BeanMetadataFactory;
 import org.mestor.metadata.ClassNameClassScanner;
 import org.mestor.metadata.ClassScanner;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.FieldMetadata;
+import org.mestor.metadata.IdGeneratorMetadata;
 import org.mestor.metadata.MetadataFactory;
 import org.mestor.metadata.jpa.JpaAnnotatedClassScanner;
 import org.mestor.metadata.jpa.NamableItem;
@@ -65,8 +68,10 @@ import org.mestor.persistence.query.JpqlParser;
 import org.mestor.persistencexml.Persistence;
 import org.mestor.persistencexml.Persistence.PersistenceUnit;
 import org.mestor.query.CriteriaLanguageParser;
+import org.mestor.reflection.ClassAccessor;
 import org.mestor.util.CollectionUtils;
 import org.mestor.util.FromStringFunction;
+
 import com.google.common.collect.Maps;
 
 public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityContext {
@@ -81,6 +86,8 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityConte
 	private final Map<String, String> namedQueries = new HashMap<>();
 
 	private final Persistor persistor;
+
+	private final Map<String, Iterator<?>> idGenerators = new HashMap<>();
 
 
 	PersistenceUnitInfoImpl(final PersistenceUnitInfo ref) {
@@ -309,6 +316,7 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityConte
 		}
 
 
+
 		// Set specific naming strategy per NameableItem
 		Method namingStrategySetter;
 		try {
@@ -329,6 +337,10 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityConte
 		}
 
 
+		// initialize ID generator
+
+
+		Map<String, String> idGeneratorsConfig = ID_GENERATOR.value(allParams);
 
 		for (final Class<?> c : cs.scan()) {
 			final EntityMetadata<?> md = mdf.create(c);
@@ -344,6 +356,46 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityConte
 					throw new IllegalArgumentException("Duplicate named query " + name);
 				}
 				namedQueries.put(name, ql);
+			}
+
+
+			for(FieldMetadata<?, ?, ?> fmd : md.getFields()) {
+				if (!fmd.isKey() || fmd.getIdGenerator() == null) {
+					continue;
+				}
+
+				IdGeneratorMetadata<?, ?> idGeneratorMd = fmd.getIdGenerator();
+				String generatorName = idGeneratorMd.getGenerator();
+
+
+				String idGeneratorConfig = null;
+				if (generatorName == null || "".equals(generatorName)) {
+					final String entityClassName = c.getName();
+					idGeneratorConfig = idGeneratorsConfig.get(entityClassName + "#" + fmd.getName());
+					if (idGeneratorConfig == null) {
+						idGeneratorConfig = idGeneratorsConfig.get(entityClassName);
+					}
+					if (idGeneratorConfig == null) {
+						idGeneratorConfig = idGeneratorsConfig.get(md.getPrimaryKey().getType().getName());
+					}
+					if (idGeneratorConfig == null) {
+						idGeneratorConfig = idGeneratorsConfig.get(null);
+					}
+				} else {
+					idGeneratorConfig = idGeneratorsConfig.get(generatorName);
+				}
+
+
+				if (idGeneratorConfig == null) {
+					idGeneratorConfig = idGeneratorsConfig.get(null);
+				}
+
+				if (idGeneratorConfig != null) {
+					// Treat idGeneratorConfig as a class name.
+					String idGeneratorKey = c.getName() + "#" + fmd.getName();
+					idGenerators.put(idGeneratorKey, (Iterator<?>)ClassAccessor.newInstance(idGeneratorConfig));
+				}
+
 			}
 		}
 
@@ -515,4 +567,33 @@ public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityConte
 		return all;
 	}
 
+	@Override
+	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName) {
+		final FieldMetadata<E, ID, ?> idFmd = getEntityMetadata(clazz).getFieldByName(fieldName);
+		if (!idFmd.isKey()) {
+			throw new IllegalArgumentException(clazz.getName() + "#" + fieldName + " is not an ID");
+		}
+		@SuppressWarnings("cast")
+		final Class<ID> idClass = (Class<ID>)idFmd.getType();
+		return findIdGenerator(clazz, fieldName, idClass).next();
+	}
+
+	@SuppressWarnings("unchecked")
+	private <E, ID> Iterator<ID> findIdGenerator(final Class<E> clazz, final String fieldName, final Class<ID> idClass) {
+		String[] generatorIds = new String[] {
+				clazz.getName() + "#" + fieldName,
+				clazz.getName(),
+				idClass.getName()
+		};
+
+		for (String generatorId : generatorIds) {
+			Iterator<ID> generator = (Iterator<ID>)idGenerators.get(generatorId);
+			if (generator != null) {
+				return generator;
+			}
+
+		}
+
+		throw new IllegalStateException("ID generator for entity " + clazz + " is undefined");
+	}
 }

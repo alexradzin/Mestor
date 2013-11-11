@@ -68,6 +68,7 @@ import org.mestor.query.OrderByInfo;
 import org.mestor.query.QueryInfo;
 import org.mestor.reflection.ClassAccessor;
 import org.mestor.reflection.ConstantValueAccess;
+import org.mestor.reflection.PropertyAccessor;
 import org.mestor.util.CollectionUtils;
 import org.mestor.util.Pair;
 import org.mestor.wrap.ObjectWrapperFactory;
@@ -233,13 +234,32 @@ public class CqlPersistor implements Persistor {
 	public <E> void store(final E entity) {
 		for (final EntityMetadata<?> emd : getDownUpHierarchy(context.getEntityMetadata(getEntityClass(entity))).values()) {
 			@SuppressWarnings("unchecked")
-			final
-			EntityMetadata<E> meta = (EntityMetadata<E>)emd;
-			storeImpl(meta, entity);
+			final EntityMetadata<E> meta = (EntityMetadata<E>)emd;
+			storeImpl(meta, injectId(meta, entity));
 			if (meta.getJoiner() == null) {
 				break;
 			}
 		}
+	}
+
+	private <E> E injectId(final EntityMetadata<E> emd, final E entity) {
+		for (FieldMetadata<E, Object, ?> fmd : emd.getFields()) {
+			if (!fmd.isKey()) {
+				continue;
+			}
+			PropertyAccessor<E, Object> pkAccessor = fmd.getAccessor();
+			if (pkAccessor.getValue(entity) != null) {
+				continue;
+			}
+
+			Object id = context.getNextId(emd.getEntityType(), fmd.getName());
+			if (id == null) {
+				continue;
+			}
+			fmd.getAccessor().setValue(entity, id);
+		}
+
+		return entity;
 	}
 
 
@@ -777,7 +797,23 @@ public class CqlPersistor implements Persistor {
 		final FieldMetadata<E, Object, Object> pkmd = emd.getPrimaryKey();
 		final Object pkColumnValue = pkmd.getConverter().toColumn(primaryKey);
 		final String pkName = emd.getPrimaryKey().getColumn();
-		clause.add(eq(quote(pkName), pkColumnValue));
+		if (pkName != null) {
+			clause.add(eq(quote(pkName), pkColumnValue));
+		} else {
+			@SuppressWarnings("unchecked")
+			Class<P> pkClass = (Class<P>)primaryKey.getClass();
+			EntityMetadata<P> pkemd = new BeanMetadataFactory().create(pkClass);
+			for (FieldMetadata<P, ?, ?> pkfmd : pkemd.getFields()) {
+				FieldMetadata<E, ?, ?> entityPkFragmentFmd = emd.getFieldByName(pkfmd.getName());
+				if (entityPkFragmentFmd == null) {
+					// This can happen for "fake" fields like "class" discovered from Object.getClass()
+					continue;
+				}
+				String column = entityPkFragmentFmd.getColumn();
+				Object value = pkfmd.getAccessor().getValue(primaryKey);
+				clause.add(eq(quote(column), value));
+			}
+		}
 		return clause;
 	}
 

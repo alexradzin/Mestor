@@ -15,24 +15,33 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.context;
+package org.mestor.persistence.idgenerator;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.Iterator;
 
-import org.mestor.metadata.EntityMetadata;
-import org.mestor.query.CriteriaLanguageParser;
+abstract class SimpleSequence<E> implements Iterator<E> {
+	private boolean removed = false;
 
-public interface EntityContext {
-	public Map<String, Object> getParameters();
-	public Collection<EntityMetadata<?>> getEntityMetadata();
-	public Collection<Class<?>> getEntityClasses();
-	public <T> EntityMetadata<T> getEntityMetadata(Class<T> clazz);
-	public <T> EntityMetadata<T> getEntityMetadata(String entityName);
-	public String getNamedQuery(String name);
-	public Persistor getPersistor();
-	public DirtyEntityManager getDirtyEntityManager();
-	public Collection<Class<?>> getNativeTypes();
-	public CriteriaLanguageParser getCriteriaLanguageParser();
-	public <E, ID> ID getNextId(final Class<E> clazz, String fieldName);
+	@Override
+	public final E next() {
+		try {
+			return nextImpl();
+		} finally {
+			removed = false;
+
+		}
+	}
+
+	@Override
+	public final void remove() {
+		if (removed) {
+			throw new IllegalStateException("Cannot remove 2 sequential elements");
+		}
+
+		next();
+
+		removed = true;
+	}
+
+	protected abstract E nextImpl();
 }
