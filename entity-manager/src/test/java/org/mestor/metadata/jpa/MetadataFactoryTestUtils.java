@@ -30,6 +30,7 @@ import java.util.Map.Entry;
 
 import org.junit.Assert;
 import org.mestor.context.EntityContext;
+import org.mestor.metadata.CascadeOption;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.FieldRole;
@@ -206,5 +207,10 @@ public class MetadataFactoryTestUtils {
 		return emd;
 	}
 
+	static <T> void assertCascadeOptions(FieldMetadata<T, ?, ?> fmd, Collection<CascadeOption> cascadeOptions) {
+		for (CascadeOption co : CascadeOption.values()) {
+			assertEquals(co.name(), cascadeOptions.contains(co), fmd.isCascade(co));
+		}
+	}
 
 }

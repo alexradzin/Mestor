@@ -39,6 +39,7 @@ public class FieldMetadata<T, F, C> {
 	private String column;
 	private boolean nullable;
 	private final Set<FieldRole> role = EnumSet.noneOf(FieldRole.class);
+	private final Set<CascadeOption> cascading = EnumSet.noneOf(CascadeOption.class);
 	private boolean lazy = false;
 	private Collection<Class<?>> genericTypes = new ArrayList<Class<?>>();
 	private Collection<Class<?>> columnGenericTypes = new ArrayList<Class<?>>();
@@ -202,6 +203,18 @@ public class FieldMetadata<T, F, C> {
 
 	private boolean isFieldInRole(final FieldRole fieldRole) {
 		return role.contains(fieldRole);
+	}
+
+	public void setCascade(final CascadeOption option, final boolean onoff) {
+		if (onoff) {
+			cascading.add(option);
+		} else {
+			cascading.remove(option);
+		}
+	}
+
+	public boolean isCascade(final CascadeOption option) {
+		return cascading.contains(option);
 	}
 
 	public void setField(final Field field) {

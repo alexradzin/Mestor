@@ -15,15 +15,61 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.entities.annotated;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public void markAsRemoved(E obj);
-	public boolean isRemoved(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
-	public boolean isWrappedType(Class<? extends E> clazz);
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+
+@Entity
+public class CascadingEntity {
+	@Id
+	private int id;
+	private String name;
+
+	@ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+	private CascadingEntity parent;
+
+	@OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+	private List<CascadingEntity> children;
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public CascadingEntity getParent() {
+		return parent;
+	}
+
+	public void setParent(CascadingEntity parent) {
+		this.parent = parent;
+	}
+
+	public List<CascadingEntity> getChildren() {
+		return children;
+	}
+
+	public void setChildren(List<CascadingEntity> children) {
+		this.children = children;
+	}
+
+
+
 }

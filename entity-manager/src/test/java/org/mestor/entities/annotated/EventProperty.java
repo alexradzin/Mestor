@@ -15,15 +15,61 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.entities.annotated;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public void markAsRemoved(E obj);
-	public boolean isRemoved(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
-	public boolean isWrappedType(Class<? extends E> clazz);
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class EventProperty {
+	@Id
+	@GeneratedValue
+	private Long id;
+	@ManyToOne(fetch = FetchType.EAGER)
+	private Event event;
+
+	private String key;
+	private String value;
+
+	public EventProperty() {
+		// default constructor
+	}
+
+	public EventProperty(String key, String value) {
+		this(null, key, value);
+	}
+
+	public EventProperty(Event event, String key, String value) {
+		this.event = event;
+		this.key = key;
+		this.value = value;
+	}
+
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	public Event getEvent() {
+		return event;
+	}
+	public void setEvent(Event event) {
+		this.event = event;
+	}
+	public String getKey() {
+		return key;
+	}
+	public void setKey(String key) {
+		this.key = key;
+	}
+	public String getValue() {
+		return value;
+	}
+	public void setValue(String value) {
+		this.value = value;
+	}
 }

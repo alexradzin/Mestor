@@ -71,7 +71,6 @@ import org.mestor.query.CriteriaLanguageParser;
 import org.mestor.reflection.ClassAccessor;
 import org.mestor.util.CollectionUtils;
 import org.mestor.util.FromStringFunction;
-
 import com.google.common.collect.Maps;
 
 public class PersistenceUnitInfoImpl implements PersistenceUnitInfo, EntityContext {

@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +37,7 @@ import org.junit.Test;
 import org.mestor.entities.Country;
 import org.mestor.entities.annotated.AbstractEntity;
 import org.mestor.entities.annotated.Address;
+import org.mestor.entities.annotated.CascadingEntity;
 import org.mestor.entities.annotated.DifferentTypesHolder;
 import org.mestor.entities.annotated.EmailAddress;
 import org.mestor.entities.annotated.NoFieldAttribute;
@@ -54,6 +56,7 @@ import org.mestor.entities.annotatedidgenerator.StringGeneratedId;
 import org.mestor.entities.queries.DuplicateNamedQueriesEntity;
 import org.mestor.entities.queries.DuplicateNamedQueriesEntity_2;
 import org.mestor.entities.queries.NamedQueriesEntity;
+import org.mestor.metadata.CascadeOption;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.FieldRole;
@@ -150,6 +153,9 @@ public class MetadataFactoryTest {
 				new Class<?>[][] {{Integer.class}, {String.class, String.class}},
 				new Class<?>[][] {{Integer.class}, {String.class, String.class}}
 		);
+
+
+		MetadataFactoryTestUtils.assertCascadeOptions(emd.getFieldByName("integers"), Collections.<CascadeOption>emptyList());
 	}
 
 
@@ -202,6 +208,40 @@ public class MetadataFactoryTest {
 	}
 
 
+	@Test
+	public void testCascading() {
+		//CascadingEntity
+		final Map<Class<?>, EntityMetadata<?>> entityClasses = MetadataFactoryTestUtils.testJpaAnnotations(CascadingEntity.class);
+
+		assertFalse(entityClasses.isEmpty());
+		assertEquals(1,  entityClasses.size());
+
+		EntityMetadata<?> emd = entityClasses.get(CascadingEntity.class);
+
+		MetadataFactoryTestUtils.assertEntityMetadataFields(
+				emd.getFields(),
+				new String[] {"id", "name", "parent", "children"},
+				new Class[] {int.class, String.class, CascadingEntity.class, List.class},
+				new String[] {"id", "name", "parent_id", "children"},
+				new Class[] {int.class, String.class, int.class, List.class}
+		);
+
+
+		MetadataFactoryTestUtils.assertEntityMetadataFieldsGenerics(
+				emd.getFields(),
+				new String[] {"children"},
+				new Class<?>[][] {{CascadingEntity.class}},
+				new Class<?>[][] {{Integer.class}}
+		);
+
+
+		MetadataFactoryTestUtils.assertCascadeOptions(emd.getFieldByName("parent"), Arrays.<CascadeOption>asList(CascadeOption.PERSIST, CascadeOption.FETCH));
+		MetadataFactoryTestUtils.assertCascadeOptions(emd.getFieldByName("children"), Arrays.<CascadeOption>asList(CascadeOption.PERSIST, CascadeOption.MERGE, CascadeOption.ORPHAN_REMOVAL));
+	}
+
+
+
+
 	private void assertAddressMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
 		final EntityMetadata<Address> addressMeta = MetadataFactoryTestUtils.getEntityMetadata(entityClasses, Address.class);
 		assertNotNull(addressMeta);
@@ -227,7 +267,11 @@ public class MetadataFactoryTest {
 				new Class[] {int.class, long.class, List.class, String.class, String.class},
 				new String[] {"identifier", "last_modified", "people", "name", "email"},
 				new Class[] {int.class, long.class, List.class, String.class, String.class});
+
+
+		MetadataFactoryTestUtils.assertCascadeOptions(emailMeta.getFieldByName("people"), Collections.<CascadeOption>emptyList());
 	}
+
 
 
 	private void assertStreetAddressMetadata(final Map<Class<?>, EntityMetadata<?>> entityClasses) {
@@ -277,6 +321,8 @@ public class MetadataFactoryTest {
 
 		MetadataFactoryTestUtils.assertEntityMetadataFieldsGenerics(personMeta.getFields(), new String[] {"addresses", "accounts"}, new Class<?>[][] {{Address.class}, {User.class}}, new Class<?>[][] {{Integer.class}, {Integer.class}});
 
+		MetadataFactoryTestUtils.assertCascadeOptions(personMeta.getFieldByName("addresses"), Collections.<CascadeOption>emptyList());
+		MetadataFactoryTestUtils.assertCascadeOptions(personMeta.getFieldByName("accounts"), Collections.<CascadeOption>emptyList());
 	}
 
 	@Test

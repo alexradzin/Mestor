@@ -31,7 +31,7 @@ import org.mestor.wrap.ObjectWrapperFactory;
 
 public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T> {
 	private final EntityContext context;
-	private final static Pattern proxyClassNamePattern = Pattern.compile("^(.*?)_$$_javassist_.*$");
+	private final static Pattern proxyClassNamePattern = Pattern.compile("^\\w+_\\$\\$_javassist_\\d+$");
 
 
 	public JavassistObjectWrapperFactory(final EntityContext context) {
@@ -96,11 +96,17 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 	@SuppressWarnings("unchecked")
 	@Override
 	public Class<T> getRealType(final Class<? extends T> wrappedType) {
-		if (!proxyClassNamePattern.matcher(wrappedType.getName()).find()) {
+		if (!isWrappedType(wrappedType)) {
 			throw new IllegalArgumentException(wrappedType + " is not wrapped");
 		}
 		return (Class<T>)wrappedType.getSuperclass();
 	}
+
+	@Override
+	public boolean isWrappedType(Class<? extends T> clazz) {
+		return proxyClassNamePattern.matcher(clazz.getSimpleName()).find();
+	}
+
 
 	@Override
 	public void markAsRemoved(final T obj) {

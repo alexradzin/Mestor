@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.Closeable;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
@@ -52,6 +53,8 @@ import org.mestor.entities.Parent;
 import org.mestor.entities.annotated.AbstractEntity;
 import org.mestor.entities.annotated.Address;
 import org.mestor.entities.annotated.EmailAddress;
+import org.mestor.entities.annotated.Event;
+import org.mestor.entities.annotated.EventProperty;
 import org.mestor.entities.annotated.Person;
 import org.mestor.entities.annotated.Person.Gender;
 import org.mestor.entities.annotated.SimpleProperty;
@@ -72,9 +75,10 @@ public class EntityManagerTest {
 	// example: b3312373-254a-4fa7-959c-c5f6cd68b8cd
 	private final static Pattern uuidPattern = Pattern.compile("^[a-z0-9]{8}(?:-[a-z0-9]{4}){3}-[a-z0-9]{12}$");
 
-	private EntityManager getEntityManager(final String persistenceXmlLocation, final String puName) {
+	@SuppressWarnings("unchecked")
+	private <EM extends EntityManager & Closeable> EM getEntityManager(final String persistenceXmlLocation, final String puName) {
 		System.setProperty(MestorProperties.PERSISTENCE_XML.key(), persistenceXmlLocation);
-		return Persistence.createEntityManagerFactory(puName).createEntityManager();
+		return (EM)Persistence.createEntityManagerFactory(puName).createEntityManager();
 	}
 
 	@Test
@@ -447,6 +451,39 @@ public class EntityManagerTest {
 		assertEquals(expected.getName(), actual.getName());
 		assertEquals(expected.getLastName(), actual.getLastName());
 	}
+
+
+	@Test
+	public <EM extends EntityManager & Closeable> void testAutoIdsAndCascade() {
+		EntityManager em = getEntityManager("cascade_test.xml", "events");
+		try {
+			Event event = new Event("greeting");
+			EventProperty helloWorld = new EventProperty("hello", "world");
+			EventProperty hiThere = new EventProperty("hi", "there");
+			event.setProperties(Arrays.asList(helloWorld, hiThere));
+
+			em.persist(event);
+
+			for (Long id : new Long[] {event.getId(), helloWorld.getId(), hiThere.getId()}) {
+				assertNotNull(id);
+			}
+
+			assertNotNull(em.find(Event.class, event.getId()));
+			assertNotNull(em.find(EventProperty.class, helloWorld.getId()));
+			assertNotNull(em.find(EventProperty.class, hiThere.getId()));
+
+
+			em.remove(event);
+
+			// Since event properties are cascaded they must be removed together with their parent
+			assertNull(em.find(Event.class, event.getId()));
+			assertNull(em.find(EventProperty.class, helloWorld.getId()));
+			assertNull(em.find(EventProperty.class, hiThere.getId()));
+		} finally {
+			em.clear();
+		}
+	}
+
 
 
 }

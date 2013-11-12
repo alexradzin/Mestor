@@ -17,6 +17,7 @@
 
 package org.mestor.em;
 
+import java.io.Closeable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,7 +59,7 @@ import org.mestor.wrap.ObjectWrapperFactory;
 
 import com.google.common.collect.Maps;
 
-public class EntityManagerImpl implements EntityManager, EntityContext {
+public class EntityManagerImpl implements EntityManager, EntityContext, Closeable {
 //	private final static Logger logger = LoggerFactory.getLogger(EntityManagerImpl.class);
 
 	private final PersistenceUnitInfo info;

@@ -15,15 +15,56 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.entities.annotated;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public void markAsRemoved(E obj);
-	public boolean isRemoved(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
-	public boolean isWrappedType(Class<? extends E> clazz);
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+
+@Entity
+public class Event {
+	@GeneratedValue
+	@Id
+	private Long id;
+	private String subject;
+	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<EventProperty> properties;
+
+
+	public Event() {
+		// default constructor
+	}
+
+	public Event(String subject) {
+		this.subject = subject;
+	}
+
+	public Event(String subject, List<EventProperty> properties) {
+		this.subject = subject;
+		this.properties = properties;
+	}
+
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	public String getSubject() {
+		return subject;
+	}
+	public void setSubject(String subject) {
+		this.subject = subject;
+	}
+	public List<EventProperty> getProperties() {
+		return properties;
+	}
+	public void setProperties(List<EventProperty> properties) {
+		this.properties = properties;
+	}
 }

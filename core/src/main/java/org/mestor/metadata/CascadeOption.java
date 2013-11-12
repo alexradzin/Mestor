@@ -15,15 +15,25 @@
 /*                                                                                                    */
 /******************************************************************************************************/
 
-package org.mestor.wrap;
+package org.mestor.metadata;
 
-public interface ObjectWrapperFactory<E> {
-	public E wrap(E obj);
-	public <K> E makeLazy(Class<E> clazz, K pk);
-	public E unwrap(E obj);
-	public boolean isWrapped(E obj);
-	public void markAsRemoved(E obj);
-	public boolean isRemoved(E obj);
-	public Class<E> getRealType(Class<? extends E> wrappedType);
-	public boolean isWrappedType(Class<? extends E> clazz);
+/**
+ * This {@code enum} defines cascading options that are represented in JPA spec using
+ * {@code enum}s {@code javax.persistence.CascadeType} and {@code javax.persistence.FetchType} as well as
+ * using boolean flag  {@code orhpanRemoval()} declared in annotations {@code OneToMany} and {@code OneToOne}.
+ * @author alexr
+ */
+public enum CascadeOption {
+	// javax.persistence.CascadeType
+    PERSIST,
+    MERGE,
+    REMOVE,
+    REFRESH,
+    DETACH,
+
+    // javax.persistence.FetchType#EAGER
+    FETCH,
+
+    // javax.persistence.(OneToMany, OneToOne).orhpanRemoval()
+    ORPHAN_REMOVAL,
 }

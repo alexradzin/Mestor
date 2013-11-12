@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -41,6 +42,7 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 import javax.persistence.AttributeConverter;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.DiscriminatorColumn;
@@ -52,6 +54,7 @@ import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
@@ -68,6 +71,7 @@ import javax.persistence.Transient;
 
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.BeanMetadataFactory;
+import org.mestor.metadata.CascadeOption;
 import org.mestor.metadata.DummyValueConverter;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
@@ -107,7 +111,19 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 		put(NamableItem.ENTITY, StandardNamingStrategy.UPPER_CAMEL_CASE);
 	}};
+
+	private final static Map<Object, Collection<CascadeOption>> cascade = new HashMap<Object, Collection<CascadeOption>>() {{
+		put(CascadeType.PERSIST, Collections.singleton(CascadeOption.PERSIST));
+		put(CascadeType.MERGE, Collections.singleton(CascadeOption.MERGE));
+		put(CascadeType.REMOVE, Collections.singleton(CascadeOption.REMOVE));
+		put(CascadeType.REFRESH, Collections.singleton(CascadeOption.REFRESH));
+		put(CascadeType.ALL, Arrays.asList(CascadeOption.PERSIST, CascadeOption.MERGE, CascadeOption.REMOVE, CascadeOption.REFRESH));
+		put(FetchType.EAGER, Collections.singleton(CascadeOption.FETCH));
+	}};
+
+
 	private EntityContext entityContext;
+
 
 	public JpaAnnotationsMetadataFactory(final Map<NamableItem, NamingStrategy> namingStrategies) {
 		this();
@@ -329,7 +345,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		if (oneToMany == null && manyToMany == null && elementCollection == null) {
 			try {
 				// although javadoc of ElementCollection says that this annotation "Must be specified if the collection is to be mapped"
-				// we saw that at least eclipse link creates BLOB field for such collections even when this annotation does not exist we
+				// we saw that at least eclipse link creates BLOB field for such collections even when this annotation does not exist, so we
 				// have to follow this concept here.
 				//TODO: probably make this feature configurable.
 				elementCollection = getClass().getDeclaredMethod("parseCollectionElementType", Map.class, EntityMetadata.class, FieldMetadata.class).getAnnotation(ElementCollection.class);
@@ -348,21 +364,38 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 
 //		Class<?> collectionElementClass = null;
 
+		Set<CascadeOption> cascadeOptions = new HashSet<CascadeOption>();
 
 		if (oneToMany != null) {
 			explicitType = oneToMany.targetEntity();
 			mappedBy = oneToMany.mappedBy();
+
+			addCascadeOption(cascadeOptions, oneToMany.fetch());
+			addCascadeOption(cascadeOptions, oneToMany.cascade());
+			if (oneToMany.orphanRemoval()) {
+				cascadeOptions.add(CascadeOption.ORPHAN_REMOVAL);
+			}
 		} else if (manyToMany != null) {
 			explicitType = manyToMany.targetEntity();
 			mappedBy = manyToMany.mappedBy();
+
+			addCascadeOption(cascadeOptions, manyToMany.fetch());
+			addCascadeOption(cascadeOptions, manyToMany.cascade());
 		} else if (elementCollection != null) {
 			explicitType = elementCollection.targetClass();
+			addCascadeOption(cascadeOptions, elementCollection.fetch());
 		} else if (fmd.getAccessor().getAnnotation(Convert.class) != null) {
 			return; //this collection has explicitly defined converter.
 		} else if (fmd.getAccessor().getAnnotation(Embedded.class) != null && discoveredType.length != 0) {
 			//collectionElementClass = castTypeToClass(collectionElementType);
 		} else {
 			throw new IllegalArgumentException("Cannot identify type of collection " + fmd.getClassType() + "." + fmd.getName());
+		}
+
+		cascadeOptions.remove(null);
+
+		for (CascadeOption cascadeOption : cascadeOptions) {
+			fmd.setCascade(cascadeOption, true);
 		}
 
 
@@ -428,7 +461,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		}
 	}
 
-	//TOOD: add support of all attributes of ManyToOne
+	//TODO: add support of all attributes of ManyToOne
 	private <T, P> void parseCollectionElementBackReference(final Map<Class<?>, EntityMetadata<?>> metadata, final EntityMetadata<T> emd, final FieldMetadata<T, P, Object> fmd) {
 		final ManyToOne manyToOne = fmd.getAccessor().getAnnotation(ManyToOne.class);
 		if (manyToOne == null) {
@@ -441,6 +474,17 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		if (!void.class.equals(type)) {
 			fieldType = castTypeToClass(type);
 		}
+
+		Set<CascadeOption> cascadeOptions = new HashSet<CascadeOption>();
+		addCascadeOption(cascadeOptions, manyToOne.fetch());
+		addCascadeOption(cascadeOptions, manyToOne.cascade());
+		cascadeOptions.remove(null);
+
+		for (CascadeOption cascadeOption : cascadeOptions) {
+			fmd.setCascade(cascadeOption, true);
+		}
+
+
 
 		// TODO: do the same for OneToMany and ManyToMany
 
@@ -979,4 +1023,26 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		return fields;
 	}
 
+
+	private <E extends Enum<?>> void addCascadeOption(Set<CascadeOption> cascadeOptions, E[] jpaOptions) {
+		if(jpaOptions == null) {
+			return;
+		}
+
+		for (E option : jpaOptions) {
+			addCascadeOption(cascadeOptions, option);
+		}
+	}
+
+
+	private <E extends Enum<?>> void addCascadeOption(Set<CascadeOption> cascadeOptions, E jpaOption) {
+		if(jpaOption == null) {
+			return;
+		}
+		Collection<CascadeOption> options = cascade.get(jpaOption);
+		if(options == null) {
+			return;
+		}
+		cascadeOptions.addAll(options);
+	}
 }

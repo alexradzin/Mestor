@@ -48,8 +48,10 @@ import java.util.TreeMap;
 import org.mestor.context.EntityContext;
 import org.mestor.context.Persistor;
 import org.mestor.metadata.BeanMetadataFactory;
+import org.mestor.metadata.CascadeOption;
 import org.mestor.metadata.EntityComparator;
 import org.mestor.metadata.EntityMetadata;
+import org.mestor.metadata.EntityTraverser;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.metadata.IndexMetadata;
 import org.mestor.metadata.ValueConverter;
@@ -102,6 +104,7 @@ import com.google.common.primitives.Primitives;
 
 public class CqlPersistor implements Persistor {
 	private final EntityContext context;
+	private final EntityTraverser traverser;
 	private Cluster cluster;
 	private Session session;
 	private ClusterConnection connection;
@@ -141,6 +144,7 @@ public class CqlPersistor implements Persistor {
 			return firstValue;
 		}
 	}
+
 
 	private final class EntityMapper<T> implements Function<Map<String, Object>, T> {
 		private final EntityMetadata<T> emd;
@@ -193,6 +197,56 @@ public class CqlPersistor implements Persistor {
 	}
 
 
+	private class IdInjector<E> implements Function<E, E> {
+		@Override
+		public E apply(E entity) {
+			@SuppressWarnings("unchecked")
+			Class<E> clazz = (Class<E>)entity.getClass();
+			ObjectWrapperFactory<E> wraperFactory = context.getPersistor().getObjectWrapperFactory(clazz);
+			Class<E> type = wraperFactory.isWrappedType(clazz) ? wraperFactory.getRealType(clazz) : clazz;
+			return injectId(context.getEntityMetadata(type), entity);
+		}
+
+		private E injectId(final EntityMetadata<E> emd, final E entity) {
+
+			for (FieldMetadata<E, Object, ?> fmd : emd.getFields()) {
+				if (!fmd.isKey()) {
+					continue;
+				}
+				PropertyAccessor<E, Object> pkAccessor = fmd.getAccessor();
+				if (pkAccessor.getValue(entity) != null) {
+					continue;
+				}
+
+				Object id = context.getNextId(emd.getEntityType(), fmd.getName());
+				if (id == null) {
+					continue;
+				}
+				fmd.getAccessor().setValue(entity, id);
+			}
+
+			return entity;
+		}
+
+	}
+
+	private class StoreAction<E> implements Function<E, E> {
+		@Override
+		public E apply(E entity) {
+			store0(entity);
+			return entity;
+		}
+	}
+
+	private class RemoveAction<E> implements Function<E, E> {
+		@Override
+		public E apply(E entity) {
+			remove0(entity);
+			return entity;
+		}
+
+	}
+
 	@SuppressWarnings("unchecked")
 	public CqlPersistor(final EntityContext context) throws IOException {
 		if (context == null) {
@@ -200,6 +254,7 @@ public class CqlPersistor implements Persistor {
 					EntityContext.class.getSimpleName() + " cannot be null");
 		}
 		this.context = context;
+		this.traverser = new EntityTraverser(context);
 
 		final Map<String, Object> properties = context.getParameters();
 		// set defaults
@@ -232,34 +287,19 @@ public class CqlPersistor implements Persistor {
 
 	@Override
 	public <E> void store(final E entity) {
+		traverser.traverse(entity, CascadeOption.PERSIST, new IdInjector<>());
+		traverser.traverse(entity, CascadeOption.PERSIST, new StoreAction<>());
+	}
+
+	private <E> void store0(final E entity) {
 		for (final EntityMetadata<?> emd : getDownUpHierarchy(context.getEntityMetadata(getEntityClass(entity))).values()) {
 			@SuppressWarnings("unchecked")
 			final EntityMetadata<E> meta = (EntityMetadata<E>)emd;
-			storeImpl(meta, injectId(meta, entity));
+			storeImpl(meta, entity);
 			if (meta.getJoiner() == null) {
 				break;
 			}
 		}
-	}
-
-	private <E> E injectId(final EntityMetadata<E> emd, final E entity) {
-		for (FieldMetadata<E, Object, ?> fmd : emd.getFields()) {
-			if (!fmd.isKey()) {
-				continue;
-			}
-			PropertyAccessor<E, Object> pkAccessor = fmd.getAccessor();
-			if (pkAccessor.getValue(entity) != null) {
-				continue;
-			}
-
-			Object id = context.getNextId(emd.getEntityType(), fmd.getName());
-			if (id == null) {
-				continue;
-			}
-			fmd.getAccessor().setValue(entity, id);
-		}
-
-		return entity;
 	}
 
 
@@ -334,8 +374,6 @@ public class CqlPersistor implements Persistor {
 
 		insert.setConsistencyLevel(ConsistencyLevel.ONE);
 		session.execute(insert);
-
-		// TODO implement cascade here
 	}
 
 
@@ -379,6 +417,11 @@ public class CqlPersistor implements Persistor {
 	 */
 	private <E> Object convertValue(final FieldMetadata<E, Object, ?> fmd, final Object obj, final PushmiPullyuConverter pushmiPullyu) {
 		Object result = obj;
+
+		//TODO: this is where we should implement orphanRemoval.
+		// Create special implementations of List and Set that wrap real list/set and "remember" deleted elements.
+		// When element marked as orphanRemoval is deleted it should be added to special list per parent object.
+		// When parent object is deleted we should check in this special list and remove the "orphanRemoval" entities too.
 
 
 		if (obj instanceof Collection) {
@@ -749,6 +792,11 @@ public class CqlPersistor implements Persistor {
 
 	@Override
 	public <E> void remove(final E entity) {
+		traverser.traverse(entity, CascadeOption.REMOVE, new RemoveAction<>());
+	}
+
+
+	private <E> void remove0(final E entity) {
 		final Class<E> clazz = getEntityClass(entity);
 		final EntityMetadata<E> emd = context.getEntityMetadata(clazz);
 		final String table = emd.getTableName();
@@ -763,7 +811,6 @@ public class CqlPersistor implements Persistor {
 		}
 
 		session.execute(where);
-		// TODO add support of cascade here.
 	}
 
 
