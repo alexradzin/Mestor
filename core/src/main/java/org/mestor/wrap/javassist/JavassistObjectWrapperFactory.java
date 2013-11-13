@@ -47,6 +47,7 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		final EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
 		final MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context, false);
 		((ProxyObject)proxy).setHandler(mi);
+
 		return proxy;
 	}
 
@@ -87,8 +88,8 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		f.setFilter(new HierarchyAwareMethodFilter<>(context, clazz));
 
 		@SuppressWarnings("unchecked")
-		final
-		Class<? extends T> c = f.createClass();
+		final Class<? extends T> c = f.createClass();
+
 		return c;
 
 	}

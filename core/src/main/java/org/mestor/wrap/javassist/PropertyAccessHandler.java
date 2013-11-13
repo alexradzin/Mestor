@@ -17,6 +17,7 @@
 
 package org.mestor.wrap.javassist;
 
+import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.LinkedHashSet;
 import java.util.Map.Entry;
@@ -34,18 +35,21 @@ import org.mestor.util.Pair;
 
 import com.google.common.base.Function;
 
-public class PropertyAccessHandler<T> implements MethodHandler {
+public class PropertyAccessHandler<T> implements MethodHandler, Serializable {
 	private final T instance;
-	private final EntityMetadata<T> metadata;
-	private final EntityContext context;
-	private final Persistor persistor;
-	private final boolean lazy;
-	private final DirtyEntityManager dirtyEntityManager;
+	private transient final EntityMetadata<T> metadata;
+	private transient final EntityContext context;
+	private transient final Persistor persistor;
+	private transient final boolean lazy;
+	private transient final DirtyEntityManager dirtyEntityManager;
 
-	private boolean removed;
+	private transient boolean removed;
 
-	private final Set<String> changedFields = new LinkedHashSet<>();
-	private final Set<String> retreivedFields = new LinkedHashSet<>();
+	private transient final Set<String> changedFields = new LinkedHashSet<>();
+	private transient final Set<String> retreivedFields = new LinkedHashSet<>();
+
+	private transient boolean wrapped = false;
+
 
 	private static Function<Entry<EntityMetadata<Object>, Method>, FieldMetadata<Object, Object, Object>> getterFetcher = new Function<Entry<EntityMetadata<Object>, Method>, FieldMetadata<Object, Object, Object>>() {
 		@Override
@@ -72,12 +76,17 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 		this.persistor = persistor;
 		this.dirtyEntityManager = dirtyEntityManager;
 		this.lazy = lazy;
+
+		this.wrapped = true;
 	}
 
 
 
 	@Override
 	public Object invoke(final Object self, final Method thisMethod, final Method proceed, final Object[] args) throws Throwable {
+		if (!wrapped) {
+			return thisMethod.invoke(instance, args);
+		}
 		if (MethodAccessor.isGetter(thisMethod)) {
 			final Object result;
 			final FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, getterFetcher);
@@ -97,6 +106,7 @@ public class PropertyAccessHandler<T> implements MethodHandler {
 		}
 
 		if (MethodAccessor.isSetter(thisMethod)) {
+			proceed.invoke(self, args);
 			thisMethod.invoke(instance, args);
 			final FieldMetadata<T, Object, Object> fmd = findField(metadata, thisMethod, setterFetcher);
 			changedFields.add(fmd.getName());

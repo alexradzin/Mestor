@@ -17,7 +17,9 @@
 
 package org.mestor.metadata;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.argThat;
@@ -26,7 +28,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.List;
@@ -112,6 +119,34 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
         assertTrue(personfact.isWrapped(personProxy));
         final Person temp =  personfact.unwrap(personProxy);
         assertFalse(personfact.isWrapped(temp));
+    }
+
+
+    @Test
+    public void testWrapSerializeDeserialize() throws IOException, ClassNotFoundException {
+    	final Person person  = new Person(1, "John", "Lennon", Gender.MALE);
+
+		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
+
+        assertFalse(personfact.isWrapped(person));
+        final Person personProxy = personfact.wrap(person);
+        assertTrue(personfact.isWrapped(personProxy));
+
+        person.setAge(40);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(personProxy);
+
+        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
+        Person person2 = (Person)ois.readObject();
+
+        assertNotNull(person2);
+        assertEquals(person.getId(), person2.getId());
+        assertEquals(person.getName(), person2.getName());
+        assertEquals(person.getLastName(), person2.getLastName());
+        assertEquals(person.getGender(), person2.getGender());
+        assertEquals(person.getAge(), person2.getAge());
     }
 
 

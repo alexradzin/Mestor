@@ -17,7 +17,9 @@
 
 package org.mestor.entities;
 
-public abstract class AbstractEntity {
+import java.io.Serializable;
+
+public abstract class AbstractEntity implements Serializable {
 	private int identifier;
 	private long lastModified;
 	public int getIdentifier() {
@@ -32,6 +34,6 @@ public abstract class AbstractEntity {
 	public void setLastModified(long lastModified) {
 		this.lastModified = lastModified;
 	}
-	
-	
+
+
 }

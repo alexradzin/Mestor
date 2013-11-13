@@ -34,7 +34,7 @@ public class BeanConverter<T extends Object> implements AttributeConverter<T, By
 	private final EntityContext context;
 	// HashMap is used in generics declaration because we need here type that implements both Map and Serializable
 	private final SerializableConverter<HashMap<String, Object>> serializableConverter = new SerializableConverter<>();
-	
+
 	public BeanConverter(Class<T> clazz, EntityContext context) {
 		this.clazz = clazz;
 		this.context = context;
@@ -47,7 +47,7 @@ public class BeanConverter<T extends Object> implements AttributeConverter<T, By
 		}
 		return (ByteBuffer)serialize(attribute);
 	}
-	
+
 	@Override
 	public T convertToEntityAttribute(ByteBuffer dbData) {
 		if(dbData == null) {
@@ -59,7 +59,7 @@ public class BeanConverter<T extends Object> implements AttributeConverter<T, By
 
 	private <O> Object serialize(O obj) {
 		if(obj == null || obj.getClass().isPrimitive() || obj instanceof Serializable) {
-			return obj;
+			return new SerializableConverter<Serializable>().convertToDatabaseColumn((Serializable)obj);
 		}
 		HashMap<String, Object> map = new LinkedHashMap<>();
 		@SuppressWarnings("unchecked")
@@ -71,20 +71,29 @@ public class BeanConverter<T extends Object> implements AttributeConverter<T, By
 		}
 		return serializableConverter.convertToDatabaseColumn(map);
 	}
-	
+
 	private <O> O deserialize(Class<O> objType, ByteBuffer buf) {
-		Map<String, Object> map = serializableConverter.convertToEntityAttribute(buf);
-		O instance = ClassAccessor.newInstance(objType);
-		
-		for(FieldMetadata<O, Object, Object> fmd : context.getEntityMetadata(objType).getFields()) {
-			String name = fmd.getName();
-			Object value = map.get(name);
-			if (value instanceof ByteBuffer && !ByteBuffer.class.equals((fmd.getType()))) {
-				value = deserialize(fmd.getType(), (ByteBuffer)value);
+		Object obj = serializableConverter.convertToEntityAttribute(buf);
+
+		if (obj instanceof Map) {
+			Map<String, Object> map = serializableConverter.convertToEntityAttribute(buf);
+			O instance = ClassAccessor.newInstance(objType);
+
+			for(FieldMetadata<O, Object, Object> fmd : context.getEntityMetadata(objType).getFields()) {
+				String name = fmd.getName();
+				Object value = map.get(name);
+				if (value instanceof ByteBuffer && !ByteBuffer.class.equals((fmd.getType()))) {
+					value = deserialize(fmd.getType(), (ByteBuffer)value);
+				}
+				fmd.getAccessor().setValue(instance, value);
 			}
-			fmd.getAccessor().setValue(instance, value);
+			return instance;
 		}
-		
-		return instance;
+
+
+		@SuppressWarnings("unchecked")
+		O o = (O)obj;
+
+		return o;
 	}
 }
