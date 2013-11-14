@@ -318,10 +318,13 @@ public class EntityManagerImpl implements EntityManager, EntityContext, Closeabl
 	}
 
 	private <T> void checkEntityClass(final Class<T> entityClass) {
-		final EntityMetadata<T> emeta = delegateEntityContext.getEntityMetadata(entityClass);
+		final ObjectWrapperFactory<T> owf = getPersistor().getObjectWrapperFactory(entityClass);
+		Class<T> clazz = owf.isWrappedType(entityClass) ? owf.getRealType(entityClass) : entityClass;
+
+		final EntityMetadata<T> emeta = delegateEntityContext.getEntityMetadata(clazz);
 
 		if (emeta == null) {
-			throw new IllegalArgumentException("Class " + entityClass + " is not a registered entity");
+			throw new IllegalArgumentException("Class " + clazz + " is not a registered entity");
 		}
 	}
 

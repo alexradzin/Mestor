@@ -17,16 +17,18 @@
 
 package org.mestor.wrap.javassist;
 
+import java.lang.reflect.AccessibleObject;
 import java.util.regex.Pattern;
 
-import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyFactory;
 import javassist.util.proxy.ProxyObject;
 
 import org.mestor.context.EntityContext;
 import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
+import org.mestor.reflection.Access;
 import org.mestor.reflection.ClassAccessor;
+import org.mestor.reflection.PropertyAccessor;
 import org.mestor.wrap.ObjectWrapperFactory;
 
 public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T> {
@@ -45,8 +47,26 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		Class<T> clazz = (Class<T>)obj.getClass();
 		final T proxy = ClassAccessor.newInstance(createClass(clazz));
 		final EntityMetadata<T> metadata = context.getEntityMetadata(clazz);
-		final MethodHandler mi = new PropertyAccessHandler<T>(obj, metadata, context, false);
+		final PropertyAccessHandler<T> mi = new PropertyAccessHandler<T>(obj, metadata, context, context.getPersistor(), null, false);
 		((ProxyObject)proxy).setHandler(mi);
+
+
+		for (FieldMetadata<T, Object, Object> fmd : metadata.getFields()) {
+			PropertyAccessor<T, Object> accessor = fmd.getAccessor();
+			Access<T, Object, ? extends AccessibleObject> wa = accessor.getWriteAccess();
+			if (wa == null) {
+				continue;
+			}
+			Class<?> writerDeclaringClass = wa.getDeclaringClass();
+			if (writerDeclaringClass == null) {
+				// this can happen for "fake" fields
+				continue;
+			}
+			if (wa.getDeclaringClass().isAssignableFrom(clazz)) {
+				accessor.setValue(proxy, accessor.getValue(obj));
+			}
+		}
+		mi.setDirtyEntityManager(context.getDirtyEntityManager());
 
 		return proxy;
 	}
@@ -86,6 +106,7 @@ public class JavassistObjectWrapperFactory<T> implements ObjectWrapperFactory<T>
 		}
 
 		f.setFilter(new HierarchyAwareMethodFilter<>(context, clazz));
+		f.setUseWriteReplace(false);
 
 		@SuppressWarnings("unchecked")
 		final Class<? extends T> c = f.createClass();

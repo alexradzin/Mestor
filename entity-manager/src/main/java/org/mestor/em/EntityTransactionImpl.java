@@ -36,37 +36,37 @@ import org.mestor.reflection.PropertyAccessor;
 public class EntityTransactionImpl implements EntityTransaction, DirtyEntityManager {
     private boolean active = false;
     private boolean rollbackOnly = false;
-    
+
     private final EntityContext context;
     private final Persistor persistor;
-    
+
     private final static ThreadLocal<EntityTransaction> entityTransactions = new ThreadLocal<EntityTransaction>();
-    
+
 
     private final Map<Object, Object> dirtyEntities;
-    
+
 
 
     public static EntityTransaction getTransaction(final EntityContext context) {
     	EntityTransaction transaction = entityTransactions.get();
     	if(transaction == null) {
-    		transaction = new EntityTransactionImpl(context);    		
+    		transaction = new EntityTransactionImpl(context);
     		entityTransactions.set(transaction);
     	}
     	return transaction;
     }
-    
-    
-    
+
+
+
     public static DirtyEntityManager getDirtyEntityManager() {
     	return (DirtyEntityManager)entityTransactions.get();
     }
-    
+
     // package protected access for tests
     EntityTransactionImpl(final EntityContext context) {
     	this.context = context;
     	this.persistor = context.getPersistor();
-    	
+
     	final Comparator<Object> comparator= new EntityComparator<>(context);
     	dirtyEntities = new TreeMap<>(comparator);
     }
@@ -89,9 +89,14 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 			entityTransactions.remove();
 		}
 	}
-	
+
 	protected void commitInternal() {
-		assertIsActive();        
+		assertIsActive();
+
+		if (rollbackOnly) {
+			throw new RollbackException();
+		}
+
 		try {
 			for (final Object dirty : getDirtyEntities()) {
 				persistor.store(dirty);
@@ -99,38 +104,33 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 		} catch (final RuntimeException ex) {
 			if (!this.rollbackOnly) {
 				throw new RollbackException(ex);
-			} 
+			}
 			// it's a RollbackException
 			throw ex;
 		} finally {
 			this.active = false;
 			this.rollbackOnly = false;
 		}
-	}	
-	
+	}
+
 
 	@Override
 	public void rollback() {
 		assertIsActive();
-		try {
-			getTransaction(context).rollback();
-		} finally {
-			this.active = false;
-			this.rollbackOnly = false;
-			entityTransactions.remove();
-		}
-
+    	active = false;
+		this.rollbackOnly = true;
+		entityTransactions.remove();
 	}
 
 	@Override
 	public void setRollbackOnly() {
-		assertIsActive();        
+		assertIsActive();
 		rollbackOnly = true;
 	}
 
 	@Override
 	public boolean getRollbackOnly() {
-		assertIsActive();        
+		assertIsActive();
 		return rollbackOnly;
 	}
 
@@ -144,13 +144,13 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 			throw new IllegalStateException("Transaction is not active");
 		}
 	}
-	
+
 	private void assertNotActive() {
 		if (isActive()) {
 			throw new IllegalStateException("Transaction is already active");
 		}
 	}
-	
+
 	@Override
 	protected void finalize() throws Throwable {
 		try {
@@ -183,7 +183,7 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 
 	@Override
 	public <E> void removeDirtyEntity(final E entity) {
-		dirtyEntities.remove(entity);	
+		dirtyEntities.remove(entity);
 	}
 
 
@@ -193,5 +193,4 @@ public class EntityTransactionImpl implements EntityTransaction, DirtyEntityMana
 	public <E> Iterable<E> getDirtyEntities() {
 		return (Iterable<E>)dirtyEntities.values();
 	}
-	
 }

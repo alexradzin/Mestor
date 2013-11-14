@@ -29,7 +29,7 @@ public class MethodAccess<T, P> extends AbstractAccess<T, P, Method> {
 			setter.setAccessible(true);
 		}
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public P get(T instance) {
@@ -54,22 +54,22 @@ public class MethodAccess<T, P> extends AbstractAccess<T, P, Method> {
 
 	@Override
 	public Class<?> getDeclaringClass() {
-		return accessibleObjects[0].getDeclaringClass();
+		return findNotNullAccessibleObject().getDeclaringClass();
 	}
 
 	@Override
 	public String getName() {
-		return accessibleObjects[0].getName();
+		return findNotNullAccessibleObject().getName();
 	}
 
 	@Override
 	public int getModifiers() {
-		return accessibleObjects[0].getModifiers();
+		return findNotNullAccessibleObject().getModifiers();
 	}
 
 	@Override
 	public boolean isSynthetic() {
-		return accessibleObjects[0].isSynthetic();
+		return findNotNullAccessibleObject().isSynthetic();
 	}
 
 }

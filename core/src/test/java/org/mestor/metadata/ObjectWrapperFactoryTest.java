@@ -49,6 +49,7 @@ import org.mestor.context.DirtyEntityManager;
 import org.mestor.context.EntityContext;
 import org.mestor.entities.Person;
 import org.mestor.entities.Person.Gender;
+import org.mestor.reflection.FieldAccessor;
 import org.mestor.util.BeanFieldMatcher;
 import org.mestor.wrap.ObjectWrapperFactory;
 import org.mestor.wrap.javassist.JavassistObjectWrapperFactory;
@@ -110,20 +111,33 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
 
 
     @Test
-    public void testWrapAndUnWrap() {
+    public void testWrapAndUnWrap() throws IllegalAccessException {
+    	final String name = "John";
+
     	final Person person  = new Person();
+    	person.setName(name);
 		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
 
         assertFalse(personfact.isWrapped(person));
         final Person personProxy = personfact.wrap(person);
         assertTrue(personfact.isWrapped(personProxy));
+        assertEquals(name, personProxy.getName());
+
+        // check that the filed of the proxy is indeed initialized.
+        // We cannot access field directly because it is private. We do not want to call getter because this
+        // causes proxy mechanism to work and the data is returned from instance of "real" object being held
+        // by the proxy Handler. So, the only way to check the value of field is to access it directly using
+        // reflection.
+
+        assertEquals(name, FieldAccessor.getField(personProxy.getClass(), "name").get(personProxy));
+
         final Person temp =  personfact.unwrap(personProxy);
         assertFalse(personfact.isWrapped(temp));
     }
 
 
     @Test
-    public void testWrapSerializeDeserialize() throws IOException, ClassNotFoundException {
+    public void testWrapSerializeDeserialize() throws IOException, ClassNotFoundException, IllegalAccessException {
     	final Person person  = new Person(1, "John", "Lennon", Gender.MALE);
 
 		final ObjectWrapperFactory<Person> personfact = createWrapperFactory(Person.class);
@@ -141,7 +155,12 @@ public class ObjectWrapperFactoryTest<W extends ObjectWrapperFactory<?>> {
         ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
         Person person2 = (Person)ois.readObject();
 
+
         assertNotNull(person2);
+
+        assertEquals(person.getName(), FieldAccessor.getField(personProxy.getClass(), "name").get(person2));
+
+
         assertEquals(person.getId(), person2.getId());
         assertEquals(person.getName(), person2.getName());
         assertEquals(person.getLastName(), person2.getLastName());

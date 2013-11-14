@@ -24,7 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * Base class for implementations of {@link Access} 
+ * Base class for implementations of {@link Access}
  * @author alexr
  *
  * @param <T>
@@ -33,13 +33,13 @@ import java.util.Collection;
  */
 public abstract class AbstractAccess<T, P, A extends AccessibleObject> implements Access<T, P, A> {
 	protected final A[] accessibleObjects;
-	
+
 	@SafeVarargs
 	protected AbstractAccess(A ...accessibleObjects) {
 		this.accessibleObjects = accessibleObjects;
 	}
 
-	
+
 	@Override
 	public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
 		for (A accessibleObject : accessibleObjects) {
@@ -77,7 +77,16 @@ public abstract class AbstractAccess<T, P, A extends AccessibleObject> implement
 			annotations.addAll(Arrays.asList(accessibleObject.getDeclaredAnnotations()));
 		}
 		return annotations.toArray(new Annotation[annotations.size()]);
-	}	
+	}
 
-	
+
+	protected A findNotNullAccessibleObject() {
+		for (A a : accessibleObjects) {
+			if (a != null) {
+				return a;
+			}
+		}
+		return null;
+	}
+
 }

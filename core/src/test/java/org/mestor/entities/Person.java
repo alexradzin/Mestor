@@ -148,4 +148,5 @@ public class Person extends AbstractEntity {
 	public int hashCode() {
 		return Objects.hashCode(id, name, lastName, age);
 	}
+
 }

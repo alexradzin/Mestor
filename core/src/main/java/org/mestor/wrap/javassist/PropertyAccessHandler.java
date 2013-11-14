@@ -41,7 +41,7 @@ public class PropertyAccessHandler<T> implements MethodHandler, Serializable {
 	private transient final EntityContext context;
 	private transient final Persistor persistor;
 	private transient final boolean lazy;
-	private transient final DirtyEntityManager dirtyEntityManager;
+	private transient DirtyEntityManager dirtyEntityManager;
 
 	private transient boolean removed;
 
@@ -69,7 +69,7 @@ public class PropertyAccessHandler<T> implements MethodHandler, Serializable {
 		this(instance, metadata, context, context.getPersistor(), context.getDirtyEntityManager(), lazy);
 	}
 
-	private PropertyAccessHandler(final T instance, final EntityMetadata<T> metadata, final EntityContext context, final Persistor persistor, final DirtyEntityManager dirtyEntityManager, final boolean lazy) {
+	PropertyAccessHandler(final T instance, final EntityMetadata<T> metadata, final EntityContext context, final Persistor persistor, final DirtyEntityManager dirtyEntityManager, final boolean lazy) {
 		this.instance = instance;
 		this.metadata = metadata;
 		this.context = context;
@@ -146,5 +146,13 @@ public class PropertyAccessHandler<T> implements MethodHandler, Serializable {
 
 	public boolean isRemoved() {
 		return removed;
+	}
+
+	void wrapped(boolean wrapped) {
+		this.wrapped = wrapped;
+	}
+
+	void setDirtyEntityManager(DirtyEntityManager dirtyEntityManager) {
+		this.dirtyEntityManager = dirtyEntityManager;
 	}
 }

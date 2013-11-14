@@ -50,12 +50,12 @@ public class FieldAccess<T, P> extends AbstractAccess<T, P, Field> {
 
 	@Override
 	public Class<?> getDeclaringClass() {
-		return accessibleObjects[0].getDeclaringClass();
+		return findNotNullAccessibleObject().getDeclaringClass();
 	}
 
 	@Override
 	public String getName() {
-		return accessibleObjects[0].getName();
+		return findNotNullAccessibleObject().getName();
 	}
 
 	@Override
@@ -65,6 +65,6 @@ public class FieldAccess<T, P> extends AbstractAccess<T, P, Field> {
 
 	@Override
 	public boolean isSynthetic() {
-		return accessibleObjects[0].isSynthetic();
+		return findNotNullAccessibleObject().isSynthetic();
 	}
 }
