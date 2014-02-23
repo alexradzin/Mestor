@@ -472,7 +472,7 @@ public class CqlPersistorSchemaManagementTest {
 	@Test
 	public void testValidateMissingFields() {
 		final Pattern oneException = Pattern.compile("^ALTER TABLE test1.\"People\" ADD first_name text$");
-		final Pattern allExceptions = Pattern.compile("^ALTER TABLE test1.\"People\" ADD first_name text.ALTER TABLE test1.\"People\" ADD age int$", Pattern.DOTALL | Pattern.MULTILINE);
+		final Pattern allExceptions = Pattern.compile("^ALTER TABLE test1.\"People\" ADD first_name text.+ALTER TABLE test1.\"People\" ADD age int$", Pattern.DOTALL | Pattern.MULTILINE);
 
 		testValidate(null, allExceptions);
 		testValidate(ThrowOnViolation.THROW_ALL_TOGETHER, allExceptions);
