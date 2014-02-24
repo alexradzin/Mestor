@@ -295,6 +295,7 @@ public class EntityManagerTest {
 	@Test
 	public void testStartEntityManager() {
 		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
+		try {
 		assertNotNull(em);
 		final Metamodel metamodel = em.getMetamodel();
 		assertNotNull(metamodel);
@@ -308,61 +309,72 @@ public class EntityManagerTest {
 						return et.getJavaType();
 					}
 				})));
+		} finally {
+			em.close();
+		}
 	}
 
 
 	@Test
 	public void testCrudWithHierarchicalCollectionEntityManager() {
 		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
-		assertNotNull(em);
-		final Metamodel metamodel = em.getMetamodel();
-		assertNotNull(metamodel);
-
-		final Person jl = new Person("John", "Lennon", Gender.MALE);
-		jl.setIdentifier(1);
-		final StreetAddress jlHome = new StreetAddress(1, "251", "Menlove Avenue", "Liverpool", Country.GB);
-		final EmailAddress jlEmail = new EmailAddress();
-		jl.setAddresses(Arrays.<Address>asList(jlHome, jlEmail));
-
-		em.persist(jl);
-		em.persist(jlHome);
-		em.persist(jlEmail);
-
-		// The following does not work because addresses are inherited using TABLLE_PER_CLASS strategy
-		// that does not work well now even in Persister.fetch() because it assumes that table of base class exists.
-		// It also does not work when fetching lazy dependent collection because ObjectWrapperFactory tries to create instance of
-		// abstract class Address.
-		// Bottom line: the inheritance support should be reviewed and fixed, however we do not need it now, so this task is postponed.
-//		final Person foundJl = em.find(Person.class, 1);
-//		assertNotNull(foundJl);
-
-		em.remove(jl);
-		em.remove(jlHome);
-		em.remove(jlEmail);
+		try {
+			assertNotNull(em);
+			final Metamodel metamodel = em.getMetamodel();
+			assertNotNull(metamodel);
+	
+			final Person jl = new Person("John", "Lennon", Gender.MALE);
+			jl.setIdentifier(1);
+			final StreetAddress jlHome = new StreetAddress(1, "251", "Menlove Avenue", "Liverpool", Country.GB);
+			final EmailAddress jlEmail = new EmailAddress();
+			jl.setAddresses(Arrays.<Address>asList(jlHome, jlEmail));
+	
+			em.persist(jl);
+			em.persist(jlHome);
+			em.persist(jlEmail);
+	
+			// The following does not work because addresses are inherited using TABLLE_PER_CLASS strategy
+			// that does not work well now even in Persister.fetch() because it assumes that table of base class exists.
+			// It also does not work when fetching lazy dependent collection because ObjectWrapperFactory tries to create instance of
+			// abstract class Address.
+			// Bottom line: the inheritance support should be reviewed and fixed, however we do not need it now, so this task is postponed.
+	//		final Person foundJl = em.find(Person.class, 1);
+	//		assertNotNull(foundJl);
+	
+			em.remove(jl);
+			em.remove(jlHome);
+			em.remove(jlEmail);
+		} finally {
+			em.close();
+		}
 	}
 
 	@Test
 	public void testCrudWithCollectionEntityManager() throws MalformedURLException {
 		final EntityManager em = getEntityManager("persistence.xml", "integration_test");
-		assertNotNull(em);
-		final Metamodel metamodel = em.getMetamodel();
-		assertNotNull(metamodel);
-
-		final Person jl = new Person("John", "Lennon", Gender.MALE);
-		jl.setIdentifier(1);
-
-
-		final User user = new User(new URL("http://www.thebeatles.com"), "john", "^John$", EnumSet.of(UserRole.ADMINISTRATOR));
-		jl.setAccounts(Collections.singletonList(user));
-		user.setPerson(jl);
-
-		em.persist(jl);
-		em.persist(user);
-
-		final Person foundJl = em.find(Person.class, 1);
-		assertNotNull(foundJl);
-
-		assertPerson(jl, foundJl);
+		try {
+			assertNotNull(em);
+			final Metamodel metamodel = em.getMetamodel();
+			assertNotNull(metamodel);
+	
+			final Person jl = new Person("John", "Lennon", Gender.MALE);
+			jl.setIdentifier(1);
+	
+	
+			final User user = new User(new URL("http://www.thebeatles.com"), "john", "^John$", EnumSet.of(UserRole.ADMINISTRATOR));
+			jl.setAccounts(Collections.singletonList(user));
+			user.setPerson(jl);
+	
+			em.persist(jl);
+			em.persist(user);
+	
+			final Person foundJl = em.find(Person.class, 1);
+			assertNotNull(foundJl);
+	
+			assertPerson(jl, foundJl);
+		} finally {
+			em.close();
+		}
 	}
 
 
@@ -481,6 +493,7 @@ public class EntityManagerTest {
 			assertNull(em.find(EventProperty.class, hiThere.getId()));
 		} finally {
 			em.clear();
+			em.close();
 		}
 	}
 

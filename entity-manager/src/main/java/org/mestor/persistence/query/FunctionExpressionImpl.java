@@ -29,6 +29,7 @@ import javax.persistence.criteria.Selection;
 
 import org.mestor.context.EntityContext;
 
+@SuppressWarnings("serial")
 public class FunctionExpressionImpl<R> extends ExpressionImpl<R> {
 	private final Class<R> returnType;
 	private final String function;

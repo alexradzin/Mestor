@@ -30,6 +30,7 @@ import javax.persistence.metamodel.SingularAttribute;
 
 import org.mestor.context.EntityContext;
 
+@SuppressWarnings("serial")
 public class PathImpl<X> extends ExpressionImpl<X> implements Path<X> {
 	private final static String PATHNODE_IS_PRIMITIVE_NODE = "pathnode_is_primitive_node";
 	private final static String PATHNODE_TYPE_DOES_NOT_APPLY_TO_PRIMITIVE_NODE = "pathnode_type_does_not_apply_to_primitive_node";

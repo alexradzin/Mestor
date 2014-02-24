@@ -76,6 +76,7 @@ public class ClauseInfo {
 
 		private final Class<?> paramType;
 		private final String symbol;
+		@SuppressWarnings("serial")
 		private final static Map<String, Operand> symbol2operand = new TreeMap<String, Operand>(String.CASE_INSENSITIVE_ORDER) {{
 			for (final Operand o : Operand.values()) {
 				put(o.symbol(), o);

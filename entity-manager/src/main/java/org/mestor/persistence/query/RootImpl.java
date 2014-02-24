@@ -19,9 +19,11 @@ package org.mestor.persistence.query;
 
 import javax.persistence.criteria.Root;
 import javax.persistence.metamodel.EntityType;
+
 import org.mestor.context.EntityContext;
 
 //TODO: add metamodel here
+@SuppressWarnings("serial")
 class RootImpl<X> extends FromImpl<X, X> implements Root<X> {
 	RootImpl(final EntityContext entityContext, final Class<? extends X> clazz) {
 		super(entityContext, null, clazz, null);

@@ -16,6 +16,7 @@
 /******************************************************************************************************/
 package org.mestor.metadata.exceptions;
 
+@SuppressWarnings("serial")
 public final class DuplicateIndexName extends IllegalArgumentException {
 	private final String indexName;
 	private final Class<?> entityClass;

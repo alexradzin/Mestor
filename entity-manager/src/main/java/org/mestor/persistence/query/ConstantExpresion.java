@@ -17,6 +17,7 @@
 
 package org.mestor.persistence.query;
 
+@SuppressWarnings("serial")
 public class ConstantExpresion<T> extends ExpressionImpl<T> {
 	private final T value;
 

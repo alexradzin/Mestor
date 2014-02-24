@@ -125,6 +125,7 @@ public enum SchemaMode {
 	}
 	
 	protected void createSchema(final EntityContext ctx) {
+		@SuppressWarnings("resource")
 		final Persistor persistor = ctx.getPersistor();
 		
 		for (final String schema : getEntitySchemas(ctx)) {
@@ -137,6 +138,7 @@ public enum SchemaMode {
 	}
 
 	protected void updateSchema(final EntityContext ctx) {
+		@SuppressWarnings("resource")
 		final Persistor persistor = ctx.getPersistor();
 		final Set<String> existingSchemas = Sets.newHashSet(persistor.getSchemaNames());
 

@@ -23,9 +23,9 @@ import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Order;
 
 
+@SuppressWarnings("serial")
 public class OrderImpl implements Order, Serializable{
-
-    protected Expression<?> expression;
+	protected Expression<?> expression;
     protected boolean isAscending;
 
     public OrderImpl(final Expression<?> expression){

@@ -22,10 +22,11 @@ import java.util.Collection;
 
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Predicate;
+
 import org.mestor.context.EntityContext;
 
+@SuppressWarnings("serial")
 public class ExpressionImpl<T> extends SelectionImpl<T> implements Expression<T> {
-
 	ExpressionImpl(final EntityContext entityContext, final Class<? extends T> type) {
 		super(entityContext, type);
 	}

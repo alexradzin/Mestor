@@ -85,6 +85,7 @@ public class JpqlParserTest {
 				Collections.singletonMap("p", "Person")));
 	}
 
+	@SuppressWarnings("serial")
 	@Test
 	public void testSelectSeveralFieldsFromPerson() {
 		test("SELECT p.name, p.lastName FROM Person p",
@@ -96,6 +97,7 @@ public class JpqlParserTest {
 						Collections.singletonMap("p", "Person")));
 	}
 
+	@SuppressWarnings("serial")
 	@Test
 	public void testSelectSeveralFieldsFromPersonWithAlias() {
 		test("SELECT name, lastName FROM Person",
@@ -134,6 +136,7 @@ public class JpqlParserTest {
 		);
 	}
 
+	@SuppressWarnings("serial")
 	@Test
 	public void testSelectSpecificFieldsFromPersonWhereBoolean() {
 		test("SELECT id, name, lastName FROM Person p WHERE musician=true",
@@ -195,6 +198,7 @@ public class JpqlParserTest {
 	}
 
 
+	@SuppressWarnings("serial")
 	private void testSelectAllFromPersonWhereEqAndIn(final String jpql) {
 		test(jpql,
 				new QueryInfo(

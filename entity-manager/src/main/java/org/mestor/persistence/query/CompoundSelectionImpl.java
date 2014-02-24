@@ -26,6 +26,7 @@ import javax.persistence.criteria.Selection;
 import org.mestor.context.EntityContext;
 
 
+@SuppressWarnings("serial")
 public class CompoundSelectionImpl<X> extends SelectionImpl<X> implements CompoundSelection<X> {
 	protected List<Selection<?>> subSelections;
 

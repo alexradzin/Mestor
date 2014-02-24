@@ -25,6 +25,7 @@ import javax.persistence.criteria.Expression;
 
 import org.mestor.context.EntityContext;
 
+@SuppressWarnings("serial")
 public class InImpl<B> extends BooleanFunctionExpressionImpl implements In<B> {
 	@SuppressWarnings("unchecked")
 	InImpl(final EntityContext entityContext, final B ... values) {

@@ -19,6 +19,7 @@ package org.mestor.entities;
 
 import java.io.Serializable;
 
+@SuppressWarnings("serial")
 public abstract class AbstractEntity implements Serializable {
 	private int identifier;
 	private long lastModified;

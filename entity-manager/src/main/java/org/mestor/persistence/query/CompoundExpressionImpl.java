@@ -27,6 +27,7 @@ import javax.persistence.criteria.Predicate;
 
 import org.mestor.context.EntityContext;
 
+@SuppressWarnings("serial")
 public class CompoundExpressionImpl extends ExpressionImpl<Boolean> implements Predicate {
 	private final BooleanOperator operator;
 	private final boolean not;

@@ -17,6 +17,7 @@
 
 package org.mestor.entities;
 
+@SuppressWarnings("serial")
 public class Student extends Person {
 	private String studentId;
 	private String collegeName;

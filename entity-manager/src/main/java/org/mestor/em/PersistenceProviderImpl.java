@@ -92,6 +92,7 @@ public class PersistenceProviderImpl implements PersistenceProvider {
 	}
 
 
+	@SuppressWarnings("unchecked")
 	private PersistenceUnitInfoImpl getPersistenceUnitInfo(
 			final String emName,
 			@SuppressWarnings("rawtypes") final Map map) {

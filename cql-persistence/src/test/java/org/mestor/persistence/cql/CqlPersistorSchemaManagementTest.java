@@ -86,6 +86,7 @@ public class CqlPersistorSchemaManagementTest {
 
 	@Test
 	public void testCreateSchemaWithReplication() {
+		@SuppressWarnings("serial")
 		final Map<String, Object> replication = new HashMap<String, Object>() {{
 			put("class", "SimpleStrategy");
 			put("replication_factor", 1);

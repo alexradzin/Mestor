@@ -29,6 +29,7 @@ import javax.persistence.Inheritance;
 import javax.persistence.metamodel.Type.PersistenceType;
 
 class Utils {
+	@SuppressWarnings("serial")
 	final static Map<PersistenceType, Class<? extends Annotation>> typeAnnotations = new EnumMap<PersistenceType, Class<? extends Annotation>>(PersistenceType.class) {{
 		put(PersistenceType.ENTITY, Entity.class);
 		put(PersistenceType.EMBEDDABLE, Embeddable.class);

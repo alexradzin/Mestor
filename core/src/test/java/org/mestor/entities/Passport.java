@@ -19,6 +19,7 @@ package org.mestor.entities;
 
 import java.io.Serializable;
 
+@SuppressWarnings("serial")
 public class Passport implements Serializable {
 	private Country country;
 	private String passportId;

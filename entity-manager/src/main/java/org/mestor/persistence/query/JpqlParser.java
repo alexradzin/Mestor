@@ -54,12 +54,14 @@ public class JpqlParser implements CriteriaLanguageParser {
 	private final static Pattern logicalOpSplit = Pattern.compile(" AND ", Pattern.CASE_INSENSITIVE); //TODO: add support of OR
 
 
+	@SuppressWarnings("serial")
 	private final static Map<Pattern, QueryType> queryTypes = new HashMap<Pattern, QueryType>() {{
 		put(selectPattern, QueryType.SELECT);
 		put(updatePattern, QueryType.UPDATE);
 		put(deletePattern, QueryType.DELETE);
 	}};
 
+	@SuppressWarnings("serial")
 	private final static Map<Pattern, Collection<Pattern>> queryOptionalParts = new HashMap<Pattern, Collection<Pattern>>() {{
 		put(selectPattern, Arrays.asList(wherePattern, orderByPattern));
 		put(updatePattern, Collections.singleton(wherePattern));

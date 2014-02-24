@@ -7,6 +7,7 @@ import java.util.Map;
 
 import com.google.common.base.Objects;
 
+@SuppressWarnings("serial")
 public class Person extends AbstractEntity {
 	private int id;
 

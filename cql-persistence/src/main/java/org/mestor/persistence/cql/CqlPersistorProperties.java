@@ -34,7 +34,7 @@ public class CqlPersistorProperties<P> {
 	final static CqlPersistorProperties<ThrowOnViolation> SCHEMA_VALIDATION = new CqlPersistorProperties<ThrowOnViolation>(ThrowOnViolation.class, CASSANDRA_PROP_ROOT + "." + "schema.validation", ThrowOnViolation.THROW_ALL_TOGETHER);
 
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "serial" })
 	final static CqlPersistorProperties<Map> CASSANDRA_KEYSPACE_PROPERTIES = new CqlPersistorProperties<Map>(Map.class, CASSANDRA_PROP_ROOT + "." + "keyspace.properties",
 			Collections.<String, Object>singletonMap(
 					"replication",

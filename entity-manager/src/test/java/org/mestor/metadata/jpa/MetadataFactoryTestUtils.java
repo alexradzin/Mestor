@@ -47,6 +47,7 @@ public class MetadataFactoryTestUtils {
 
 		doReturn(new JpqlParser()).when(ctx).getCriteriaLanguageParser();
 
+		@SuppressWarnings("serial")
 		final Map<Class<?>, EntityMetadata<?>> entityClasses = new LinkedHashMap<Class<?>, EntityMetadata<?>>() {
 		    @Override
 			public EntityMetadata<?> put(final Class<?> clazz, final EntityMetadata<?> emd) {

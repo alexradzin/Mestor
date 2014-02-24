@@ -46,6 +46,7 @@ import org.mestor.metadata.EntityMetadata;
 import org.mestor.metadata.FieldMetadata;
 import org.mestor.persistence.metamodel.ManagedTypeImpl;
 
+@SuppressWarnings("serial")
 class FromImpl<Z, W> extends PathImpl<W> implements From<Z, W> {
 	FromImpl(final EntityContext entityContext, final Path<?> parent, final Class<? extends W> javaClass, final Bindable<W> modelArtifact) {
 		super(entityContext, parent, javaClass, modelArtifact);

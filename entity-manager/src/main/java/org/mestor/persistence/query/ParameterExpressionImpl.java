@@ -21,6 +21,7 @@ import java.util.Objects;
 
 import javax.persistence.criteria.ParameterExpression;
 
+@SuppressWarnings("serial")
 public class ParameterExpressionImpl<T> extends ExpressionImpl<T> implements ParameterExpression<T> {
 	private final String name;
 	private final Integer position;

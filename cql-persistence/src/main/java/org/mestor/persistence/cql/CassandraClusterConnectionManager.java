@@ -66,7 +66,7 @@ class CassandraClusterConnectionManager {
 
 		@Override
 		public int hashCode() {
-			return 31 * Objects.hash(port) + Objects.hash(hosts);
+			return 31 * Objects.hash(port) + Objects.hash((Object[])hosts);
 		}
 
 		@Override

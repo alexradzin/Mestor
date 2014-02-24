@@ -271,6 +271,7 @@ public class CqlPersistorBasicCrudTest {
 			final String[] rgbArr = new String[] {"red", "green", "blue"};
 			final List<String> rgbList = Arrays.asList("RED", "GREEN", "BLUE");
 			final Set<String> rgbSet = new HashSet<>(Arrays.asList("Red", "Green", "Blue"));
+			@SuppressWarnings("serial")
 			final Map<String, Integer> rgbMap = new HashMap<String, Integer>(){{
 				put("rEd", 0xFF0000);
 				put("grEEn", 0x00FF00);

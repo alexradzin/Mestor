@@ -74,6 +74,7 @@ class CqlPersistorTestHelper extends MetadataTestHelper {
 		this.persistor = persistor;
 	}
 
+	@SuppressWarnings("serial")
 	private static Map<Class<?>, Class<?>> prop2cql = new HashMap<Class<?>, Class<?>>() {{
 		put(BigInteger.class, Long.class);
 		put(BigDecimal.class, BigDecimal.class);

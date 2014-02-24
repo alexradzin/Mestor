@@ -105,6 +105,7 @@ import com.google.common.primitives.Primitives;
 @DiscriminatorColumn
 @Inheritance
 public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
+	@SuppressWarnings("serial")
 	private final Map<NamableItem, NamingStrategy> namingStrategies = new EnumMap<NamableItem, NamingStrategy>(NamableItem.class) {{
 		for(final NamableItem i : NamableItem.values()) {
 			put(i, StandardNamingStrategy.LOWER_CASE_UNDERSCORE);
@@ -112,6 +113,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		put(NamableItem.ENTITY, StandardNamingStrategy.UPPER_CAMEL_CASE);
 	}};
 
+	@SuppressWarnings("serial")
 	private final static Map<Object, Collection<CascadeOption>> cascade = new HashMap<Object, Collection<CascadeOption>>() {{
 		put(CascadeType.PERSIST, Collections.singleton(CascadeOption.PERSIST));
 		put(CascadeType.MERGE, Collections.singleton(CascadeOption.MERGE));
@@ -151,6 +153,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 		this.entityContext = context;
 	}
 
+	@SuppressWarnings("null")
 	@Override
 	public <T> EntityMetadata<T> create(final Class<T> clazz) {
 		final Entity entity = clazz.getAnnotation(Entity.class);
@@ -223,6 +226,7 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 					fields.put(fieldName, fmeta);
 				}
 			}
+			// fmeta cannot be null here: create() directly calls constructor
 			fmeta.setGetter(m);
 		}
 
@@ -553,7 +557,9 @@ public class JpaAnnotationsMetadataFactory extends BeanMetadataFactory {
 						return name;
 					}
 				} catch (final ReflectiveOperationException e) {
-					throw new IllegalArgumentException(nameHolder.getClass() + " does not provide method name()");
+					@SuppressWarnings("null") // It cannot be really null here because if it is null, name is null and we return from the loop body.
+					Class<?> nameHolderClass = nameHolder.getClass();
+					throw new IllegalArgumentException(nameHolderClass + " does not provide method name()");
 				}
 			}
 			return defaultValue;

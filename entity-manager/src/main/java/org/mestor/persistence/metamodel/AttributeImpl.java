@@ -44,6 +44,7 @@ abstract class AttributeImpl<E, F> implements Attribute<E, F> {
 	protected final FieldMetadata<E, F, ?> fmd;
 	protected final PersistentAttributeType persistentAttributeType;
 
+	@SuppressWarnings("serial")
 	private final static Map<PersistentAttributeType, Class<? extends Annotation>> attributeTypeAnnotations = new EnumMap<PersistentAttributeType, Class<? extends Annotation>>(PersistentAttributeType.class) {{
 	     put(PersistentAttributeType.MANY_TO_ONE, ManyToOne.class);
 	     put(PersistentAttributeType.ONE_TO_ONE, OneToOne.class);

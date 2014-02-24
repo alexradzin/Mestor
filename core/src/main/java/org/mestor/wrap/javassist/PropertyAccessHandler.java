@@ -35,6 +35,7 @@ import org.mestor.util.Pair;
 
 import com.google.common.base.Function;
 
+@SuppressWarnings("serial")
 public class PropertyAccessHandler<T> implements MethodHandler, Serializable {
 	private final T instance;
 	private transient final EntityMetadata<T> metadata;

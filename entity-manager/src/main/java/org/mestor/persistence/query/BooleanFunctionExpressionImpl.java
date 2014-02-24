@@ -29,6 +29,7 @@ import org.mestor.context.EntityContext;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
+@SuppressWarnings("serial")
 public class BooleanFunctionExpressionImpl extends FunctionExpressionImpl<Boolean> implements Predicate {
 	private final static Function<Object, Expression<?>> value2expression = new Function<Object, Expression<?>>() {
 		@Override

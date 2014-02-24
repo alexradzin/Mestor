@@ -24,6 +24,7 @@ import javax.persistence.criteria.Selection;
 
 import org.mestor.context.EntityContext;
 
+@SuppressWarnings("serial")
 public abstract class SelectionImpl<X> implements Selection<X>, Serializable {
 	private final Class<? extends X> type;
 	private final EntityContext entityContext;
